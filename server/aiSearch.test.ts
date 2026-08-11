@@ -9,7 +9,7 @@
 
 import { test, describe, before, after } from "node:test";
 import assert from "node:assert/strict";
-import { periodBounds } from "./aiSearch";
+import { periodBounds, priorPeriodBounds } from "./aiSearch";
 import { storage } from "./storage";
 import { db } from "./db";
 import { overnightStays, guestCountImports } from "@shared/schema";
@@ -82,7 +82,84 @@ describe("periodBounds — last_month must have an exclusive upper bound", () =>
 });
 
 // ────────────────────────────────────────────────────────────────────────────
-// Suite 2: getEffectiveGuestCountsByDate — PMS overrides manual entries
+// Suite 2: priorPeriodBounds unit tests
+// ────────────────────────────────────────────────────────────────────────────
+
+describe("priorPeriodBounds — comparison window aligns with the current period", () => {
+  // Fixed reference point: 15 March 2026 noon UTC
+  const now = new Date("2026-03-15T12:00:00Z");
+
+  test("this_month prior is the previous calendar month (February 2026)", () => {
+    const { fromDate, toDate } = priorPeriodBounds("this_month", now);
+    assert.equal(fromDate.getFullYear(), 2026);
+    assert.equal(fromDate.getMonth(), 1); // 0-indexed: 1 = February
+    assert.equal(fromDate.getDate(), 1);
+    assert.equal(toDate.getFullYear(), 2026);
+    assert.equal(toDate.getMonth(), 1); // February
+    assert.equal(toDate.getDate(), 28); // 2026 is not a leap year
+    assert.equal(toDate.getHours(), 23);
+    assert.equal(toDate.getMinutes(), 59);
+  });
+
+  test("last_month prior is two calendar months ago (January 2026)", () => {
+    const { fromDate, toDate } = priorPeriodBounds("last_month", now);
+    assert.equal(fromDate.getFullYear(), 2026);
+    assert.equal(fromDate.getMonth(), 0); // January
+    assert.equal(fromDate.getDate(), 1);
+    assert.equal(toDate.getFullYear(), 2026);
+    assert.equal(toDate.getMonth(), 0); // January
+    assert.equal(toDate.getDate(), 31);
+  });
+
+  test("30d prior window runs from 60 days to 30 days before now", () => {
+    const { fromDate, toDate } = priorPeriodBounds("30d", now);
+    const expectedFrom = new Date(now.getTime() - 60 * 86400000);
+    const expectedTo = new Date(now.getTime() - 30 * 86400000);
+    assert.equal(fromDate.toISOString().slice(0, 10), expectedFrom.toISOString().slice(0, 10));
+    assert.equal(toDate.toISOString().slice(0, 10), expectedTo.toISOString().slice(0, 10));
+  });
+
+  test("90d prior window runs from 180 days to 90 days before now", () => {
+    const { fromDate, toDate } = priorPeriodBounds("90d", now);
+    const expectedFrom = new Date(now.getTime() - 180 * 86400000);
+    const expectedTo = new Date(now.getTime() - 90 * 86400000);
+    assert.equal(fromDate.toISOString().slice(0, 10), expectedFrom.toISOString().slice(0, 10));
+    assert.equal(toDate.toISOString().slice(0, 10), expectedTo.toISOString().slice(0, 10));
+  });
+
+  test("prior window never overlaps the current window (30d)", () => {
+    const { toDate: priorTo } = priorPeriodBounds("30d", now);
+    // The current 30d window starts exactly 30 days before `now`.
+    const currentFrom = new Date(now.getTime() - 30 * 86400000);
+    assert.ok(priorTo <= currentFrom, "prior toDate must not exceed current fromDate");
+  });
+
+  test("this_month prior spanning a year boundary (January → December) is correct", () => {
+    const janNow = new Date("2026-01-15T10:00:00Z");
+    const { fromDate, toDate } = priorPeriodBounds("this_month", janNow);
+    assert.equal(fromDate.getFullYear(), 2025);
+    assert.equal(fromDate.getMonth(), 11); // December
+    assert.equal(fromDate.getDate(), 1);
+    assert.equal(toDate.getFullYear(), 2025);
+    assert.equal(toDate.getMonth(), 11); // December
+    assert.equal(toDate.getDate(), 31);
+  });
+
+  test("last_month prior spanning a year boundary (January → November) is correct", () => {
+    const janNow = new Date("2026-01-20T10:00:00Z");
+    const { fromDate, toDate } = priorPeriodBounds("last_month", janNow);
+    // last_month = December 2025, so prior = November 2025
+    assert.equal(fromDate.getFullYear(), 2025);
+    assert.equal(fromDate.getMonth(), 10); // November
+    assert.equal(fromDate.getDate(), 1);
+    assert.equal(toDate.getFullYear(), 2025);
+    assert.equal(toDate.getMonth(), 10); // November
+    assert.equal(toDate.getDate(), 30);
+  });
+});
+
+// ────────────────────────────────────────────────────────────────────────────
+// Suite 3: getEffectiveGuestCountsByDate — PMS overrides manual entries
 // ────────────────────────────────────────────────────────────────────────────
 
 describe("getEffectiveGuestCountsByDate — PMS imports override manual overnightStays", () => {

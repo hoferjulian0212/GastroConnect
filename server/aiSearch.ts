@@ -38,6 +38,43 @@ export function periodBounds(period: string, now: Date): { fromDate: Date; toDat
   return { fromDate: new Date(Date.now() - 30 * 86400000), toDate: null };
 }
 
+/**
+ * Returns the comparison (prior) window for a named period — always a
+ * closed [fromDate, toDate] interval so the query never bleeds into the
+ * current period.  Used by get_revenue_by_customer to compute trend data.
+ *
+ * Mapping:
+ *   this_month → the previous calendar month
+ *   last_month  → two calendar months ago
+ *   30d         → days 31–60 before now
+ *   90d         → days 91–180 before now
+ *
+ * Exported for unit testing.
+ */
+export function priorPeriodBounds(period: string, now: Date): { fromDate: Date; toDate: Date } {
+  if (period === "this_month") {
+    const fromDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const toDate = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
+    return { fromDate, toDate };
+  }
+  if (period === "last_month") {
+    const fromDate = new Date(now.getFullYear(), now.getMonth() - 2, 1);
+    const toDate = new Date(now.getFullYear(), now.getMonth() - 1, 0, 23, 59, 59, 999);
+    return { fromDate, toDate };
+  }
+  if (period === "90d") {
+    return {
+      fromDate: new Date(now.getTime() - 180 * 86400000),
+      toDate: new Date(now.getTime() - 90 * 86400000),
+    };
+  }
+  // 30d (default)
+  return {
+    fromDate: new Date(now.getTime() - 60 * 86400000),
+    toDate: new Date(now.getTime() - 30 * 86400000),
+  };
+}
+
 interface AiActionRaw {
   kind: "open_inbox" | "open_order" | "open_page";
   orderId?: string;
@@ -1039,45 +1076,96 @@ function buildTools(userId: string, role: Role) {
   // Revenue breakdown by restaurant customer (supplier-only) — mirrors
   // get_spending_summary for the supplier side. "Which restaurant orders most?",
   // "what is my revenue this month?", "top customers by spend?".
+  // Also returns the prior period side-by-side so the assistant can describe
+  // trends: "Restaurant X ordered 18% more than last month".
   async function get_revenue_by_customer(args: { period?: string }) {
     if (role !== "supplier") return { error: "only_for_suppliers" };
     const period = String(args?.period || "30d").trim();
     const now = new Date();
     const { fromDate, toDate } = periodBounds(period, now);
+    const { fromDate: priorFrom, toDate: priorTo } = priorPeriodBounds(period, now);
+
     const dateConds: any[] = [gte(orders.createdAt, fromDate)];
     if (toDate) dateConds.push(lte(orders.createdAt, toDate));
-    const rows = await db
-      .select({
-        totalAmount: orders.totalAmount,
-        restaurantId: orders.restaurantId,
-        restaurantName: users.companyName,
-      })
-      .from(orders)
-      .innerJoin(users, eq(users.id, orders.restaurantId))
-      .where(
-        and(
-          eq(orders.supplierId, userId),
-          eq(orders.status, "delivered" as any),
-          ...dateConds,
-        ),
-      );
-    const total = rows.reduce((s, r) => s + parseFloat(r.totalAmount || "0"), 0);
+    const priorDateConds: any[] = [gte(orders.createdAt, priorFrom), lte(orders.createdAt, priorTo)];
+
+    // Run current and prior period queries in parallel.
+    const [currentRows, priorRows] = await Promise.all([
+      db
+        .select({
+          totalAmount: orders.totalAmount,
+          restaurantId: orders.restaurantId,
+          restaurantName: users.companyName,
+        })
+        .from(orders)
+        .innerJoin(users, eq(users.id, orders.restaurantId))
+        .where(and(eq(orders.supplierId, userId), eq(orders.status, "delivered" as any), ...dateConds)),
+      db
+        .select({
+          totalAmount: orders.totalAmount,
+          restaurantId: orders.restaurantId,
+        })
+        .from(orders)
+        .where(and(eq(orders.supplierId, userId), eq(orders.status, "delivered" as any), ...priorDateConds)),
+    ]);
+
+    // Aggregate current period.
+    const total = currentRows.reduce((s, r) => s + parseFloat(r.totalAmount || "0"), 0);
     const byCustomer: Record<string, { name: string; amount: number; count: number }> = {};
-    for (const r of rows) {
+    for (const r of currentRows) {
       if (!byCustomer[r.restaurantId]) byCustomer[r.restaurantId] = { name: r.restaurantName || "", amount: 0, count: 0 };
       byCustomer[r.restaurantId].amount += parseFloat(r.totalAmount || "0");
       byCustomer[r.restaurantId].count++;
     }
+
+    // Aggregate prior period.
+    const priorTotal = priorRows.reduce((s, r) => s + parseFloat(r.totalAmount || "0"), 0);
+    const priorByCustomer: Record<string, { amount: number; count: number }> = {};
+    for (const r of priorRows) {
+      if (!priorByCustomer[r.restaurantId]) priorByCustomer[r.restaurantId] = { amount: 0, count: 0 };
+      priorByCustomer[r.restaurantId].amount += parseFloat(r.totalAmount || "0");
+      priorByCustomer[r.restaurantId].count++;
+    }
+
+    const totalChangePercent =
+      priorTotal > 0 ? Math.round(((total - priorTotal) / priorTotal) * 1000) / 10 : null;
+
     return {
       period,
       from: fromDate.toISOString().slice(0, 10),
       to: (toDate ?? now).toISOString().slice(0, 10),
       totalRevenue: Math.round(total * 100) / 100,
-      orderCount: rows.length,
+      orderCount: currentRows.length,
+      // Comparison window so the assistant can compute and narrate trends.
+      priorPeriod: {
+        from: priorFrom.toISOString().slice(0, 10),
+        to: priorTo.toISOString().slice(0, 10),
+        totalRevenue: Math.round(priorTotal * 100) / 100,
+        orderCount: priorRows.length,
+      },
+      // Positive = revenue grew vs prior period; negative = declined.
+      totalChangePercent,
       byCustomer: Object.entries(byCustomer)
         .sort((a, b) => b[1].amount - a[1].amount)
         .slice(0, 8)
-        .map(([id, v]) => ({ restaurantId: id, restaurantName: v.name, amount: Math.round(v.amount * 100) / 100, orderCount: v.count })),
+        .map(([id, v]) => {
+          const prior = priorByCustomer[id];
+          const priorAmount = prior ? Math.round(prior.amount * 100) / 100 : 0;
+          const changePercent =
+            prior && prior.amount > 0
+              ? Math.round(((v.amount - prior.amount) / prior.amount) * 1000) / 10
+              : null;
+          return {
+            restaurantId: id,
+            restaurantName: v.name,
+            amount: Math.round(v.amount * 100) / 100,
+            orderCount: v.count,
+            priorAmount,
+            priorOrderCount: prior?.count ?? 0,
+            // null when the customer had no orders in the prior period.
+            changePercent,
+          };
+        }),
     };
   }
 
@@ -1441,7 +1529,7 @@ function buildTools(userId: string, role: Role) {
             function: {
               name: "get_revenue_by_customer",
               description:
-                "Summarise the supplier's revenue from delivered orders broken down by restaurant customer. Use for questions like 'which restaurant orders most from me?', 'what is my total revenue this month?', 'who are my top customers by spend?', 'how much revenue did I generate this quarter?'.",
+                "Summarise the supplier's revenue from delivered orders broken down by restaurant customer, with a side-by-side comparison to the prior period so trends can be described. Returns current-period totals, prior-period totals, totalChangePercent for the whole business, and per-customer changePercent — enabling answers like 'Restaurant X increased orders by 18% vs last month' or 'your total revenue is down 5% compared to the previous 30 days'. Use for ANY question about revenue, customer spend, top customers, or revenue trends — e.g. 'which restaurant orders most from me?', 'what is my revenue this month vs last month?', 'how has my revenue trended?', 'did Restaurant X order more or less recently?', 'who are my top customers?'.",
               parameters: {
                 type: "object",
                 properties: {
@@ -1526,7 +1614,7 @@ function systemPrompt(role: Role, lang: string): string {
       : [
           `You can also help with: complaints from restaurants (list_complaints), unread messages (get_unread_messages), own promotions (get_promotions), low-stock products (get_low_stock), active inventory risk records (get_inventory_risk), revenue by customer (get_revenue_by_customer), best-selling products (get_top_products), catalog lookups (search_products), configured delivery days per customer (get_delivery_schedule), and the full contents of a specific order (get_order_details).`,
           `When the user asks about stock or inventory, always call get_low_stock proactively. For risk reports or spoilage questions, call get_inventory_risk.`,
-          `For revenue or customer spend questions on the supplier side, call get_revenue_by_customer.`,
+          `For revenue or customer spend questions on the supplier side, call get_revenue_by_customer — it returns current and prior period data with changePercent per customer so you can narrate trends like "Restaurant X ordered 18% more than last month" or "your total revenue is down 5% vs the previous period".`,
         ];
   return [
     `You are the in-app assistant for GastroConnect, a B2B ordering platform for restaurants and suppliers in South Tyrol.`,
