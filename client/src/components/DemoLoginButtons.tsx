@@ -6,12 +6,14 @@
  * sign-in token → signs the user in instantly with no email/device
  * verification code required.
  */
-import { useState } from "react";
+import { useRef, useState } from "react";
 // Use the legacy hook — it returns { isLoaded, signIn, setActive } and supports
 // signIn.create({ strategy: "ticket", ticket }) which is what sign-in tokens
 // require. The v6 default useSignIn returns the signal-based future API whose
 // create() validates the ticket value against a stricter pattern and rejects it.
 import { useSignIn } from "@clerk/react/legacy";
+import { useAuth, useClerk } from "@clerk/react";
+import { useLocation } from "wouter";
 import { Loader2 } from "lucide-react";
 
 interface DemoAccount {
@@ -36,19 +38,31 @@ const DEMO_ACCOUNTS: DemoAccount[] = [
 
 export function DemoLoginButtons() {
   const { signIn, setActive } = useSignIn();
+  const { isSignedIn } = useAuth();
+  const { signOut } = useClerk();
+  const [, setLocation] = useLocation();
   const [loadingEmail, setLoadingEmail] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const loginInFlight = useRef(false);
 
-  const handleLogin = async (email: string) => {
-    if (!signIn || !setActive) return;
+  const handleLogin = async (account: DemoAccount) => {
+    if (!signIn || !setActive || loginInFlight.current) return;
+    loginInFlight.current = true;
     setError(null);
-    setLoadingEmail(email);
+    setLoadingEmail(account.email);
     try {
+      // A previous demo attempt may have activated Clerk before the app
+      // navigated away from /sign-in. Clear that session first so switching
+      // demo accounts never produces Clerk's "already signed in" error.
+      if (isSignedIn) {
+        await signOut();
+      }
+
       // 1. Get a one-time sign-in token from our server (demo whitelist gated).
       const res = await fetch("/api/demo-login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email: account.email }),
       });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
@@ -65,6 +79,10 @@ export function DemoLoginButtons() {
       // 3. status is 'complete' → activate the new session.
       if (result.status === "complete") {
         await setActive({ session: result.createdSessionId });
+        // Custom signIn.create does not apply the SignIn component's
+        // afterSignInUrl, so explicitly leave the sign-in screen once the
+        // session has been activated.
+        setLocation(account.group === "restaurant" ? "/restaurant" : "/supplier");
       } else {
         throw new Error(`Unexpected sign-in status: ${result.status}`);
       }
@@ -72,6 +90,7 @@ export function DemoLoginButtons() {
       setError(err?.message ?? "Anmeldung fehlgeschlagen");
     } finally {
       setLoadingEmail(null);
+      loginInFlight.current = false;
     }
   };
 
@@ -143,13 +162,13 @@ function DemoTile({
   account: DemoAccount;
   loading: boolean;
   disabled: boolean;
-  onLogin: (email: string) => void;
+  onLogin: (account: DemoAccount) => void;
 }) {
   return (
     <button
       type="button"
       disabled={disabled}
-      onClick={() => onLogin(account.email)}
+      onClick={() => onLogin(account)}
       className="flex flex-col items-center justify-center gap-1 rounded-xl border border-white/10 bg-white/[0.05] hover:bg-white/[0.09] active:bg-white/[0.12] transition-colors px-1 py-2.5 disabled:opacity-50 disabled:cursor-not-allowed"
     >
       {loading ? (
