@@ -634,17 +634,17 @@ export function AiAssistant() {
                       ),
                     )}
                     {sending && (
-                      <div className="flex items-start gap-2.5" data-testid="ai-typing">
-                        <div className="mt-0.5 shrink-0 inline-flex items-center justify-center h-7 w-7 rounded-full bg-primary/10 text-primary">
-                          <SupportChatIcon className="h-3.5 w-3.5" />
-                        </div>
-                        <div className="rounded-2xl rounded-tl-md bg-muted px-3.5 py-2.5">
-                          <div className="flex items-center gap-1">
-                            <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/60 animate-bounce [animation-delay:0ms]" />
-                            <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/60 animate-bounce [animation-delay:150ms]" />
-                            <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/60 animate-bounce [animation-delay:300ms]" />
-                          </div>
-                        </div>
+                      <div
+                        className="flex items-center gap-3 self-start rounded-full bg-[#151515] px-3.5 py-2.5 text-white shadow-sm"
+                        data-testid="ai-typing"
+                        role="status"
+                        aria-live="polite"
+                        aria-label={t("Wird gelöst", "Risoluzione in corso")}
+                      >
+                        <SolvingOrb />
+                        <span className="pr-1 text-sm font-medium tracking-tight text-white/85">
+                          {t("Wird gelöst…", "Risoluzione…")}
+                        </span>
                       </div>
                     )}
                   </>
@@ -690,5 +690,14 @@ export function AiAssistant() {
         </div>
       )}
     </>
+  );
+}
+
+/** The animated dotted globe used while the assistant searches and answers. */
+function SolvingOrb() {
+  return (
+    <span className="ai-solving-orb" aria-hidden="true">
+      <span className="ai-solving-orb-highlight" />
+    </span>
   );
 }

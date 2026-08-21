@@ -228,6 +228,65 @@ input[type="date"].date-empty:not(.dark *)::-webkit-datetime-edit-year-field {
 }
 .animate-read-receipt { animation: read-receipt-fade 0.4s ease-out forwards; }
 
+/* AI assistant solving indicator — a softly rotating field of dots, matching
+   the rounded dark status pill used in the reference design. */
+@keyframes ai-solving-orb-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+@keyframes ai-solving-orb-breathe {
+  0%, 100% { opacity: 0.72; }
+  50% { opacity: 1; }
+}
+.ai-solving-orb {
+  position: relative;
+  display: inline-block;
+  flex: 0 0 auto;
+  width: 2.15rem;
+  height: 2.15rem;
+  overflow: hidden;
+  border-radius: 9999px;
+  background-color: #202020;
+  background-image:
+    radial-gradient(circle, rgba(255,255,255,0.88) 1.15px, transparent 1.3px),
+    radial-gradient(circle, rgba(255,255,255,0.5) 1px, transparent 1.2px);
+  background-position: 1px 1px, 4px 4px;
+  background-size: 6px 6px, 7px 7px;
+  box-shadow:
+    inset 7px 0 10px rgba(255,255,255,0.08),
+    inset -8px 0 12px rgba(0,0,0,0.48),
+    0 0 0 1px rgba(255,255,255,0.04);
+  animation: ai-solving-orb-spin 2.8s linear infinite, ai-solving-orb-breathe 1.8s ease-in-out infinite;
+}
+.ai-solving-orb::before,
+.ai-solving-orb::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+  border: 1px solid rgba(255,255,255,0.18);
+  border-radius: 50%;
+}
+.ai-solving-orb::before {
+  inset: 0.2rem -0.18rem;
+  transform: rotate(54deg);
+}
+.ai-solving-orb::after {
+  inset: -0.18rem 0.2rem;
+  transform: rotate(-54deg);
+}
+.ai-solving-orb-highlight {
+  position: absolute;
+  inset: 0.25rem 0.6rem 0.9rem 0.38rem;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.12);
+  filter: blur(3px);
+}
+@media (prefers-reduced-motion: reduce) {
+  .ai-solving-orb {
+    animation: ai-solving-orb-breathe 2s ease-in-out infinite;
+  }
+}
+
 @keyframes fly-to-cart {
   0% {
     transform: translate(0, 0) scale(1);
