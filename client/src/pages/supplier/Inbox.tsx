@@ -265,11 +265,13 @@ export default function SupplierInbox() {
     }
   };
 
-  // Hide the mobile tab bar on the entire chat page (list + conversation view).
+  // Hide the mobile tab bar only while a conversation is open. The inbox list
+  // itself must keep navigation available so mobile users are not trapped on
+  // this page.
   useEffect(() => {
-    setIsInChat(true);
+    setIsInChat(!!selectedConversation);
     return () => setIsInChat(false);
-  }, [setIsInChat]);
+  }, [selectedConversation, setIsInChat]);
 
   useEffect(() => {
     if (selectedConversation) {
@@ -961,6 +963,18 @@ export default function SupplierInbox() {
         <div className="flex flex-1 min-h-0 min-w-0">
           <div className={`w-full md:w-72 lg:w-80 border-r border-border flex flex-col min-h-0 shrink-0 ${selectedConversation ? 'hidden md:flex' : 'flex'}`}>
             <CardHeader className="pb-2 p-3 shrink-0">
+              <div className="flex items-center gap-2 mb-2 md:hidden">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-9 px-2.5 -ml-1 gap-1.5"
+                  onClick={() => setLocation("/supplier")}
+                  data-testid="button-back-from-inbox"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                  <span>{lang === "de" ? "Zurück" : "Indietro"}</span>
+                </Button>
+              </div>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
