@@ -1080,11 +1080,10 @@ function stripBase(path: string): string {
 }
 
 function SignInPage() {
-  const isDev = import.meta.env.DEV || import.meta.env.MODE !== "production";
   return (
     <div className="min-h-dvh bg-[#161921] flex flex-col items-center justify-center px-4 py-8 gap-0">
+      <DemoLoginButtons />
       <SignIn routing="path" path={`${basePath}/sign-in`} signUpUrl={`${basePath}/sign-up`} />
-      {isDev && <DemoLoginButtons />}
     </div>
   );
 }

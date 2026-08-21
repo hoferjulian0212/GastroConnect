@@ -624,14 +624,12 @@ export async function registerRoutes(
   // Platform admin panel (email + password auth + admin CRUD)
   registerAdminAuthRoutes(app);
 
-  // ── Demo sign-in token (development only) ────────────────────────────────
+  // ── Demo sign-in token ───────────────────────────────────────────────────
   // Creates a one-time Clerk sign-in token for a known demo email so the
   // frontend can sign in instantly without email/device verification.
-  // Hard-blocked in production; the demo email list is the whitelist.
+  // The explicit demo email list is the whitelist; ordinary accounts never
+  // reach this path and continue to use Clerk's normal verification flow.
   app.post("/api/demo-login", async (req, res) => {
-    if (process.env.NODE_ENV === "production") {
-      return res.status(404).json({ error: "not_found" });
-    }
     const { email } = req.body ?? {};
     if (typeof email !== "string") {
       return res.status(400).json({ error: "email_required" });
@@ -643,12 +641,13 @@ export async function registerRoutes(
       DEMO_DRIVER_EMAIL,
       "fahrer2@frische-produkte.de",
     ]);
-    if (!allowed.has(email)) {
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!allowed.has(normalizedEmail)) {
       return res.status(403).json({ error: "not_a_demo_account" });
     }
     try {
       const clerk = createClerkClient({ secretKey: process.env.CLERK_SECRET_KEY });
-      const { data: users } = await clerk.users.getUserList({ emailAddress: [email] });
+      const { data: users } = await clerk.users.getUserList({ emailAddress: [normalizedEmail] });
       if (!users.length) {
         return res.status(404).json({ error: "clerk_user_not_found" });
       }
