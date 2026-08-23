@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { Link } from "wouter";
-import { Truck, ChevronUp } from "lucide-react";
+import { Link, useLocation } from "wouter";
+import { Truck, X } from "lucide-react";
 import type { OrderWithDetails } from "@shared/schema";
 import { formatOrderNumber } from "@shared/schema";
 
@@ -14,10 +14,11 @@ interface ActiveDeliveryBannerProps {
  *
  * It intentionally lives outside the dashboard layout as a fixed control so
  * it does not consume a widget slot or push the upcoming-deliveries section
- * down. One order opens directly; multiple orders expose numbered choices.
+ * down. One order opens directly; multiple orders expose a labelled list.
  */
 export function ActiveDeliveryBanner({ orders, lang }: ActiveDeliveryBannerProps) {
   const [expanded, setExpanded] = useState(false);
+  const [, navigate] = useLocation();
 
   if (orders.length === 0) return null;
 
@@ -32,9 +33,8 @@ export function ActiveDeliveryBanner({ orders, lang }: ActiveDeliveryBannerProps
   };
 
   const openFirst = () => {
-    if (multiple) {
-      setExpanded((value) => !value);
-    }
+    if (multiple) setExpanded((value) => !value);
+    else navigate(`/restaurant/orders/${first.id}`);
   };
 
   return (
@@ -44,34 +44,57 @@ export function ActiveDeliveryBanner({ orders, lang }: ActiveDeliveryBannerProps
     >
       {expanded && multiple && (
         <div
-          className="flex max-w-[calc(100vw-2rem)] items-center gap-1.5 rounded-full border border-border/60 bg-background/95 p-1.5 shadow-xl backdrop-blur"
+          className="w-[min(19rem,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-blue-200 bg-background/95 shadow-xl shadow-blue-950/10 backdrop-blur dark:border-blue-900/70"
           data-testid="active-delivery-order-choices"
         >
-          {orders.map((order, index) => (
+          <div className="flex items-center justify-between border-b border-blue-100 bg-blue-50 px-3 py-2.5 dark:border-blue-900/60 dark:bg-blue-950/40">
+            <div>
+              <p className="text-xs font-bold text-blue-900 dark:text-blue-100">
+                {lang === "de" ? "Lieferungen unterwegs" : "Consegne in viaggio"}
+              </p>
+              <p className="text-[11px] text-blue-700/75 dark:text-blue-200/75">
+                {lang === "de" ? `${orders.length} Bestellungen auswählen` : `Scegli tra ${orders.length} ordini`}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setExpanded(false)}
+              className="inline-flex h-7 w-7 items-center justify-center rounded-full text-blue-700 hover:bg-blue-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:text-blue-200 dark:hover:bg-blue-900/60"
+              aria-label={lang === "de" ? "Auswahl schließen" : "Chiudi selezione"}
+              data-testid="active-delivery-close"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+          <div className="max-h-64 overflow-y-auto p-1.5">
+          {orders.map((order) => (
             <Link
               key={order.id}
               href={`/restaurant/orders/${order.id}`}
               title={orderLabel(order)}
               aria-label={orderLabel(order)}
               onClick={() => setExpanded(false)}
-              className="group relative inline-flex h-9 w-9 items-center justify-center rounded-full bg-blue-600 text-white shadow-sm transition-transform hover:scale-110 hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
-              data-testid={`active-delivery-choice-${order.id}`}
+              className="flex items-center gap-3 rounded-xl px-2.5 py-2.5 text-left transition-colors hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:hover:bg-blue-950/50"
+              data-testid={`active-delivery-order-${order.id}`}
             >
-              <Truck className="h-4 w-4" />
-              <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full border-2 border-background bg-purple-600 px-0.5 text-[9px] font-bold leading-none">
-                {index + 1}
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-600 text-xs font-bold text-white">
+                {formatOrderNumber(order).replace(/^#/, "")}
+              </span>
+              <span className="min-w-0">
+                <span className="block truncate text-sm font-semibold text-foreground">
+                  {order.supplier?.companyName || order.supplier?.name || (lang === "de" ? "Lieferant" : "Fornitore")}
+                </span>
+                <span className="block truncate text-[11px] text-muted-foreground">
+                  {lang === "de" ? `Bestellung ${formatOrderNumber(order)} ist unterwegs` : `${formatOrderNumber(order)} è in viaggio`}
+                </span>
               </span>
             </Link>
           ))}
+          </div>
         </div>
       )}
 
       <div className="flex items-center gap-2">
-        {multiple && expanded && (
-          <span className="rounded-full bg-[#161921] px-2.5 py-1.5 text-[11px] font-semibold text-white shadow-lg">
-            {lang === "de" ? `${orders.length} Lieferungen unterwegs` : `${orders.length} consegne in viaggio`}
-          </span>
-        )}
         <button
           type="button"
           onClick={openFirst}
@@ -81,21 +104,18 @@ export function ActiveDeliveryBanner({ orders, lang }: ActiveDeliveryBannerProps
           aria-label={multiple
             ? (lang === "de" ? `${orders.length} Bestellungen unterwegs, Auswahl öffnen` : `${orders.length} ordini in viaggio, apri selezione`)
             : orderLabel(first)}
-          className="group relative inline-flex h-14 w-14 items-center justify-center rounded-full bg-blue-600 text-white shadow-lg shadow-blue-600/30 transition-transform hover:scale-105 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 md:h-16 md:w-16"
+          className="group relative inline-flex h-14 w-14 items-center justify-center rounded-full bg-blue-700 text-white shadow-lg shadow-blue-700/25 transition-transform hover:scale-105 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 md:h-16 md:w-16"
           data-testid="active-delivery-launcher-button"
         >
-          <span className="absolute inset-0 rounded-full border-2 border-blue-300/80 animate-ping" />
-          <span className="absolute inset-1 rounded-full border border-white/25" />
-          <Truck className="relative h-7 w-7 animate-bounce md:h-8 md:w-8" />
+          <span className="absolute inset-0 rounded-full border-2 border-blue-400/80 animate-ping" />
+          <span className="absolute inset-1 rounded-full border border-blue-200/40" />
+          <Truck className="relative h-7 w-7 animate-[truck-float_2s_ease-in-out_infinite] md:h-8 md:w-8" />
           {multiple ? (
-            <span className="absolute -right-1 -top-1 flex h-6 min-w-6 items-center justify-center rounded-full border-2 border-background bg-purple-600 px-1 text-[11px] font-bold">
+            <span className="absolute -right-1 -top-1 flex h-6 min-w-6 items-center justify-center rounded-full border-2 border-blue-700 bg-white px-1 text-[11px] font-bold text-blue-700">
               {orders.length}
             </span>
           ) : (
-            <span className="absolute -right-0.5 -top-0.5 h-3.5 w-3.5 rounded-full border-2 border-background bg-emerald-400" />
-          )}
-          {multiple && (
-            <ChevronUp className={`absolute -bottom-1 h-3.5 w-3.5 rounded-full bg-background text-blue-700 transition-transform ${expanded ? "rotate-180" : ""}`} />
+            <span className="absolute -right-0.5 -top-0.5 h-3.5 w-3.5 rounded-full border-2 border-blue-700 bg-white" />
           )}
         </button>
       </div>
