@@ -388,6 +388,47 @@ input[type="date"].date-empty:not(.dark *)::-webkit-datetime-edit-year-field {
   border-color: var(--landing-line) !important;
 }
 
+.dark .landing-page {
+  --landing-ink: #f5f4f0;
+  --landing-muted: #a9b0aa;
+  --landing-line: rgba(255, 255, 255, .12);
+  --landing-paper: hsl(var(--background));
+  --landing-sage: rgba(255, 255, 255, .06);
+  --landing-plum: #c8b4cf;
+  background:
+    radial-gradient(circle at 84% 7%, rgba(79, 105, 88, .18), transparent 26rem),
+    radial-gradient(circle at 8% 38%, rgba(112, 78, 66, .12), transparent 30rem),
+    var(--landing-paper) !important;
+}
+
+.dark .landing-page .landing-header-inner {
+  background: rgba(18, 20, 19, .78) !important;
+  box-shadow:
+    0 12px 36px rgba(0, 0, 0, .22),
+    inset 0 1px 0 rgba(255, 255, 255, .06) !important;
+}
+
+.dark .landing-page .landing-hero [data-testid="registration-guide"] > div {
+  background: rgba(24, 28, 25, .72);
+}
+
+.dark .landing-page .landing-hero [data-testid^="guide-step-"] {
+  background: rgba(255, 255, 255, .055);
+  border-color: rgba(255, 255, 255, .09);
+}
+
+.dark .landing-page [data-testid="section-whats-new"] {
+  background: rgba(255, 255, 255, .035);
+}
+
+.dark .landing-page [data-testid="section-whats-new"] span.inline-flex {
+  background: rgba(255, 255, 255, .055);
+}
+
+.dark .landing-page footer {
+  background: rgba(255, 255, 255, .035);
+}
+
 @media (max-width: 767px) {
   .landing-page .landing-hero::before {
     width: 100vw;
