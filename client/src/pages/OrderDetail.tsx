@@ -1041,53 +1041,6 @@ export default function OrderDetail() {
               </div>
             )}
 
-            {/* ── Status zone: driver card (supplier only) ─────────────────────────
-                 Attached directly below the stepper; gated on the "updates"
-                 mobile tab. The space-y-5 on the parent gives vertical rhythm. */}
-            {isSupplier && order && ["confirmed", "partially_confirmed", "scheduled", "in_delivery"].includes(order.status) && (
-              <div className={`rounded-xl border border-border bg-card overflow-hidden shadow-sm min-w-0 ${tabClsUpdates}`} data-testid="section-driver">
-                <div className="px-4 py-3 border-b border-border/30">
-                  <p className="text-sm font-semibold">{lang === "de" ? "Fahrer" : "Autista"}</p>
-                </div>
-                <div className="px-4 py-3 flex items-center justify-between gap-3">
-                  {trackingInfo?.driver ? (
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <Avatar className="h-8 w-8 shrink-0">
-                        <AvatarImage src={trackingInfo.driver.profileImageUrl ?? undefined} />
-                        <AvatarFallback className="text-[10px] font-semibold">
-                          {trackingInfo.driver.name.slice(0, 2).toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium truncate" data-testid="text-assigned-driver">{trackingInfo.driver.name}</p>
-                        {trackingInfo.driver.phone && (
-                          <p className="text-xs text-muted-foreground truncate">{trackingInfo.driver.phone}</p>
-                        )}
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground min-w-0">
-                      <Truck className="h-4 w-4 shrink-0" />
-                      <span className="truncate" data-testid="text-no-driver">
-                        {lang === "de" ? "Kein Fahrer zugewiesen" : "Nessun autista assegnato"}
-                      </span>
-                    </div>
-                  )}
-                  {order.status !== "in_delivery" && (
-                    <button
-                      className="text-sm font-semibold text-primary hover:underline shrink-0"
-                      onClick={() => setShowAssignDriver(true)}
-                      data-testid="button-detail-assign-driver"
-                    >
-                      {trackingInfo?.driver
-                        ? (lang === "de" ? "Ändern" : "Modifica")
-                        : (lang === "de" ? "Zuweisen" : "Assegna")}
-                    </button>
-                  )}
-                </div>
-              </div>
-            )}
-
             {/* ── Status zone: live delivery tracking (all roles) ──────────────────
                  Rendered for both restaurant and supplier once a driver may be
                  active. The component returns null when no assignment exists, so
