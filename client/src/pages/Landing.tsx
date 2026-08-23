@@ -1009,7 +1009,7 @@ export default function Landing() {
               <HeadlineReveal
                 key={`hero-${lang}`}
                 text={t.heroH1}
-                 className="text-6xl md:text-9xl font-semibold tracking-tight leading-[.98] max-w-6xl mx-auto"
+                 className="text-5xl md:text-8xl font-semibold tracking-tight leading-[.98] max-w-6xl mx-auto"
                 testId="text-hero-headline"
               />
             </HeadlineCta>
