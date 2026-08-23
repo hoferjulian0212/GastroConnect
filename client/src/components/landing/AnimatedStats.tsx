@@ -11,11 +11,18 @@
  *   • Reduced-motion: instant values, no transitions.
  */
 
-import { useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion, useInView, useReducedMotion } from "framer-motion";
 import CountUp from "../CountUp";
 
 type Lang = "de" | "it" | "en";
+
+type PublicStats = {
+  avgSavingsPercent: number;
+  businesses: number;
+  ordersLast12Months: number;
+  complaintsResolvedPercent: number;
+};
 
 // ── Internal i18n ─────────────────────────────────────────────────────────────
 
@@ -26,7 +33,7 @@ const copy = {
       { value: 18,    suffix: "%",  label: "Ø Einsparung",   sub: "durch Preisvergleich über alle Händler" },
       { value: 340,   suffix: "+",  label: "Betriebe",        sub: "aktiv auf der Plattform" },
       { value: 12400, suffix: "+",  label: "Bestellungen",    sub: "verarbeitet in den letzten 12 Monaten" },
-      { value: 94,    suffix: "%",  label: "Reklamationen",   sub: "in unter 24 h gelöst" },
+      { value: 94,    suffix: "%",  label: "Reklamationen",   sub: "gelöst" },
     ],
     chartKicker: "Preisvergleich",
     chartHeadline: "Weniger ausgeben.\nGleiche Qualität.",
@@ -49,7 +56,7 @@ const copy = {
       { value: 18,    suffix: "%",  label: "Ø risparmio",       sub: "tramite confronto prezzi" },
       { value: 340,   suffix: "+",  label: "Locali",             sub: "attivi sulla piattaforma" },
       { value: 12400, suffix: "+",  label: "Ordini",             sub: "elaborati negli ultimi 12 mesi" },
-      { value: 94,    suffix: "%",  label: "Reclami",            sub: "risolti in meno di 24 ore" },
+      { value: 94,    suffix: "%",  label: "Reclami",            sub: "risolti" },
     ],
     chartKicker: "Confronto prezzi",
     chartHeadline: "Spendere meno.\nStessa qualità.",
@@ -72,7 +79,7 @@ const copy = {
       { value: 18,    suffix: "%",  label: "Avg. savings",     sub: "via cross-supplier price comparison" },
       { value: 340,   suffix: "+",  label: "Businesses",       sub: "active on the platform" },
       { value: 12400, suffix: "+",  label: "Orders",           sub: "processed in the last 12 months" },
-      { value: 94,    suffix: "%",  label: "Complaints",       sub: "resolved within 24 hours" },
+      { value: 94,    suffix: "%",  label: "Complaints",       sub: "resolved" },
     ],
     chartKicker: "Price comparison",
     chartHeadline: "Spend less.\nSame quality.",
@@ -193,6 +200,42 @@ function SparkBar({
 export function StatsStrip({ lang = "de" }: { lang?: Lang }) {
   const t = copy[lang];
   const reduce = !!useReducedMotion();
+  // Keep the reviewed figures as a resilient fallback while the public
+  // aggregate is loading or temporarily unavailable.
+  const [liveStats, setLiveStats] = useState<PublicStats | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    fetch("/api/public/stats")
+      .then((response) => {
+        if (!response.ok) throw new Error("Public stats unavailable");
+        return response.json() as Promise<unknown>;
+      })
+      .then((data) => {
+        if (cancelled || !isPublicStats(data)) return;
+        setLiveStats(data);
+      })
+      .catch(() => {
+        // Keep the reviewed fallback values when the request fails.
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const stats = liveStats
+    ? t.stats.map((stat, index) => ({
+        ...stat,
+        value: [
+          liveStats.avgSavingsPercent,
+          liveStats.businesses,
+          liveStats.ordersLast12Months,
+          liveStats.complaintsResolvedPercent,
+        ][index],
+      }))
+    : t.stats;
 
   return (
     <section className="bg-black px-4 md:px-8 py-20 md:py-28">
@@ -208,7 +251,7 @@ export function StatsStrip({ lang = "de" }: { lang?: Lang }) {
         </motion.p>
 
         <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-4">
-          {t.stats.map((s, i) => (
+          {stats.map((s, i) => (
             <StatCard
               key={s.label}
               value={s.value}
@@ -223,6 +266,17 @@ export function StatsStrip({ lang = "de" }: { lang?: Lang }) {
       </div>
     </section>
   );
+}
+
+function isPublicStats(data: unknown): data is PublicStats {
+  if (!data || typeof data !== "object") return false;
+  const stats = data as Record<string, unknown>;
+  return [
+    "avgSavingsPercent",
+    "businesses",
+    "ordersLast12Months",
+    "complaintsResolvedPercent",
+  ].every((key) => typeof stats[key] === "number" && Number.isFinite(stats[key]));
 }
 
 export function SavingsChart({ lang = "de" }: { lang?: Lang }) {

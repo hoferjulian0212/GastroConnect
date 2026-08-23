@@ -432,6 +432,37 @@ async function api(
   return { status: res.status, json };
 }
 
+describe("public stats cache safety", () => {
+  test("GET /api/public/stats is cacheable without refreshing a signed session", async () => {
+    const cookie = await seedSessionCookie(supplierAdminId);
+    const res = await fetch(`${BASE_URL}/api/public/stats`, {
+      headers: { cookie },
+      signal: AbortSignal.timeout(15_000),
+    });
+
+    assert.equal(res.status, 200);
+    assert.equal(res.headers.get("set-cookie"), null, "public response must not carry a session cookie");
+    assert.match(
+      res.headers.get("cache-control") ?? "",
+      /^public, max-age=3600, stale-while-revalidate=600$/,
+    );
+    assert.equal(res.headers.get("pragma"), null);
+    assert.equal(res.headers.get("expires"), null);
+
+    const stats = await res.json() as Record<string, unknown>;
+    for (const key of [
+      "avgSavingsPercent",
+      "businesses",
+      "ordersLast12Months",
+      "complaintsResolvedPercent",
+    ]) {
+      assert.equal(typeof stats[key], "number", `${key} should be numeric`);
+      assert.ok(Number.isFinite(stats[key]), `${key} should be finite`);
+      assert.ok((stats[key] as number) >= 0, `${key} should be non-negative`);
+    }
+  });
+});
+
 // ── 1. Unauthenticated → 401 ──────────────────────────────────────────────────
 //
 // Every endpoint below must reject requests that carry no session cookie with

@@ -53,6 +53,119 @@ import { z } from "zod";
 
 import type { InsertNotification, OrderWithDetails, Document } from "@shared/schema";
 
+type PublicStats = {
+  avgSavingsPercent: number;
+  businesses: number;
+  ordersLast12Months: number;
+  complaintsResolvedPercent: number;
+};
+
+let publicStatsCache: { value: PublicStats; expiresAt: number } | null = null;
+let publicStatsInFlight: Promise<PublicStats> | null = null;
+
+/**
+ * Public landing-page metrics are deliberately aggregated in one query and
+ * cached briefly in-process. The response is also marked public below so a
+ * proxy/browser can reuse it for an hour without exposing any account data.
+ *
+ * Savings are calculated from the amount paid in order items versus the
+ * current catalog price, weighted by quantity. Complaint resolution is the
+ * share of all complaints currently in a resolved/closed state.
+ */
+async function queryPublicStats(): Promise<PublicStats> {
+  const result = await db.execute<{
+    avg_savings_percent: string | number;
+    businesses: string | number;
+    orders_last_12_months: string | number;
+    complaints_resolved_percent: string | number;
+  }>(sql`
+    SELECT
+      COALESCE((
+        SELECT ROUND(
+          100 * SUM(
+            GREATEST(
+              CAST(p.price AS NUMERIC) - CAST(oi.unit_price AS NUMERIC),
+              0
+            ) * oi.quantity
+          ) / NULLIF(SUM(CAST(p.price AS NUMERIC) * oi.quantity), 0)
+        )
+        FROM orders o
+        JOIN order_items oi ON oi.order_id = o.id
+        JOIN products p ON p.id = oi.product_id
+        WHERE o.created_at >= NOW() - INTERVAL '12 months'
+          AND o.status <> 'cancelled'
+          AND CAST(p.price AS NUMERIC) > 0
+      ), 0) AS avg_savings_percent,
+      (
+        SELECT COUNT(*)::int
+        FROM users
+        WHERE role IN ('restaurant', 'supplier')
+          AND verified_at IS NOT NULL
+          AND approval_status = 'approved'
+      ) AS businesses,
+      (
+        SELECT COUNT(*)::int
+        FROM orders
+        WHERE created_at >= NOW() - INTERVAL '12 months'
+          AND status <> 'cancelled'
+      ) AS orders_last_12_months,
+      COALESCE((
+        SELECT ROUND(
+          100.0 * COUNT(*) FILTER (WHERE status IN ('resolved', 'closed'))
+          / NULLIF(COUNT(*), 0)
+        )
+        FROM complaints
+      ), 0) AS complaints_resolved_percent
+  `);
+
+  const row = result.rows[0];
+  return {
+    avgSavingsPercent: Math.max(0, Math.round(Number(row?.avg_savings_percent) || 0)),
+    businesses: Math.max(0, Number(row?.businesses) || 0),
+    ordersLast12Months: Math.max(0, Number(row?.orders_last_12_months) || 0),
+    complaintsResolvedPercent: Math.max(0, Math.min(100, Math.round(Number(row?.complaints_resolved_percent) || 0))),
+  };
+}
+
+async function getPublicStats(): Promise<PublicStats> {
+  if (publicStatsCache && publicStatsCache.expiresAt > Date.now()) {
+    return publicStatsCache.value;
+  }
+  if (publicStatsInFlight) return publicStatsInFlight;
+
+  publicStatsInFlight = queryPublicStats()
+    .then((value) => {
+      publicStatsCache = {
+        value,
+        expiresAt: Date.now() + 60 * 60 * 1000,
+      };
+      return value;
+    })
+    .finally(() => {
+      publicStatsInFlight = null;
+    });
+
+  return publicStatsInFlight;
+}
+
+// This must be registered before Clerk and express-session in server/index.ts.
+// The response is intentionally shared-cacheable, so it must never carry an
+// authentication or rolling-session cookie.
+export function registerPublicStatsRoute(app: Express): void {
+  app.get("/api/public/stats", async (_req, res) => {
+    try {
+      const stats = await getPublicStats();
+      res.removeHeader("Pragma");
+      res.removeHeader("Expires");
+      res.setHeader("Cache-Control", "public, max-age=3600, stale-while-revalidate=600");
+      return res.json(stats);
+    } catch (err: any) {
+      console.error("[public-stats] failed to query metrics:", err?.message ?? err);
+      return res.status(503).json({ error: "public_stats_unavailable" });
+    }
+  });
+}
+
 // Ensures a delivery note PDF exists for an order. Creates and uploads it if
 // missing, otherwise returns the existing one. `created` signals whether a new
 // note was generated so callers can avoid duplicate chat messages.

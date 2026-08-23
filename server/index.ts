@@ -1,7 +1,7 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { clerkMiddleware } from "@clerk/express";
 import { publishableKeyFromHost } from "@clerk/shared/keys";
-import { registerRoutes } from "./routes";
+import { registerPublicStatsRoute, registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { runMonthlyReportsForAll } from "./monthlyReportService";
 import { createServer } from "http";
@@ -101,6 +101,11 @@ app.use("/api", (_req, res, next) => {
   res.setHeader("Expires", "0");
   next();
 });
+
+// Shared-cacheable aggregate metrics must bypass Clerk and express-session:
+// a rolling session cookie on a `Cache-Control: public` response could be
+// stored and replayed by a shared cache.
+registerPublicStatsRoute(app);
 
 app.use(
   express.json({
