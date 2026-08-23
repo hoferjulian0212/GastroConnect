@@ -41,6 +41,7 @@ import RestaurantHomeMobile from "./HomeMobile";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { ProductImage } from "@/components/ProductImage";
 import { getMessageReplyPreview } from "@/lib/messageReplyPreview";
+import { ActiveDeliveryBanner } from "@/components/ActiveDeliveryBanner";
 
 export default function RestaurantHome() {
   const { currentUser } = useUser();
@@ -638,6 +639,11 @@ export default function RestaurantHome() {
     return allOrders.filter(o => activeStatuses.includes(o.status)).length;
   }, [allOrders]);
 
+  const activeDeliveryOrders = useMemo(
+    () => (allOrders || []).filter((order) => order.status === "in_delivery"),
+    [allOrders],
+  );
+
   const renderDeliveryCardMobile = (order: OrderWithDetails, isChild = false) => {
     const deliveryState = getOrderDeliveryState(order);
     const isDelivered = deliveryState === "delivered_today";
@@ -972,6 +978,11 @@ export default function RestaurantHome() {
           </div>
         </div></HeroPortal>
       </div>
+      <ActiveDeliveryBanner
+        orders={activeDeliveryOrders}
+        lang={lang}
+        className="mx-3 md:mx-0"
+      />
       <DraggableCardGrid
         userId={currentUser?.id || ""}
         role="restaurant"

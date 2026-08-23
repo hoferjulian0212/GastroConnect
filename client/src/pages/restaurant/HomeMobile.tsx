@@ -12,6 +12,7 @@ import { MobileSection, MobileSectionLink, MobileListCard, MobileEmptyState, Mob
 import MobileDashboardViewSelector from "@/components/MobileDashboardViewSelector";
 import type { OrderWithDetails, ConversationWithUser, OrderTemplateWithItems } from "@shared/schema";
 import { getOrderStatus } from "@/lib/translations";
+import { ActiveDeliveryBanner } from "@/components/ActiveDeliveryBanner";
 
 interface Props {
   currentUser: any;
@@ -63,6 +64,7 @@ export default function RestaurantHomeMobile({
     .sort((a, b) => new Date(b.createdAt as any).getTime() - new Date(a.createdAt as any).getTime())
     .slice(0, 5);
   const unreadConvs = (conversations || []).filter(c => c.unreadCount > 0);
+  const activeDeliveryOrders = (allOrders || []).filter(o => o.status === "in_delivery");
 
   const fmtPrice = (n: number) => `${n.toFixed(2).replace(".", ",")} €`;
 
@@ -223,6 +225,12 @@ export default function RestaurantHomeMobile({
             {leadLine}
           </button>
         </div>
+
+        <ActiveDeliveryBanner
+          orders={activeDeliveryOrders}
+          lang={lang}
+          className="mx-2 mt-3"
+        />
 
         {currentUser?.id && (
           <div className="flex justify-end px-2 mt-3" data-testid="mobile-dashboard-views-row">
