@@ -637,25 +637,26 @@ export function AiAssistant() {
                 )}
               </div>
 
+              {sending && (
+                <div
+                  className="flex items-end gap-2 px-3 pb-1.5 shrink-0"
+                  data-testid="ai-typing"
+                  role="status"
+                  aria-live="polite"
+                  aria-label={t("Wird gelöst", "Risoluzione in corso")}
+                >
+                  <SolvingOrb />
+                  <div className="rounded-2xl rounded-bl-md bg-muted px-3.5 py-2 text-sm font-medium tracking-tight text-foreground">
+                    {t("Wird gelöst…", "Risoluzione…")}
+                  </div>
+                </div>
+              )}
+
               {/* Composer */}
               <div
                 className="border-t border-border p-2.5 shrink-0"
                 style={{ paddingBottom: "max(0.625rem, env(safe-area-inset-bottom, 0px))" }}
               >
-                {sending && (
-                  <div
-                    className="flex items-center gap-2 pb-2 text-muted-foreground"
-                    data-testid="ai-typing"
-                    role="status"
-                    aria-live="polite"
-                    aria-label={t("Wird gelöst", "Risoluzione in corso")}
-                  >
-                    <SolvingOrb />
-                    <span className="text-sm font-medium tracking-tight">
-                      {t("Wird gelöst…", "Risoluzione…")}
-                    </span>
-                  </div>
-                )}
                 <div className="flex items-end gap-2">
                   <textarea
                     ref={inputRef}
