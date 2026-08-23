@@ -1081,7 +1081,16 @@ function stripBase(path: string): string {
 
 function SignInPage() {
   return (
-    <div className="min-h-dvh bg-[#161921] flex flex-col items-center justify-center px-4 py-8 gap-0">
+    <div className="relative min-h-dvh bg-[#161921] flex flex-col items-center justify-center px-4 py-8 gap-0">
+      <Link
+        href="/"
+        aria-label="Zurück zur Startseite"
+        title="Zurück zur Startseite"
+        className="absolute top-5 left-1/2 -translate-x-1/2 rounded-full p-2 text-white/80 hover:bg-white/10 hover:text-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
+        data-testid="link-back-to-landing"
+      >
+        <Logo size="nav" variant="light" thick showText={false} data-testid="logo-back-to-landing" />
+      </Link>
       <DemoLoginButtons />
       <SignIn routing="path" path={`${basePath}/sign-in`} signUpUrl={`${basePath}/sign-up`} />
     </div>
