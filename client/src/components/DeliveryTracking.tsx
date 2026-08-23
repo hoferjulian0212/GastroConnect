@@ -138,13 +138,26 @@ export function DeliveryTracking({
       ? [parseFloat(data.location.latitude), parseFloat(data.location.longitude)]
       : null;
   const destPos: [number, number] | null =
-    destinationLat && destinationLng && Number.isFinite(parseFloat(destinationLat))
+    destinationLat &&
+    destinationLng &&
+    Number.isFinite(parseFloat(destinationLat)) &&
+    Number.isFinite(parseFloat(destinationLng))
       ? [parseFloat(destinationLat), parseFloat(destinationLng)]
       : null;
   const showMap = !!driverPos && ["en_route", "arriving"].includes(assignment.status);
   const center: [number, number] = driverPos ?? destPos ?? SOUTH_TYROL_CENTER;
   const isMoving = ["en_route", "arriving"].includes(assignment.status);
   const showEtaBanner = isMoving && assignment.etaMinutes != null;
+  // The routing service can return a distance/ETA without a drawable road
+  // polyline (for example while its fallback estimator is in use). Keep the
+  // destination visible and draw a clear direct leg rather than showing a map
+  // with no indication of where the driver is heading.
+  const displayRoute: [number, number][] =
+    routePoints.length >= 2
+      ? routePoints
+      : driverPos && destPos
+        ? [driverPos, destPos]
+        : [];
 
   return (
     <div className="rounded-xl border border-border bg-card overflow-hidden shadow-sm min-w-0" data-testid="section-delivery-tracking">
@@ -230,10 +243,17 @@ export function DeliveryTracking({
               attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
-            {routePoints.length >= 2 && (
+            {displayRoute.length >= 2 && (
               <Polyline
-                positions={routePoints}
-                pathOptions={{ color: "#2563eb", weight: 4, opacity: 0.75, lineCap: "round", lineJoin: "round" }}
+                positions={displayRoute}
+                pathOptions={{
+                  color: "#2563eb",
+                  weight: 5,
+                  opacity: 0.9,
+                  lineCap: "round",
+                  lineJoin: "round",
+                }}
+                data-testid="tracking-route-line"
               />
             )}
             {driverPos && <Marker position={driverPos} icon={driverIcon} />}
