@@ -708,12 +708,12 @@ function RegistrationGuide({
         <div className="mt-5 flex flex-col sm:flex-row items-center gap-3">
           <Button
             size="lg"
-            className="w-full sm:w-auto gap-2 text-base"
+            className="w-full sm:w-auto h-10 gap-1.5 rounded-full bg-black px-5 text-sm font-medium text-white shadow-none hover:bg-black/85 dark:bg-white dark:text-black dark:hover:bg-white/90"
             onClick={() => onStart("restaurant")}
             data-testid="button-guide-cta"
           >
             {t.guideCta}
-            <ArrowRight className="h-4 w-4" />
+            <ArrowUpRight className="h-4 w-4" />
           </Button>
           <p className="text-xs text-muted-foreground text-center sm:text-left" data-testid="text-guide-notice">
             {t.guideNotice}
