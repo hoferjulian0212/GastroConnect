@@ -11,6 +11,7 @@ import CountUp from "@/components/CountUp";
 import { HeadlineReveal } from "@/components/landing/HeadlineReveal";
 import { HeadlineCta } from "@/components/landing/HeadlineCta";
 import { PinnedFeatureStory } from "@/components/landing/PinnedFeatureStory";
+import { StatsStrip, SavingsChart } from "@/components/landing/AnimatedStats";
 import {
   Sheet,
   SheetContent,
@@ -627,6 +628,8 @@ const landingAccentWords = new Set([
   "preisvergleich", "reklamation", "funktionen", "mobile",
   "ordini", "fornitori", "confronto", "prezzi", "ristoranti",
   "orders", "features", "complaints", "delivery", "suppliers.",
+  // lifestyle card accents
+  "bestellen", "ordina", "order",
 ]);
 
 function LandingWordMix({ children }: { children: ReactNode }) {
@@ -1110,7 +1113,11 @@ export default function Landing() {
                   className="text-4xl font-semibold tracking-tight text-black leading-tight"
                   data-testid="text-lifestyle-supplier-headline"
                 >
-                  {t.lifestyleSupplierHeadline}
+                  {lang === "de" ? (
+                    <><span className="landing-accent-word">Alles im Griff</span>, im Büro und unterwegs</>
+                  ) : (
+                    <LandingWordMix>{t.lifestyleSupplierHeadline}</LandingWordMix>
+                  )}
                 </h2>
                 <p className="mt-4 text-base text-black/80 leading-relaxed">
                   {t.lifestyleSupplierSub}
@@ -1155,7 +1162,11 @@ export default function Landing() {
                 className="text-2xl font-semibold tracking-tight leading-tight"
                 data-testid="text-lifestyle-supplier-headline-mobile"
               >
-                <LandingWordMix>{t.lifestyleSupplierHeadline}</LandingWordMix>
+                {lang === "de" ? (
+                  <><span className="landing-accent-word">Alles im Griff</span>, im Büro und unterwegs</>
+                ) : (
+                  <LandingWordMix>{t.lifestyleSupplierHeadline}</LandingWordMix>
+                )}
               </h2>
               <p className="mt-3 text-sm text-muted-foreground leading-relaxed">
                 {t.lifestyleSupplierSub}
@@ -1164,6 +1175,9 @@ export default function Landing() {
           </MotionReveal>
         </div>
       </section>
+
+      {/* STATS STRIP — animated count-up metrics */}
+      <StatsStrip lang={lang} />
 
       {/* PILLARS — Für wen */}
       <section
@@ -1364,6 +1378,9 @@ export default function Landing() {
           </div>
         </div>
       </section>
+
+      {/* SAVINGS CHART — animated bar chart + spark bars */}
+      <SavingsChart lang={lang} />
 
       {/* B1a — Pinned Preisvergleich-Story */}
       <PinnedFeatureStory
