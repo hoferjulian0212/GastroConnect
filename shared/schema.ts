@@ -1468,6 +1468,8 @@ export const deliveryAssignments = pgTable("delivery_assignments", {
   rejectedAt: timestamp("rejected_at"),
   // Info-only delay reported by the driver (minutes, cumulative for this stop).
   delayMinutes: integer("delay_minutes"),
+  // Client supplied retry key for making delay reports idempotent.
+  delayRequestKey: varchar("delay_request_key", { length: 128 }),
   // Last computed routing estimates (refreshed by route optimization).
   etaMinutes: integer("eta_minutes"),
   distanceKm: decimal("distance_km", { precision: 8, scale: 2 }),

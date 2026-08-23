@@ -292,9 +292,11 @@ export interface IStorage {
   getDriverDeliveryHistory(driverMemberId: string, limit?: number): Promise<DeliveryAssignmentWithDetails[]>;
   getDeliveriesForSupplier(supplierId: string, deliveryDate?: string): Promise<DeliveryAssignmentWithDetails[]>;
   updateDeliveryAssignment(id: string, data: Partial<DeliveryAssignment>): Promise<DeliveryAssignment | undefined>;
+  updateDeliveryAssignmentIfStatus(id: string, expectedStatus: string, data: Partial<DeliveryAssignment>): Promise<DeliveryAssignment | undefined>;
   deleteDeliveryAssignment(id: string): Promise<void>;
   reorderDeliveryStops(driverMemberId: string, deliveryDate: string, orderedIds: string[]): Promise<void>;
-  applyRouteDelay(driverMemberId: string, deliveryDate: string, fromStopSequence: number, delayMinutes: number): Promise<DeliveryAssignment[]>;
+  applyRouteDelay(driverMemberId: string, deliveryDate: string, fromStopSequence: number, delayMinutes: number, requestKey?: string): Promise<DeliveryAssignment[]>;
+  syncDraftDriverRoute(driverMemberId: string, supplierId: string, deliveryDate: string): Promise<DriverRoute | undefined>;
   upsertDriverLocation(data: InsertDriverLocation): Promise<DriverLocation>;
   getDriverLocation(driverMemberId: string): Promise<DriverLocation | undefined>;
   getDriverLocationsForSupplier(supplierId: string): Promise<DriverLocationWithDriver[]>;
@@ -5020,6 +5022,7 @@ export class DatabaseStorage implements IStorage {
       )
     `);
     await db.execute(sql`ALTER TABLE delivery_assignments ADD COLUMN IF NOT EXISTS route_polyline text`);
+    await db.execute(sql`ALTER TABLE delivery_assignments ADD COLUMN IF NOT EXISTS delay_request_key varchar(128)`);
     await db.execute(sql`CREATE UNIQUE INDEX IF NOT EXISTS uniq_delivery_assignments_order ON delivery_assignments (order_id)`);
     await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_delivery_assignments_driver_date ON delivery_assignments (driver_member_id, delivery_date)`);
     await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_delivery_assignments_supplier_date ON delivery_assignments (supplier_id, delivery_date)`);
@@ -5163,38 +5166,93 @@ export class DatabaseStorage implements IStorage {
     return row;
   }
 
+  async updateDeliveryAssignmentIfStatus(id: string, expectedStatus: string, data: Partial<DeliveryAssignment>): Promise<DeliveryAssignment | undefined> {
+    const [row] = await db.update(deliveryAssignments)
+      .set({ ...data, updatedAt: new Date() })
+      .where(and(eq(deliveryAssignments.id, id), eq(deliveryAssignments.status, expectedStatus as any)))
+      .returning();
+    return row;
+  }
+
   async deleteDeliveryAssignment(id: string): Promise<void> {
     await db.delete(deliveryAssignments).where(eq(deliveryAssignments.id, id));
   }
 
   async reorderDeliveryStops(driverMemberId: string, deliveryDate: string, orderedIds: string[]): Promise<void> {
-    for (let i = 0; i < orderedIds.length; i++) {
-      await db.update(deliveryAssignments)
-        .set({ stopSequence: i, updatedAt: new Date() })
-        .where(and(
-          eq(deliveryAssignments.id, orderedIds[i]),
-          eq(deliveryAssignments.driverMemberId, driverMemberId),
-          eq(deliveryAssignments.deliveryDate, deliveryDate),
-        ));
-    }
+    await db.transaction(async (tx) => {
+      const [route] = await tx.select().from(driverRoutes).where(and(
+        eq(driverRoutes.driverMemberId, driverMemberId), eq(driverRoutes.deliveryDate, deliveryDate),
+      )).limit(1).for("update");
+      if (route && route.status !== "draft") throw new Error("route_locked");
+      for (let i = 0; i < orderedIds.length; i++) {
+        await tx.update(deliveryAssignments)
+          .set({ stopSequence: i, updatedAt: new Date() })
+          .where(and(
+            eq(deliveryAssignments.id, orderedIds[i]),
+            eq(deliveryAssignments.driverMemberId, driverMemberId),
+            eq(deliveryAssignments.deliveryDate, deliveryDate),
+          ));
+      }
+      if (route) {
+        await tx.update(driverRoutes).set({ orderedStopIds: orderedIds, updatedAt: new Date() }).where(eq(driverRoutes.id, route.id));
+      }
+    });
   }
 
   // Shift the ETA of every still-open stop at or after the given stop of the
   // driver's day route by delayMinutes. Returns the affected rows (post-update).
-  async applyRouteDelay(driverMemberId: string, deliveryDate: string, fromStopSequence: number, delayMinutes: number): Promise<DeliveryAssignment[]> {
-    const rows = await db.update(deliveryAssignments)
-      .set({
-        etaMinutes: sql`COALESCE(${deliveryAssignments.etaMinutes}, 0) + ${delayMinutes}`,
-        updatedAt: new Date(),
-      })
-      .where(and(
+  async applyRouteDelay(driverMemberId: string, deliveryDate: string, fromStopSequence: number, delayMinutes: number, requestKey?: string): Promise<DeliveryAssignment[]> {
+    return db.transaction(async (tx) => {
+      const [trigger] = await tx.select().from(deliveryAssignments).where(and(
         eq(deliveryAssignments.driverMemberId, driverMemberId),
         eq(deliveryAssignments.deliveryDate, deliveryDate),
-        gte(deliveryAssignments.stopSequence, fromStopSequence),
-        notInArray(deliveryAssignments.status, ["delivered", "rejected"]),
-      ))
-      .returning();
-    return rows;
+        eq(deliveryAssignments.stopSequence, fromStopSequence),
+      )).limit(1).for("update");
+      if (trigger && requestKey && trigger.delayRequestKey === requestKey) return [];
+      const rows = await tx.update(deliveryAssignments)
+        .set({
+          etaMinutes: sql`COALESCE(${deliveryAssignments.etaMinutes}, 0) + ${delayMinutes}`,
+          updatedAt: new Date(),
+        })
+        .where(and(
+          eq(deliveryAssignments.driverMemberId, driverMemberId),
+          eq(deliveryAssignments.deliveryDate, deliveryDate),
+          gte(deliveryAssignments.stopSequence, fromStopSequence),
+          notInArray(deliveryAssignments.status, ["delivered", "rejected"]),
+        ))
+        .returning();
+      if (trigger) {
+        await tx.update(deliveryAssignments).set({
+          delayMinutes: sql`COALESCE(${deliveryAssignments.delayMinutes}, 0) + ${delayMinutes}`,
+          ...(requestKey ? { delayRequestKey: requestKey } : {}),
+          updatedAt: new Date(),
+        }).where(eq(deliveryAssignments.id, trigger.id));
+      }
+      return rows;
+    });
+  }
+
+  async syncDraftDriverRoute(driverMemberId: string, supplierId: string, deliveryDate: string): Promise<DriverRoute | undefined> {
+    return db.transaction(async (tx) => {
+      const [route] = await tx.select().from(driverRoutes).where(and(
+        eq(driverRoutes.driverMemberId, driverMemberId), eq(driverRoutes.deliveryDate, deliveryDate),
+      )).limit(1).for("update");
+      const assignments = await tx.select({ id: deliveryAssignments.id }).from(deliveryAssignments)
+        .where(and(eq(deliveryAssignments.driverMemberId, driverMemberId), eq(deliveryAssignments.deliveryDate, deliveryDate)))
+        .orderBy(deliveryAssignments.stopSequence, deliveryAssignments.assignedAt);
+      const ids = assignments.map((a) => a.id);
+      if (!route) {
+        const [created] = await tx.insert(driverRoutes).values({ driverMemberId, supplierId, deliveryDate, orderedStopIds: ids }).returning();
+        return created;
+      }
+      if (route.status !== "draft") return route;
+      const valid = new Set(ids);
+      const ordered = (route.orderedStopIds ?? []).filter((id) => valid.has(id));
+      ordered.push(...ids.filter((id) => !ordered.includes(id)));
+      const [updated] = await tx.update(driverRoutes).set({ orderedStopIds: ordered, updatedAt: new Date() })
+        .where(eq(driverRoutes.id, route.id)).returning();
+      return updated;
+    });
   }
 
   async upsertDriverLocation(data: InsertDriverLocation): Promise<DriverLocation> {
@@ -5265,6 +5323,11 @@ export class DatabaseStorage implements IStorage {
       const [route] = await tx.select().from(driverRoutes).where(and(
         eq(driverRoutes.driverMemberId, driverMemberId), eq(driverRoutes.deliveryDate, deliveryDate),
       )).limit(1).for("update");
+      // Starting is idempotent: a retried request observes the already active
+      // route and does not create a second departure event.
+      if (route?.status === "active" && route.activeStopId) {
+        return { route, activeStopId: route.activeStopId };
+      }
       if (!route || route.status !== "confirmed") return undefined;
       const [next] = await tx.select({ id: deliveryAssignments.id }).from(deliveryAssignments).where(and(
         eq(deliveryAssignments.driverMemberId, driverMemberId),

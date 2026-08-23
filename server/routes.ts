@@ -8190,6 +8190,7 @@ export async function registerRoutes(
   const deliveryDelaySchema = z.object({
     delayMinutes: z.number().int().min(5).max(240),
     note: safeString.optional().nullable(),
+    requestKey: z.string().max(128).optional(),
   }).strict();
 
   const reorderRouteSchema = z.object({
@@ -8387,7 +8388,8 @@ export async function registerRoutes(
     if (!advanced?.activeStopId) return advanced;
     const next = await storage.getDeliveryAssignment(advanced.activeStopId);
     if (!next) return advanced;
-    const updated = await storage.updateDeliveryAssignment(next.id, { status: "en_route", enRouteAt: new Date() });
+    const updated = await storage.updateDeliveryAssignmentIfStatus(next.id, next.status, { status: "en_route", enRouteAt: new Date() });
+    if (!updated && ["en_route", "arriving"].includes(next.status)) return advanced;
     await refreshRouteEtas(driverMemberId, deliveryDate);
     const order = await notifyRouteDeparture(updated ?? next, actorName);
     if (order && ["confirmed", "partially_confirmed", "scheduled"].includes(order.status)) {
@@ -8506,6 +8508,15 @@ export async function registerRoutes(
         });
       }
 
+      // Keep both the old and new driver's draft route free of stale membership
+      // when an assignment is moved or retried.
+      await storage.syncDraftDriverRoute(existing?.driverMemberId ?? parsed.driverMemberId, order.supplierId, existing?.deliveryDate ?? deliveryDate);
+      await storage.syncDraftDriverRoute(parsed.driverMemberId, order.supplierId, deliveryDate);
+      await refreshRouteEtas(existing?.driverMemberId ?? parsed.driverMemberId, existing?.deliveryDate ?? deliveryDate);
+      if (existing?.driverMemberId !== parsed.driverMemberId || existing?.deliveryDate !== deliveryDate) {
+        await refreshRouteEtas(parsed.driverMemberId, deliveryDate);
+      }
+
       // Assigning a driver plans the tour: the order becomes "scheduled"
       // (Geplant). It only moves to in_delivery when the driver actually
       // departs (en_route in the driver app). Conflicts are non-fatal.
@@ -8566,6 +8577,7 @@ export async function registerRoutes(
         return res.status(400).json({ error: "already_delivered", message: "Zugestellte Lieferungen können nicht entfernt werden." });
       }
       await storage.deleteDeliveryAssignment(existing.id);
+      await storage.syncDraftDriverRoute(existing.driverMemberId, existing.supplierId, existing.deliveryDate);
       // Removing the driver un-plans the tour: a "scheduled" (or rejected /
       // "to_review") order falls back to "confirmed" so it can be re-planned.
       // Conflicts are non-fatal.
@@ -8719,7 +8731,10 @@ export async function registerRoutes(
       const patch: Record<string, unknown> = { status };
       if (status === "en_route" && !assignment.enRouteAt) patch.enRouteAt = new Date();
       if (status === "arriving" && !assignment.arrivingAt) patch.arrivingAt = new Date();
-      const updated = await storage.updateDeliveryAssignment(assignment.id, patch);
+      const updated = await storage.updateDeliveryAssignmentIfStatus(assignment.id, assignment.status, patch);
+      // A retry of the same forward transition is safe and returns the current
+      // assignment rather than emitting duplicate side effects.
+      if (!updated) return res.json(await storage.getDeliveryAssignment(assignment.id));
 
       const order = await storage.getOrder(assignment.orderId);
       // Departing moves the ORDER to in_delivery (no stock movement — stock is
@@ -8854,7 +8869,7 @@ export async function registerRoutes(
         }
       }
 
-      const updated = await storage.updateDeliveryAssignment(assignment.id, {
+      const updated = await storage.updateDeliveryAssignmentIfStatus(assignment.id, assignment.status, {
         status: "delivered",
         deliveredAt: new Date(),
         podNote: parsed.podNote ?? null,
@@ -8863,6 +8878,7 @@ export async function registerRoutes(
         problemType: null,
         problemNote: null,
       });
+      if (!updated) return res.json(await storage.getDeliveryAssignment(assignment.id));
 
       if (order) {
         await createNotificationWithPush({
@@ -8912,12 +8928,13 @@ export async function registerRoutes(
       if (assignment.status === "rejected") {
         return res.status(400).json({ error: "rejected", message: "Diese Lieferung wurde abgelehnt und liegt beim Büro zur Prüfung." });
       }
-      const updated = await storage.updateDeliveryAssignment(assignment.id, {
+      const updated = await storage.updateDeliveryAssignmentIfStatus(assignment.id, assignment.status, {
         status: "problem",
         problemType: parsed.problemType,
         problemNote: parsed.note ?? null,
         problemReportedAt: new Date(),
       });
+      if (!updated) return res.json(await storage.getDeliveryAssignment(assignment.id));
 
       const order = await storage.getOrder(assignment.orderId);
       if (order) {
@@ -9012,12 +9029,13 @@ export async function registerRoutes(
         }
       }
 
-      const updated = await storage.updateDeliveryAssignment(assignment.id, {
+      const updated = await storage.updateDeliveryAssignmentIfStatus(assignment.id, assignment.status, {
         status: "rejected",
         problemType: parsed.reason,
         problemNote: parsed.note ?? null,
         rejectedAt: new Date(),
       });
+      if (!updated) return res.json(await storage.getDeliveryAssignment(assignment.id));
 
       if (order && !["delivered", "cancelled"].includes(order.status)) {
         const rejectLabels: Record<string, string> = {
@@ -9089,11 +9107,12 @@ export async function registerRoutes(
         assignment.deliveryDate,
         assignment.stopSequence,
         parsed.delayMinutes,
+        parsed.requestKey,
       );
-      // Remember the cumulative reported delay on the triggering stop.
-      const updated = await storage.updateDeliveryAssignment(assignment.id, {
-        delayMinutes: (assignment.delayMinutes ?? 0) + parsed.delayMinutes,
-      });
+      const updated = await storage.getDeliveryAssignment(assignment.id);
+      if (parsed.requestKey && affected.length === 0 && updated?.delayRequestKey === parsed.requestKey) {
+        return res.json({ assignment: updated, affectedCount: 0, idempotent: true });
+      }
 
       // Notify the office once …
       const order = await storage.getOrder(assignment.orderId);
@@ -9170,11 +9189,11 @@ export async function registerRoutes(
         return res.status(409).json({ error: "route_locked", message: "Eine aktive Route kann nicht mehr umsortiert werden." });
       }
       await storage.reorderDeliveryStops(req.auth!.memberId, parsed.deliveryDate, parsed.orderedIds);
-      await storage.upsertDriverRoute(req.auth!.memberId, req.auth!.organizationId, parsed.deliveryDate, parsed.orderedIds);
       const rows = await storage.getDeliveriesForDriver(req.auth!.memberId, parsed.deliveryDate);
       res.json(rows);
     } catch (error: any) {
       if (error?.name === "ZodError") return res.status(400).json({ error: "invalid_payload", details: error.errors });
+      if (error?.message === "route_locked") return res.status(409).json({ error: "route_locked", message: "Eine aktive Route kann nicht mehr umsortiert werden." });
       console.error("Route reorder error:", error);
       res.status(500).json({ error: "Failed to reorder route" });
     }
@@ -9267,7 +9286,11 @@ export async function registerRoutes(
       if (!started) return res.status(409).json({ error: "route_not_ready", message: "Die Route muss zuerst bestätigt werden oder ist bereits gestartet." });
       const assignment = await storage.getDeliveryAssignment(started.activeStopId);
       if (!assignment) return res.status(404).json({ error: "stop_not_found" });
-      const updated = await storage.updateDeliveryAssignment(assignment.id, { status: "en_route", enRouteAt: new Date() });
+      if (started.route.status === "active" && ["en_route", "arriving"].includes(assignment.status)) {
+        return res.json({ route: started.route, activeStop: assignment, idempotent: true });
+      }
+      const updated = await storage.updateDeliveryAssignmentIfStatus(assignment.id, assignment.status, { status: "en_route", enRouteAt: new Date() });
+      if (!updated) return res.json({ route: started.route, activeStop: await storage.getDeliveryAssignment(assignment.id), idempotent: true });
       await refreshRouteEtas(req.auth!.memberId, date);
       const order = await notifyRouteDeparture(updated ?? assignment, req.auth!.member.name);
       if (order && ["confirmed", "partially_confirmed", "scheduled"].includes(order.status)) {
