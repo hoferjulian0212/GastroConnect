@@ -1089,8 +1089,11 @@ export default function OrderDetail() {
               </div>
             )}
 
-            {/* Two-column layout: Products spans full height, Meta + History stack on the right */}
+            {/* Independent desktop columns prevent a short card from being
+                pushed down by a taller card in the neighboring column. The
+                contents behavior keeps the same single-column mobile flow. */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 items-start">
+            <div className="contents md:flex md:flex-col md:gap-3">
             <div className={`rounded-xl border border-border bg-card overflow-hidden shadow-sm min-w-0 ${tabClsDetails}`} data-testid="section-products">
               <div className="px-4 py-3 border-b border-border/30 flex items-center justify-between">
                 <p className="text-sm font-semibold">{lang === "de" ? "Produkte" : "Prodotti"}</p>
@@ -1205,7 +1208,9 @@ export default function OrderDetail() {
               lang={lang}
               className={tabClsDetails}
             />
+            </div>
 
+            <div className="contents md:flex md:flex-col md:gap-3">
             {/* Documents section — clickable list of generated docs for this order */}
             {orderDocuments && orderDocuments.length > 0 && (
               <div className={`rounded-xl border border-border bg-card overflow-hidden shadow-sm min-w-0 ${tabClsDetails}`} data-testid="section-documents">
@@ -1309,6 +1314,7 @@ export default function OrderDetail() {
               </div>
             </div>
 
+            </div>
             </div>
           </div>
             </div>

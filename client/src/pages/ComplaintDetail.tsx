@@ -1211,10 +1211,13 @@ export default function ComplaintDetail() {
               </div>
             )}
 
-            {/* Two-column grid: details left (spans 2 rows) + meta + history right */}
+            {/* Independent desktop columns prevent a short card from being
+                pushed down by a taller card in the neighboring column. The
+                contents behavior keeps the same single-column mobile flow. */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 items-start">
+              <div className="contents md:flex md:flex-col md:gap-3">
               {/* Left: Description + Media + Affected items as one continuous card */}
-              <div className={`rounded-xl border border-border bg-card overflow-hidden shadow-sm md:row-span-2 min-w-0 ${tabClsDetails}`} data-testid="section-details">
+              <div className={`rounded-xl border border-border bg-card overflow-hidden shadow-sm min-w-0 ${tabClsDetails}`} data-testid="section-details">
                 <div className="px-4 py-3 border-b border-border/30">
                   <p className="text-sm font-semibold">{lang === "de" ? "Reklamationsdetails" : "Dettagli reclamo"}</p>
                 </div>
@@ -1267,6 +1270,8 @@ export default function ComplaintDetail() {
                 </div>
               </div>
 
+              </div>
+              <div className="contents md:flex md:flex-col md:gap-3">
               {/* Right top: Meta */}
               <div className={`rounded-xl border border-border bg-card overflow-hidden shadow-sm min-w-0 ${tabClsDetails}`} data-testid="section-meta">
                 <div className="px-4 py-3 border-b border-border/30">
@@ -1449,6 +1454,7 @@ export default function ComplaintDetail() {
                     </div>
                   )}
                 </div>
+              </div>
               </div>
             </div>
           </div>
