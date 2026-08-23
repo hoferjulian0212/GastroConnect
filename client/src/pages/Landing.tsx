@@ -2,7 +2,7 @@
 // To roll back this file to the state before the landing-page polish:
 //   git checkout 4f40c9f4a0a4ae80a1229769db07b16ed4a41d9a -- client/src/pages/Landing.tsx
 import { useLocation } from "wouter";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { motion, useScroll, useTransform, useReducedMotion } from "framer-motion";
 import { useUser } from "@/context/UserContext";
 import { Button } from "@/components/ui/button";
@@ -617,6 +617,33 @@ const translations = {
 type Lang = keyof typeof translations;
 const LANG_STORAGE_KEY = "gc-landing-lang";
 
+const landingAccentWords = new Set([
+  "händler", "betriebe", "commercianti", "aziende", "suppliers",
+  "restaurants", "restaurant", "lieferanten", "bestellungen",
+  "preisvergleich", "reklamation", "funktionen", "mobile",
+  "ordini", "fornitori", "confronto", "prezzi", "ristoranti",
+  "orders", "features", "complaints", "delivery", "suppliers.",
+]);
+
+function LandingWordMix({ children }: { children: ReactNode }) {
+  const text = typeof children === "string" ? children : String(children);
+  return (
+    <>
+      {text.split(/(\s+)/).map((part, index) => {
+        const normalized = part.toLocaleLowerCase().replace(/[.,!?]/g, "");
+        return (
+          <span
+            key={`${part}-${index}`}
+            className={landingAccentWords.has(normalized) ? "landing-accent-word" : undefined}
+          >
+            {part}
+          </span>
+        );
+      })}
+    </>
+  );
+}
+
 function detectInitialLang(): Lang {
   if (typeof window === "undefined") return "de";
   try {
@@ -1063,7 +1090,7 @@ export default function Landing() {
                   className="text-4xl font-semibold tracking-tight text-black leading-tight"
                   data-testid="text-lifestyle-headline"
                 >
-                  {t.lifestyleHeadline}
+                  <LandingWordMix>{t.lifestyleHeadline}</LandingWordMix>
                 </h2>
                 <p className="mt-4 text-base text-black/80 leading-relaxed">
                   {t.lifestyleSub}
@@ -1152,7 +1179,7 @@ export default function Landing() {
                 className="text-2xl font-semibold tracking-tight leading-tight"
                 data-testid="text-lifestyle-supplier-headline-mobile"
               >
-                {t.lifestyleSupplierHeadline}
+                <LandingWordMix>{t.lifestyleSupplierHeadline}</LandingWordMix>
               </h2>
               <p className="mt-3 text-sm text-muted-foreground leading-relaxed">
                 {t.lifestyleSupplierSub}
@@ -1176,7 +1203,7 @@ export default function Landing() {
               className="text-3xl md:text-5xl font-semibold tracking-tight"
               data-testid="text-pillars-headline"
             >
-              {t.pillarsHeadline}
+              <LandingWordMix>{t.pillarsHeadline}</LandingWordMix>
             </h2>
             <p className="mt-4 text-muted-foreground text-base md:text-lg leading-relaxed">
               {t.pillarsSub}
@@ -1219,7 +1246,7 @@ export default function Landing() {
                     className="text-2xl md:text-3xl font-semibold tracking-tight mb-2"
                     data-testid={`text-${p.testid}-title`}
                   >
-                    {p.title}
+                    <LandingWordMix>{p.title}</LandingWordMix>
                   </h3>
                   <ul className="space-y-3.5 flex-1 mt-6">
                     {p.bullets.map((b, i) => {
@@ -1284,7 +1311,7 @@ export default function Landing() {
               className="text-3xl md:text-5xl font-semibold tracking-tight"
               data-testid="text-steps-headline"
             >
-              {t.stepsHeadline}
+              <LandingWordMix>{t.stepsHeadline}</LandingWordMix>
             </h2>
           </div>
           <div className="grid md:grid-cols-3 md:divide-x divide-border">
@@ -1302,7 +1329,7 @@ export default function Landing() {
                     className="mt-2 text-lg md:text-xl font-semibold tracking-tight"
                     data-testid={`text-step-title-${idx + 1}`}
                   >
-                    {s.title}
+                    <LandingWordMix>{s.title}</LandingWordMix>
                   </h3>
                   <p className="mt-2 text-sm md:text-base text-muted-foreground leading-relaxed">
                     {s.desc}
@@ -1329,7 +1356,7 @@ export default function Landing() {
               className="text-3xl md:text-5xl font-semibold tracking-tight"
               data-testid="text-features-headline"
             >
-              {t.featuresHeadline}
+              <LandingWordMix>{t.featuresHeadline}</LandingWordMix>
             </h2>
             <p className="mt-4 text-muted-foreground text-base md:text-lg leading-relaxed">
               {t.featuresSub}
@@ -1349,7 +1376,7 @@ export default function Landing() {
                       className="font-semibold text-sm md:text-base mb-1"
                       data-testid={`text-feature-title-${idx}`}
                     >
-                      {f.title}
+                      <LandingWordMix>{f.title}</LandingWordMix>
                     </h3>
                     <p className="text-sm md:text-base text-muted-foreground leading-relaxed">
                       {f.desc}
@@ -1425,7 +1452,7 @@ export default function Landing() {
                 className="text-3xl md:text-5xl font-semibold tracking-tight"
                 data-testid="text-mobile-headline"
               >
-                {t.mobileHeadline}
+                <LandingWordMix>{t.mobileHeadline}</LandingWordMix>
               </h2>
               <p className="mt-4 text-muted-foreground text-base md:text-lg leading-relaxed">
                 {t.mobileSub}
@@ -1543,7 +1570,7 @@ export default function Landing() {
               className="text-3xl md:text-5xl font-semibold tracking-tight"
               data-testid="text-faq-headline"
             >
-              {t.faqHeadline}
+              <LandingWordMix>{t.faqHeadline}</LandingWordMix>
             </h2>
           </div>
           <Accordion type="single" collapsible className="divide-y divide-border border-t border-b border-border">
@@ -1603,7 +1630,7 @@ export default function Landing() {
             className="text-3xl md:text-5xl font-semibold tracking-tight"
             data-testid="text-cta-headline"
           >
-            {t.ctaHeadline}
+            <LandingWordMix>{t.ctaHeadline}</LandingWordMix>
           </h2>
           <p className="mt-4 text-muted-foreground text-base md:text-lg leading-relaxed">
             {t.ctaSub}
