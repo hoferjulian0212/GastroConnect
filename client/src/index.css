@@ -228,8 +228,8 @@ input[type="date"].date-empty:not(.dark *)::-webkit-datetime-edit-year-field {
 }
 .animate-read-receipt { animation: read-receipt-fade 0.4s ease-out forwards; }
 
-/* AI assistant solving indicator — a softly rotating field of dots, matching
-   the rounded dark status pill used in the reference design. */
+/* AI assistant solving indicator — a softly rotating field of dots shown
+   beside the composer while the assistant is working. */
 @keyframes ai-solving-orb-spin {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
