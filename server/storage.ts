@@ -1,8 +1,8 @@
 import { db } from "./db";
 import { applyBucketMovement } from "./stockBuckets";
-import { eq, and, desc, or, sql, ne, inArray, notInArray, gt, gte, isNull, isNotNull } from "drizzle-orm";
+import { eq, and, desc, or, sql, ne, inArray, notInArray, gt, gte, lte, isNull, isNotNull } from "drizzle-orm";
 import {
-  users, products, orders, orderItems, cartItems, conversations, messages, complaints, notifications, complaintComments, documents,
+  users, products, orders, orderItems, cartItems, conversations, messages, complaints, notifications, orderNotificationRetries, complaintComments, documents,
   orderStatusHistory, complaintStatusHistory, promotions, deliverySchedules, customMinOrderQuantities, customPrices, stockMovements,
   orderTemplates, orderTemplateItems, costSettings, overnightStays, minimumOrderValues, supplierRatings, monthlyReports, priceChangeLog,
   platformAdmins, type PlatformAdmin, type InsertPlatformAdmin,
@@ -14,6 +14,7 @@ import {
   type ConversationWithUser, type CartItemWithProduct, type Complaint, type InsertComplaint,
   type ComplaintWithDetails, type Notification, type InsertNotification, type UpdateComplaint,
   type ComplaintComment, type InsertComplaintComment, type ComplaintCommentWithUser,
+  type InsertOrderNotificationRetry, type OrderNotificationRetry,
   type Document, type InsertDocument, type DocumentWithDetails,
   type OrderStatusHistory, type OrderStatusHistoryWithUser,
   type ComplaintStatusHistory, type ComplaintStatusHistoryWithUser,
@@ -224,6 +225,12 @@ export interface IStorage {
   getNotifications(userId: string): Promise<Notification[]>;
   getUnreadNotificationCount(userId: string): Promise<number>;
   createNotification(notification: InsertNotification): Promise<Notification>;
+  enqueueOrderNotificationRetry(retry: InsertOrderNotificationRetry): Promise<OrderNotificationRetry>;
+  getPendingOrderNotificationRetries(limit?: number): Promise<OrderNotificationRetry[]>;
+  markOrderNotificationRetryCompleted(id: string): Promise<void>;
+  markOrderNotificationRetryFailed(id: string, error: string): Promise<void>;
+  hasOrderMessage(orderId: string): Promise<boolean>;
+  hasNotification(userId: string, type: string, referenceId: string): Promise<boolean>;
   markNotificationAsRead(id: string): Promise<Notification | undefined>;
   markAllNotificationsAsRead(userId: string): Promise<void>;
   markNotificationsByReferenceAsRead(userId: string, referenceId: string, type?: string): Promise<void>;
@@ -4139,6 +4146,54 @@ export class DatabaseStorage implements IStorage {
     return created;
   }
 
+  async enqueueOrderNotificationRetry(retry: InsertOrderNotificationRetry): Promise<OrderNotificationRetry> {
+    const [created] = await db.insert(orderNotificationRetries)
+      .values(retry)
+      .onConflictDoUpdate({
+        target: [orderNotificationRetries.orderId, orderNotificationRetries.supplierId],
+        set: { completedAt: null, nextAttemptAt: new Date(), lastError: null },
+      })
+      .returning();
+    return created;
+  }
+
+  async getPendingOrderNotificationRetries(limit = 25): Promise<OrderNotificationRetry[]> {
+    return db.select().from(orderNotificationRetries)
+      .where(and(isNull(orderNotificationRetries.completedAt), lte(orderNotificationRetries.nextAttemptAt, new Date())))
+      .orderBy(orderNotificationRetries.createdAt)
+      .limit(limit);
+  }
+
+  async markOrderNotificationRetryCompleted(id: string): Promise<void> {
+    await db.update(orderNotificationRetries)
+      .set({ completedAt: new Date(), lastError: null })
+      .where(eq(orderNotificationRetries.id, id));
+  }
+
+  async markOrderNotificationRetryFailed(id: string, error: string): Promise<void> {
+    await db.update(orderNotificationRetries)
+      .set({
+        attempts: sql`${orderNotificationRetries.attempts} + 1`,
+        nextAttemptAt: sql`now() + LEAST((2 ^ LEAST(${orderNotificationRetries.attempts} + 1, 6)) * interval '30 seconds', interval '30 minutes')`,
+        lastError: error.slice(0, 1000),
+      })
+      .where(eq(orderNotificationRetries.id, id));
+  }
+
+  async hasOrderMessage(orderId: string): Promise<boolean> {
+    const [row] = await db.select({ id: messages.id }).from(messages)
+      .where(and(eq(messages.orderId, orderId), eq(messages.messageType, "order")))
+      .limit(1);
+    return !!row;
+  }
+
+  async hasNotification(userId: string, type: string, referenceId: string): Promise<boolean> {
+    const [row] = await db.select({ id: notifications.id }).from(notifications)
+      .where(and(eq(notifications.userId, userId), eq(notifications.type, type as any), eq(notifications.referenceId, referenceId)))
+      .limit(1);
+    return !!row;
+  }
+
   async markNotificationAsRead(id: string): Promise<Notification | undefined> {
     const [updated] = await db.update(notifications)
       .set({ isRead: true })
@@ -5610,6 +5665,25 @@ export class DatabaseStorage implements IStorage {
     await db.execute(sql`ALTER TYPE delivery_status ADD VALUE IF NOT EXISTS 'rejected'`);
     await db.execute(sql`ALTER TABLE delivery_assignments ADD COLUMN IF NOT EXISTS rejected_at timestamp`);
     await db.execute(sql`ALTER TABLE delivery_assignments ADD COLUMN IF NOT EXISTS delay_minutes integer`);
+
+    // Durable outbox for supplier order notifications. Kept as idempotent DDL
+    // because this table must be added safely to existing installations.
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS order_notification_retries (
+        id varchar(36) PRIMARY KEY DEFAULT gen_random_uuid(),
+        order_id varchar(36) NOT NULL REFERENCES orders(id),
+        restaurant_id varchar(36) NOT NULL REFERENCES users(id),
+        supplier_id varchar(36) NOT NULL REFERENCES users(id),
+        payload jsonb NOT NULL,
+        attempts integer NOT NULL DEFAULT 0,
+        next_attempt_at timestamp NOT NULL DEFAULT now(),
+        last_error text,
+        completed_at timestamp,
+        created_at timestamp NOT NULL DEFAULT now()
+      )
+    `);
+    await db.execute(sql`CREATE UNIQUE INDEX IF NOT EXISTS uniq_order_notification_retries_order_supplier ON order_notification_retries (order_id, supplier_id)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_order_notification_retries_pending ON order_notification_retries (completed_at, next_attempt_at)`);
 
     // Fix wrong FK: created_by stores the reporting MEMBER id (members.id), but the
     // table was created with a FK to users(id), so every insert failed. Idempotent:

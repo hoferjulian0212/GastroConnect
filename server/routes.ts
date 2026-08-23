@@ -242,6 +242,53 @@ async function createNotificationWithPush(
   return created;
 }
 
+type OrderNotificationRetryPayload = {
+  orderContent: string;
+  title: string;
+  message: string;
+  titleIt: string;
+  messageIt: string;
+};
+
+// Replays only the side effects that are still missing. This makes the outbox
+// safe after a partial first attempt (for example, chat succeeded but the
+// notification insert failed).
+export async function processOrderNotificationRetries(): Promise<void> {
+  const retries = await storage.getPendingOrderNotificationRetries();
+  for (const retry of retries) {
+    try {
+      const payload = retry.payload as OrderNotificationRetryPayload;
+      if (!(await storage.hasOrderMessage(retry.orderId))) {
+        const conversation = await storage.getOrCreateConversation(retry.restaurantId, retry.supplierId);
+        await storage.sendMessage({
+          conversationId: conversation.id,
+          senderId: retry.restaurantId,
+          messageType: "order",
+          content: payload.orderContent,
+          orderId: retry.orderId,
+        });
+      }
+
+      if (!(await storage.hasNotification(retry.supplierId, "new_order", retry.orderId))) {
+        await createNotificationWithPush({
+          userId: retry.supplierId,
+          type: "new_order",
+          title: payload.title,
+          message: payload.message,
+          referenceId: retry.orderId,
+        }, "supplier", {
+          title_it: payload.titleIt,
+          message_it: payload.messageIt,
+        });
+      }
+      await storage.markOrderNotificationRetryCompleted(retry.id);
+    } catch (error: any) {
+      await storage.markOrderNotificationRetryFailed(retry.id, error?.message ?? String(error));
+      console.error(`[order-notify] retry failed for order ${retry.orderId}:`, error);
+    }
+  }
+}
+
 // Maps a notification type to the per-channel preference key it is gated by.
 // Types not listed here are operational/important and are always delivered.
 function notificationPrefKey(type: string): keyof NotificationPrefs["push"] | null {
@@ -725,6 +772,15 @@ export async function registerRoutes(
   await storage.ensureErpProviders();
   // Start the automatic ERP catalog sync scheduler (1-minute tick).
   startErpSyncScheduler();
+  // Retry post-checkout supplier delivery without making the restaurant
+  // submit the order again. The timer is deliberately unref'd so it cannot
+  // keep test processes alive.
+  const orderNotificationRetryTimer = setInterval(() => {
+    processOrderNotificationRetries().catch((error) => {
+      console.error("[order-notify] retry batch failed:", error);
+    });
+  }, 30_000);
+  orderNotificationRetryTimer.unref();
   // Backfill article numbers for any existing products that lack one
   try {
     const backfilled = await storage.backfillArticleNumbers();
@@ -3419,6 +3475,17 @@ export async function registerRoutes(
       // External side effects happen only after the atomic write succeeds.
       for (const [index, order] of createdOrders.entries()) {
         const { supplierId, items, orderItems, totalAmount } = orderBatches[index];
+        const orderContent = JSON.stringify({
+          items: orderItems.map((item, idx) => ({
+            name: item.productName,
+            quantity: item.quantity,
+            price: item.totalPrice,
+            imageUrl: items[idx]?.product?.imageUrl || null
+          })),
+          total: totalAmount,
+          orderId: order.id,
+          orderNumber: formatOrderNumber(order),
+        });
         try {
           // MAIN was debited (reserved) at placement; check low-stock now.
           for (const item of orderItems) {
@@ -3426,17 +3493,6 @@ export async function registerRoutes(
           }
 
           const conversation = await storage.getOrCreateConversation(restaurantId, supplierId);
-          const orderContent = JSON.stringify({
-            items: orderItems.map((item, idx) => ({
-              name: item.productName,
-              quantity: item.quantity,
-              price: item.totalPrice,
-              imageUrl: items[idx]?.product?.imageUrl || null
-            })),
-            total: totalAmount,
-            orderId: order.id,
-            orderNumber: formatOrderNumber(order),
-          });
           await storage.sendMessage({
             conversationId: conversation.id,
             senderId: restaurantId,
@@ -3462,6 +3518,26 @@ export async function registerRoutes(
           // client must not retry and create duplicates because chat/push
           // delivery is temporarily unavailable.
           console.error(`Post-checkout side effect failed for order ${order.id}:`, sideEffectError);
+          try {
+            const restaurant = await storage.getUser(restaurantId);
+            const restaurantName = restaurant?.companyName || restaurant?.name || "Ein Betrieb";
+            await storage.enqueueOrderNotificationRetry({
+              orderId: order.id,
+              restaurantId,
+              supplierId,
+              payload: {
+                orderContent,
+                title: `Neue Bestellung #${formatOrderNumber(order)}`,
+                message: `${restaurantName} hat eine neue Bestellung aufgegeben #${formatOrderNumber(order)} (€${totalAmount})`,
+                titleIt: `Nuovo ordine #${formatOrderNumber(order)}`,
+                messageIt: `${restaurantName} ha effettuato un nuovo ordine #${formatOrderNumber(order)} (€${totalAmount})`,
+              },
+            });
+          } catch (queueError) {
+            // The order response remains successful; log the exceptional case
+            // where even the durable recovery record could not be written.
+            console.error(`[order-notify] failed to enqueue retry for order ${order.id}:`, queueError);
+          }
         }
       }
 
