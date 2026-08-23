@@ -239,6 +239,11 @@ input[type="date"].date-empty:not(.dark *)::-webkit-datetime-edit-year-field {
   letter-spacing: -0.045em;
 }
 
+.landing-page .landing-hero .landing-accent-word {
+  font-size: 1.14em;
+  line-height: .95;
+}
+
 /* Landing art direction. Keep these variables and effects page-scoped so the
    product UI remains untouched. */
 .landing-page {
@@ -249,10 +254,7 @@ input[type="date"].date-empty:not(.dark *)::-webkit-datetime-edit-year-field {
   --landing-sage: #eef2ed;
   --landing-plum: #5b4a63;
   position: relative;
-  background:
-    radial-gradient(circle at 84% 7%, rgba(210, 224, 215, .42), transparent 26rem),
-    radial-gradient(circle at 8% 38%, rgba(231, 207, 192, .18), transparent 30rem),
-    var(--landing-paper) !important;
+  background: #fff !important;
   color: var(--landing-ink);
 }
 
