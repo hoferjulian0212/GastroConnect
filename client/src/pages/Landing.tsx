@@ -23,6 +23,11 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import Logo from "@/components/Logo";
+import {
+  detectPublicLanguage,
+  persistPublicLanguage,
+  PublicLanguageSwitcher,
+} from "@/pages/About";
 import shotChefPhone from "@assets/iStock-1277816551_1781732715128.jpg";
 import shotOfficePhone from "@assets/sk_art-corporate-training-10046033_1920_1781806207063.jpg";
 import shotMobileHome from "@assets/landing-mobile-home.png";
@@ -616,8 +621,6 @@ const translations = {
 } as const;
 
 type Lang = keyof typeof translations;
-const LANG_STORAGE_KEY = "gc-landing-lang";
-
 const landingAccentWords = new Set([
   "händler", "betriebe", "commercianti", "aziende", "suppliers",
   "restaurants", "restaurant", "lieferanten", "bestellungen",
@@ -646,15 +649,7 @@ function LandingWordMix({ children }: { children: ReactNode }) {
 }
 
 function detectInitialLang(): Lang {
-  if (typeof window === "undefined") return "de";
-  try {
-    const stored = window.localStorage.getItem(LANG_STORAGE_KEY) as Lang | null;
-    if (stored && stored in translations) return stored;
-  } catch {}
-  const nav = (typeof navigator !== "undefined" ? navigator.language : "de").toLowerCase();
-  if (nav.startsWith("it")) return "it";
-  if (nav.startsWith("en")) return "en";
-  return "de";
+  return detectPublicLanguage();
 }
 
 function RegistrationGuide({
@@ -849,9 +844,7 @@ export default function Landing() {
 
   function changeLang(next: Lang) {
     setLang(next);
-    try {
-      window.localStorage.setItem(LANG_STORAGE_KEY, next);
-    } catch {}
+    persistPublicLanguage(next);
   }
 
   const t = translations[lang];
@@ -912,8 +905,9 @@ export default function Landing() {
             ))}
           </div>
 
-           {/* Right: one prominent auth action */}
+           {/* Right: language + one prominent auth action */}
           <div className="flex items-center gap-2 shrink-0 ml-auto lg:ml-0">
+             <PublicLanguageSwitcher lang={lang} onChange={changeLang} />
             <Button
                variant="default"
                className="hidden md:inline-flex h-10 rounded-full bg-black px-5 text-sm font-medium text-white shadow-none hover:bg-black/85 dark:bg-white dark:text-black dark:hover:bg-white/90"

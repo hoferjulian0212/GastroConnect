@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link } from "wouter";
-import { ArrowRight, ArrowUpRight } from "lucide-react";
+import { ArrowRight, ArrowUpRight, ChevronDown } from "lucide-react";
 import Logo from "@/components/Logo";
 
 // Accent: DM Serif Display italic — only applied to individual key words,
@@ -9,10 +9,89 @@ function A({ children }: { children: string }) {
   return <span className="gc-accent">{children}</span>;
 }
 
+export type PublicLang = "de" | "it" | "en";
+const PUBLIC_LANGUAGE_KEY = "gc-landing-lang";
+
+const publicLanguageOptions: Array<{ code: PublicLang; flag: string; label: string }> = [
+  { code: "de", flag: "🇩🇪", label: "Deutsch" },
+  { code: "it", flag: "🇮🇹", label: "Italiano" },
+  { code: "en", flag: "🇬🇧", label: "English" },
+];
+
+export function detectPublicLanguage(): PublicLang {
+  if (typeof window === "undefined") return "de";
+
+  const isPublicLang = (value: string | null): value is PublicLang =>
+    value === "de" || value === "it" || value === "en";
+
+  try {
+    const stored = window.localStorage.getItem(PUBLIC_LANGUAGE_KEY);
+    if (isPublicLang(stored)) return stored;
+
+    const cookie = document.cookie
+      .split("; ")
+      .find((entry) => entry.startsWith(`${PUBLIC_LANGUAGE_KEY}=`))
+      ?.split("=")[1] ?? null;
+    if (isPublicLang(cookie)) return cookie;
+  } catch {}
+
+  const browserLanguages = [
+    ...(Array.isArray(navigator.languages) ? navigator.languages : []),
+    navigator.language,
+  ]
+    .filter(Boolean)
+    .map((language) => language.toLowerCase().split("-")[0]);
+
+  for (const language of browserLanguages) {
+    if (language === "de" || language === "it" || language === "en") return language;
+  }
+
+  return "de";
+}
+
+export function persistPublicLanguage(lang: PublicLang) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(PUBLIC_LANGUAGE_KEY, lang);
+    document.cookie = `${PUBLIC_LANGUAGE_KEY}=${lang}; max-age=31536000; path=/; samesite=lax`;
+  } catch {}
+}
+
+export function PublicLanguageSwitcher({
+  lang,
+  onChange,
+}: {
+  lang: PublicLang;
+  onChange: (lang: PublicLang) => void;
+}) {
+  const selected = publicLanguageOptions.find((option) => option.code === lang) ?? publicLanguageOptions[0];
+
+  return (
+    <label className="relative flex h-10 items-center gap-1.5 pl-1 text-xs font-medium text-black/55 transition-colors hover:text-black">
+      <span aria-hidden="true" className="text-base leading-none">{selected.flag}</span>
+      <span className="sr-only">{selected.label}</span>
+      <select
+        value={lang}
+        onChange={(event) => onChange(event.target.value as PublicLang)}
+        aria-label="Sprache auswählen"
+        className="cursor-pointer appearance-none bg-transparent pr-4 text-[11px] font-semibold uppercase tracking-[0.12em] outline-none"
+      >
+        {publicLanguageOptions.map((option) => (
+          <option key={option.code} value={option.code}>
+            {option.code.toUpperCase()}
+          </option>
+        ))}
+      </select>
+      <ChevronDown aria-hidden="true" className="pointer-events-none absolute right-0 h-3 w-3 text-black/35" />
+    </label>
+  );
+}
+
 // ── Shared header ─────────────────────────────────────────────────────────────
 // Floating pill header that matches the landing page header exactly.
 export function PublicHeader() {
   const [scrolled, setScrolled] = useState(false);
+  const [lang, setLang] = useState<PublicLang>(detectPublicLanguage);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8);
@@ -55,11 +134,18 @@ export function PublicHeader() {
           ))}
         </nav>
 
-        {/* Right: one prominent auth action */}
+        {/* Right: language + one prominent auth action */}
         <div className="flex items-center gap-2 shrink-0 ml-auto lg:ml-0">
+          <PublicLanguageSwitcher
+            lang={lang}
+            onChange={(next) => {
+              setLang(next);
+              persistPublicLanguage(next);
+            }}
+          />
           <Link
             href="/login"
-            className="hidden md:inline-flex h-10 items-center rounded-full bg-black px-5 text-sm font-medium text-white hover:bg-black/85 transition-colors"
+            className="h-10 items-center rounded-full bg-black px-5 text-sm font-medium text-white hover:bg-black/85 transition-colors hidden md:inline-flex"
           >
             Anmelden <ArrowUpRight className="ml-1 h-4 w-4" />
           </Link>
