@@ -995,7 +995,7 @@ export default function RestaurantCart() {
       )}
 
       <Dialog open={!!preConfirmDialog} onOpenChange={(open) => { if (!open) setPreConfirmDialog(null); }}>
-        <DialogContent className="p-0 gap-0 !max-w-2xl w-[calc(100vw-2rem)]" data-testid="dialog-order-confirm">
+        <DialogContent className="z-[80] p-0 gap-0 !max-w-2xl w-[calc(100vw-2rem)]" data-testid="dialog-order-confirm">
           <DialogHeader className="px-8 pt-8 pb-3">
             <DialogTitle className="flex items-center gap-2.5 text-xl">
               <ShoppingBag className="h-5 w-5 text-primary" />
@@ -1010,7 +1010,7 @@ export default function RestaurantCart() {
               <div className="rounded-xl bg-muted/40 p-5 space-y-3">
                 <div className="flex items-center gap-3 text-sm">
                   <Package className="h-4 w-4 text-muted-foreground shrink-0" />
-                  <span className="text-muted-foreground shrink-0">{lang === "de" ? "Lieferant" : "Fornitore"}</span>
+                  <span className="text-muted-foreground shrink-0">{preConfirmDialog.supplierName.includes(",") ? (lang === "de" ? "Lieferanten" : "Fornitori") : (lang === "de" ? "Lieferant" : "Fornitore")}</span>
                   <span className="font-semibold ml-auto text-right">{preConfirmDialog.supplierName}</span>
                 </div>
                 <div className="flex items-center gap-3 text-sm">
@@ -1103,7 +1103,28 @@ export default function RestaurantCart() {
           return;
         }
         setMobileValidationError(null);
-        createOrderMutation.mutate();
+        const allSuppliers = supplierEntries;
+        const allItems = allSuppliers.flatMap(([, group]) =>
+          group.items.map((item) => ({
+            name: item.product.name,
+            quantity: item.quantity,
+            price: (getEffectivePrice(item) * item.quantity).toFixed(2),
+            unit: item.product.unit,
+          })),
+        );
+        const firstDate = Object.entries(selectedDeliveryDates).find(([sid, date]) =>
+          date && deliveryOptions[sid] === "date",
+        );
+        setPreConfirmDialog({
+          mode: "all",
+          supplierName: allSuppliers.map(([, group]) => group.supplier.companyName || group.supplier.name).join(", "),
+          items: allItems,
+          total: grandTotal,
+          deliveryDate: firstDate
+            ? format(parse(firstDate[1], "yyyy-MM-dd", new Date()), "EEEE, dd. MMMM yyyy", { locale: dateLocale })
+            : null,
+          notes: Object.values(orderNotes).filter((note) => note.trim()).join("; "),
+        });
       };
       return createPortal((
         <div

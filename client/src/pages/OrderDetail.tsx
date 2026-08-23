@@ -462,8 +462,8 @@ export default function OrderDetail() {
       category: "primary",
       action: () => setConfirmAction("delivered"),
       testId: "action-mark-delivered",
-      disabled: !(st === "in_delivery" || st === "scheduled" || st === "confirmed" || st === "partially_confirmed"),
-      disabledReason: lang === "de" ? "Erst bestätigen" : "Conferma prima",
+      disabled: st !== "in_delivery",
+      disabledReason: lang === "de" ? "Erst wenn die Lieferung unterwegs ist" : "Disponibile quando la consegna è in viaggio",
     });
     // Delivery note — once a note exists (auto-generated when shipping starts),
     // offer to view/download it; otherwise allow manual generation.

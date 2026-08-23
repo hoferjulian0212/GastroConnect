@@ -3789,12 +3789,15 @@ export async function registerRoutes(
       ) {
         movementType = "order_returned";
         noteFn = () => `Bestellung #${formatOrderNumber(order)} storniert – zurück ins Hauptlager`;
-      } else if (
-        status === "delivered" &&
-        (previousStatus === "in_delivery" || previousStatus === "scheduled" || previousStatus === "confirmed" || previousStatus === "partially_confirmed")
-      ) {
+      } else if (status === "delivered" && previousStatus === "in_delivery") {
         movementType = "order_outbounded";
         noteFn = () => `Bestellung #${formatOrderNumber(order)} geliefert – aus Zwischenlager ausgebucht`;
+      }
+      if (status === "delivered" && previousStatus !== "in_delivery") {
+        return res.status(400).json({
+          error: "delivery_driver_only",
+          message: "Eine Lieferung kann erst nach dem Start der Zustellung abgeschlossen werden.",
+        });
       }
 
       const actorId = changedBy ?? order.supplierId;
@@ -8693,10 +8696,13 @@ export async function registerRoutes(
         return res.status(404).json({ error: "Delivery not found" });
       }
       if (assignment.status === "delivered") {
-        return res.status(400).json({ error: "already_delivered", message: "Diese Lieferung wurde bereits zugestellt." });
+        return res.json(assignment);
       }
       if (assignment.status === "rejected") {
         return res.status(400).json({ error: "rejected", message: "Diese Lieferung wurde abgelehnt und liegt beim Büro zur Prüfung." });
+      }
+      if (assignment.status === status) {
+        return res.json(assignment);
       }
       // Forward-only status flow: assigned → picked_up → en_route → arriving.
       // From "problem" the driver may resume at any active step.
@@ -8796,8 +8802,6 @@ export async function registerRoutes(
           message_it: bodiesIT[status],
         });
       }
-      await advanceRouteAfterStop(req.auth!.memberId, assignment.deliveryDate, assignment.id, req.auth!.member.name);
-
       res.json(updated);
     } catch (error: any) {
       if (error?.name === "ZodError") return res.status(400).json({ error: "invalid_payload", details: error.errors });
@@ -8817,17 +8821,17 @@ export async function registerRoutes(
         return res.status(404).json({ error: "Delivery not found" });
       }
       if (assignment.status === "delivered") {
-        return res.status(400).json({ error: "already_delivered", message: "Diese Lieferung wurde bereits zugestellt." });
+        return res.json(assignment);
       }
       if (assignment.status === "rejected") {
         return res.status(400).json({ error: "rejected", message: "Diese Lieferung wurde abgelehnt und liegt beim Büro zur Prüfung." });
       }
-      // Completion requires the delivery to be underway (picked up at minimum);
-      // a freshly assigned stop cannot jump straight to delivered.
-      if (assignment.status === "assigned") {
+      // Completion is only valid after the driver has reported arrival. This
+      // prevents a stop from being completed while it is merely en route.
+      if (assignment.status !== "arriving") {
         return res.status(400).json({
           error: "invalid_transition",
-          message: "Die Lieferung muss zuerst übernommen werden, bevor sie zugestellt werden kann.",
+          message: "Die Lieferung kann erst nach der Ankunft als zugestellt markiert werden.",
         });
       }
 
@@ -9231,7 +9235,20 @@ export async function registerRoutes(
       const open = deliveries.filter((d) => !["delivered", "problem", "rejected"].includes(d.status));
       if (open.length === 0) return res.status(400).json({ error: "empty_route", message: "Keine offenen Stopps vorhanden." });
       const current = await storage.getDriverRoute(req.auth!.memberId, date);
-      if (!current) await storage.upsertDriverRoute(req.auth!.memberId, req.auth!.organizationId, date, deliveries.map((d) => d.id));
+      if (current?.status === "active" || current?.status === "completed") {
+        return res.status(409).json({ error: "route_locked", message: "Eine aktive Route kann nicht erneut bestätigt werden." });
+      }
+      // Reconcile route membership immediately before locking the draft. This
+      // catches stops added or reassigned after the route was first opened
+      // without discarding the driver's current stopSequence ordering.
+      const currentIds = deliveries
+        .slice()
+        .sort((a, b) => a.stopSequence - b.stopSequence)
+        .map((d) => d.id);
+      const reconciledRoute = await storage.upsertDriverRoute(req.auth!.memberId, req.auth!.organizationId, date, currentIds);
+      if (current?.status === "confirmed") {
+        return res.json(reconciledRoute);
+      }
       const route = await storage.confirmDriverRoute(req.auth!.memberId, date);
       if (!route) return res.status(409).json({ error: "route_locked", message: "Die Route kann in ihrem aktuellen Status nicht bestätigt werden." });
       res.json(route);
