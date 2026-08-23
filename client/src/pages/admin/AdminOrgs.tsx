@@ -33,6 +33,7 @@ interface Org {
   role: "restaurant" | "supplier";
   email: string;
   verifiedAt: string | null;
+  approvalStatus?: "pending" | "approved" | "denied";
   memberCount: number;
   createdAt: string;
   orderCount: number;
@@ -78,10 +79,10 @@ export default function AdminOrgs() {
     staleTime: 30000,
   });
 
-  const pendingOrgs = orgs.filter(o => !o.verifiedAt);
+  const pendingOrgs = orgs.filter(o => (o.approvalStatus ?? (o.verifiedAt ? "approved" : "pending")) === "pending");
 
   const filtered = orgs.filter(o => {
-    if (pendingOnly && o.verifiedAt) return false;
+    if (pendingOnly && (o.approvalStatus ?? (o.verifiedAt ? "approved" : "pending")) !== "pending") return false;
     if (!search) return true;
     const q = search.toLowerCase();
     return (
@@ -351,11 +352,13 @@ function OrgSection({ title, orgs, onSelect }: { title: string; orgs: Org[]; onS
                 <span className="font-medium text-white text-sm truncate">
                   {org.companyName || org.name}
                 </span>
-                {org.verifiedAt ? (
+                {(org.approvalStatus ?? (org.verifiedAt ? "approved" : "pending")) === "approved" ? (
                   <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+                ) : (org.approvalStatus === "denied" ? (
+                  <Clock className="h-3.5 w-3.5 text-red-400 shrink-0" />
                 ) : (
                   <Clock className="h-3.5 w-3.5 text-amber-400 shrink-0" />
-                )}
+                ))}
               </div>
               <p className="text-xs text-white/40 truncate">
                 {org.email} · {relTime(org.lastActivityAt)}

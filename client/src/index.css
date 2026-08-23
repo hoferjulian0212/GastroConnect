@@ -244,6 +244,29 @@ input[type="date"].date-empty:not(.dark *)::-webkit-datetime-edit-year-field {
   line-height: .95;
 }
 
+/* Public editorial pages share the landing page's quiet, typographic rhythm. */
+.gc-public .gc-accent {
+  font-family: "DM Serif Display", Georgia, serif;
+  font-style: italic;
+  font-weight: 400;
+  letter-spacing: -0.045em;
+}
+
+.gc-public .gc-kicker {
+  font-size: .7rem;
+  font-weight: 700;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  color: rgb(0 0 0 / .48);
+}
+
+.gc-public .gc-long,
+.landing-page .landing-long-copy {
+  font-family: "DM Serif Display", Georgia, serif;
+  font-weight: 400;
+  letter-spacing: -.018em;
+}
+
 /* Landing art direction. Keep these variables and effects page-scoped so the
    product UI remains untouched. */
 .landing-page {

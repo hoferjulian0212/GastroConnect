@@ -1027,12 +1027,12 @@ export default function Landing() {
               <HeadlineReveal
                 key={`hero-${lang}`}
                 text={t.heroH1}
-                className="text-4xl md:text-6xl font-semibold tracking-tight leading-[1.05] max-w-4xl mx-auto"
+                 className="text-5xl md:text-8xl font-semibold tracking-tight leading-[.98] max-w-6xl mx-auto"
                 testId="text-hero-headline"
               />
             </HeadlineCta>
             <MotionReveal delay={400} y={16} blur={false}>
-              <p className="mt-6 md:mt-8 text-base md:text-xl text-muted-foreground leading-relaxed max-w-2xl mx-auto">
+               <p className="landing-long-copy mt-6 md:mt-8 text-base md:text-xl text-muted-foreground leading-relaxed max-w-2xl mx-auto">
                 {t.heroSub}
               </p>
             </MotionReveal>
@@ -1685,31 +1685,31 @@ export default function Landing() {
               </h3>
               <ul className="space-y-2 text-sm">
                 <li>
-                  <button
-                    onClick={() => smoothScrollTo("funktionen")}
+                   <a
+                     href="/features"
                     className="text-muted-foreground hover:text-foreground transition-colors"
                     data-testid="footer-link-features"
                   >
                     {t.footerLinkFeatures}
-                  </button>
+                   </a>
                 </li>
                 <li>
-                  <button
-                    onClick={() => smoothScrollTo("so-funktioniert")}
+                   <a
+                     href="/how-it-works"
                     className="text-muted-foreground hover:text-foreground transition-colors"
                     data-testid="footer-link-steps"
                   >
                     {t.footerLinkSteps}
-                  </button>
+                   </a>
                 </li>
                 <li>
-                  <button
-                    onClick={() => smoothScrollTo("faq")}
+                   <a
+                     href="/faq"
                     className="text-muted-foreground hover:text-foreground transition-colors"
                     data-testid="footer-link-faq"
                   >
                     {t.footerLinkFaq}
-                  </button>
+                   </a>
                 </li>
               </ul>
             </div>
@@ -1729,8 +1729,8 @@ export default function Landing() {
                   </a>
                 </li>
                 <li>
-                  <a
-                    href="mailto:hello@gastroconnect.app"
+                   <a
+                     href="/contact"
                     className="text-muted-foreground hover:text-foreground transition-colors"
                     data-testid="footer-link-contact"
                   >

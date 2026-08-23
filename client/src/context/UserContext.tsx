@@ -9,6 +9,7 @@ type UserRole = "restaurant" | "supplier";
 
 interface MeResponse {
   authenticated: boolean;
+  registrationStatus?: "pending" | "denied";
   member?: Member;
   org?: User;
 }
@@ -28,6 +29,7 @@ interface UserContextType {
   isLoading: boolean;
   /** True when Clerk says the user is signed in but /api/auth/me says not authorized. */
   isClerkSignedInButUnauthorized: boolean;
+  registrationStatus?: "pending" | "denied";
   refetchMe: () => void;
   logout: () => Promise<void>;
 }
@@ -148,6 +150,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
         // fetch is in flight and there is no cached/snapshot data to show yet.
         isLoading: !clerkLoaded || (meLoading && !me),
         isClerkSignedInButUnauthorized,
+        registrationStatus: me?.registrationStatus,
         refetchMe,
         logout,
       }}

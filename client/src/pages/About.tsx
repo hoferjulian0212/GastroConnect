@@ -1,264 +1,58 @@
 import { Link } from "wouter";
-import { ArrowLeft, Utensils, Store, MessageSquare, BarChart3, Shield, FileText, ArrowRight, Zap, Users } from "lucide-react";
+import { ArrowRight, ArrowUpRight, Boxes, HeartHandshake, LineChart, MessageSquare, ShieldCheck } from "lucide-react";
+import Logo from "@/components/Logo";
 
-const features = [
-  {
-    icon: BarChart3,
-    title: "Dashboard",
-    desc: "Persönliche Startseite mit rollenbasierten Informationen: offene Bestellungen, Lieferstatus, aktuelle Angebote, Aktionen und Kennzahlen.",
-  },
-  {
-    icon: Store,
-    title: "Lieferanten & Produktkatalog",
-    desc: "Zentrale Verwaltung aller Lieferanten mit vollständigem digitalem Profil. Der Produktkatalog enthält Name, Kategorie, Herkunft, Region, Saison, Qualitätsmerkmale, Nachhaltigkeit, Bio-Zertifizierung, Verfügbarkeit und Preis.",
-  },
-  {
-    icon: MessageSquare,
-    title: "Bestellungen & Kommunikation",
-    desc: "Einfacher Bestellablauf ohne komplizierte Prozesse. Kommunikation findet direkt in der Plattform statt – alle Nachrichten bleiben dem jeweiligen Vorgang zugeordnet.",
-  },
-  {
-    icon: Zap,
-    title: "KI-Assistent & Kostenanalyse",
-    desc: "Unterstützt bei Produktsuche, Lieferantenvergleich und Berichtszusammenfassung. Die KI entscheidet niemals – sie liefert Informationen. Die Kostenanalyse zeigt Wareneinsatz, Kostenentwicklung und Einkaufsentwicklung.",
-  },
-  {
-    icon: FileText,
-    title: "Berichte & Dokumente",
-    desc: "Alle wichtigen Dokumente – Preislisten, Rechnungen, Lieferscheine, Zertifikate – an einem Ort. Berichte erklären Entwicklungen und beantworten: Was ist passiert? Warum? Welche Auswirkungen hat es?",
-  },
-  {
-    icon: Shield,
-    title: "Reklamationen & Nachlieferungen",
-    desc: "Professionelles Handling von Beschwerden und Qualitätsproblemen direkt aus dem Vorgang. Betroffene Produkte werden erfasst und Nachlieferungen mit wenigen Klicks ausgelöst – alles transparent dokumentiert.",
-  },
-];
+const accents = ["Verbindung", "Klarheit", "Miteinander", "Wirkung"];
 
-const stats = [
-  {
-    value: "3",
-    title: "Wachstumssäulen",
-    desc: "Gastronomiebetriebe, Lieferanten und Produzenten – erst wenn alle drei Gruppen wachsen, entsteht der maximale Netzwerkeffekt.",
-  },
-  {
-    value: "0",
-    title: "Versteckte Kosten",
-    desc: "Keine bezahlten Rankings, keine Werbeeinnahmen – vollständige Transparenz in der Preisgestaltung.",
-  },
-  {
-    value: "1",
-    title: "Gemeinsame Plattform",
-    desc: "Alle Beteiligten arbeiten erstmals auf einer gemeinsamen Infrastruktur – kein System kann diesen Netzwerkeffekt so einfach kopieren.",
-  },
-];
+function Accent({ children }: { children: string }) {
+  return <span className="gc-accent">{children}</span>;
+}
 
-const values = [
-  {
-    icon: Zap,
-    title: "Einfachheit zuerst",
-    desc: "Keine komplizierten ERP-Integrationen, kein langer Onboarding-Prozess. Einladung erhalten, Passwort setzen, loslegen.",
-  },
-  {
-    icon: Users,
-    title: "Echte Beziehungen",
-    desc: "GastroConnect ersetzt nicht das Gespräch — es macht es besser. Jede Bestellung, jede Frage, jede Reklamation hat einen menschlichen Kontext.",
-  },
-  {
-    icon: Shield,
-    title: "Vertrauen durch Kontrolle",
-    desc: "Invite-only bedeutet: Nur echte Partner. Kein Spam, keine Stranger, keine öffentliche Anmeldung.",
-  },
+const chapters = [
+  { icon: HeartHandshake, title: "Nähe statt Umwege", text: "GastroConnect bringt die Menschen hinter Bestellung, Lieferung und Produkt zusammen. Direkte Kommunikation ersetzt Rückfragen, Weiterleitungen und verstreute Informationen." },
+  { icon: LineChart, title: "Klarheit für Entscheidungen", text: "Preise, Verfügbarkeiten, Dokumente und Kennzahlen gehören in einen gemeinsamen Kontext. So wird aus täglicher Arbeit eine Grundlage für bessere Entscheidungen." },
+  { icon: ShieldCheck, title: "Vertrauen als Prinzip", text: "Keine bezahlten Rankings, keine versteckten Provisionen und keine gekauften Suchergebnisse. Die Plattform bleibt neutral, nachvollziehbar und auf langfristige Partnerschaften ausgerichtet." },
 ];
 
 export default function About() {
-  return (
-    <div className="min-h-screen bg-background">
-
-      {/* ── HERO ─────────────────────────────────────────────── */}
-      <div className="px-4 md:px-8 pb-16 pt-6">
-        <div className="max-w-5xl mx-auto">
-          {/* Back link */}
-          <Link href="/">
-            <button
-              className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors mb-14"
-              data-testid="button-back-home"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              Zurück zur Startseite
-            </button>
-          </Link>
-
-          {/* Eyebrow */}
-          <p className="text-xs font-semibold uppercase tracking-widest text-primary mb-4">
-            Über uns
+  return <div className="gc-public min-h-screen bg-white text-[#171918]">
+    <PublicHeader />
+    <main>
+      <section className="mx-auto max-w-7xl px-5 pb-24 pt-20 md:px-10 md:pb-36 md:pt-32">
+        <p className="gc-kicker">Über GastroConnect</p>
+        <h1 className="mt-6 max-w-6xl text-5xl font-semibold leading-[.98] tracking-[-.06em] md:text-8xl">
+          Eine bessere <Accent>Verbindung</Accent><br />für die Gastronomie.
+        </h1>
+        <div className="mt-12 grid gap-8 border-t border-black/15 pt-8 md:grid-cols-[1fr_1.4fr] md:gap-16">
+          <p className="text-sm font-medium uppercase tracking-[.18em]">Wer wir sind</p>
+          <p className="gc-long max-w-3xl text-2xl leading-[1.18] md:text-4xl">
+            GastroConnect ist die digitale Infrastruktur für eine Branche, die jeden Tag von <Accent>Miteinander</Accent> lebt: Betriebe, Händler, Produzenten und ihre Teams arbeiten an einem Ort zusammen.
           </p>
-
-          {/* Headline */}
-          <h1 className="text-4xl md:text-6xl font-semibold tracking-tight text-foreground leading-tight max-w-3xl">
-            Die Plattform, die<br />
-            <span className="text-muted-foreground">Gastronomie verbindet.</span>
-          </h1>
-
-          <p className="mt-6 text-base md:text-lg text-muted-foreground max-w-2xl leading-relaxed">
-            GastroConnect ist die zentrale Informations- und Kollaborationsplattform für die Lebensmittelversorgung der Südtiroler Gastronomie. Die Plattform verbindet Restaurants, Hotels, Lieferanten, Produzenten und Vertreter auf einer gemeinsamen digitalen Infrastruktur – nicht um bestehende Unternehmen zu ersetzen, sondern um sie sinnvoll miteinander zu verbinden. GastroConnect digitalisiert den Informationsfluss zwischen allen Beteiligten und schafft dadurch weniger Verwaltungsaufwand, mehr Transparenz, bessere Zusammenarbeit, stärkere Regionalität, geringere Lebensmittelverschwendung und höhere Wirtschaftlichkeit.
-          </p>
-
-          {/* CTA */}
-          <div className="mt-10">
-            <Link href="/login">
-              <button
-                className="inline-flex items-center gap-2 bg-foreground hover:bg-foreground/90 text-background text-sm font-medium px-5 py-2.5 rounded-full transition-colors"
-                data-testid="button-request-access"
-              >
-                Zugang anfragen
-                <ArrowRight className="h-4 w-4" />
-              </button>
-            </Link>
-          </div>
         </div>
-      </div>
+      </section>
 
-      {/* ── STATS BAND ───────────────────────────────────────── */}
-      <div className="max-w-5xl mx-auto px-4 md:px-8 py-16">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-10 md:gap-8">
-          {stats.map((s) => (
-            <div key={s.title} className="text-center">
-              <p className="text-4xl md:text-5xl font-semibold tracking-tight">{s.value}</p>
-              <h3 className="text-base md:text-lg font-semibold text-foreground mt-2">{s.title}</h3>
-              <p className="text-sm text-muted-foreground mt-2 leading-relaxed max-w-xs mx-auto">{s.desc}</p>
-            </div>
-          ))}
+      <section className="border-y border-black/15 bg-[#171918] text-white">
+        <div className="mx-auto grid max-w-7xl gap-12 px-5 py-20 md:grid-cols-[.8fr_1.2fr] md:px-10 md:py-28">
+          <div><p className="gc-kicker text-white/55">Unsere Idee</p><p className="mt-8 text-6xl font-semibold tracking-[-.06em] md:text-8xl">01<span className="gc-accent text-white">.</span></p></div>
+          <div><h2 className="max-w-3xl text-4xl font-semibold leading-tight tracking-[-.04em] md:text-6xl">Weniger Reibung. Mehr <Accent>Klarheit</Accent>.</h2><p className="gc-long mt-8 max-w-2xl text-xl leading-relaxed text-white/70 md:text-2xl">Wir glauben, dass gute Zusammenarbeit nicht an fehlendem Engagement scheitert, sondern an fehlenden Verbindungen. GastroConnect macht Informationen auffindbar, Gespräche direkt und Abläufe verständlich.</p></div>
         </div>
-      </div>
+      </section>
 
-      {/* ── DIVIDER ──────────────────────────────────────────── */}
-      <div className="max-w-5xl mx-auto px-4 md:px-8">
-        <div className="border-t border-border" />
-      </div>
+      <section className="mx-auto max-w-7xl px-5 py-20 md:px-10 md:py-28">
+        <div className="mb-12 flex items-end justify-between gap-6"><div><p className="gc-kicker">Wofür wir stehen</p><h2 className="mt-5 max-w-2xl text-4xl font-semibold tracking-[-.05em] md:text-6xl">Technologie mit menschlicher <Accent>Wirkung</Accent>.</h2></div><Boxes className="hidden h-16 w-16 md:block" strokeWidth={1} /></div>
+        <div className="grid gap-px overflow-hidden rounded-3xl border border-black/15 bg-black/15 md:grid-cols-3">{chapters.map(({ icon: Icon, title, text }) => <article key={title} className="bg-white p-7 md:p-9"><Icon className="mb-16 h-7 w-7" strokeWidth={1.4} /><h3 className="text-2xl font-semibold tracking-tight">{title}</h3><p className="gc-long mt-4 text-base leading-relaxed text-black/60">{text}</p></article>)}</div>
+      </section>
 
-      {/* ── FEATURES ─────────────────────────────────────────── */}
-      <div className="max-w-5xl mx-auto px-4 md:px-8 py-20">
-        <p className="text-xs font-semibold uppercase tracking-widest text-primary mb-3">Was GastroConnect kann</p>
-        <h2 className="text-2xl md:text-4xl font-semibold tracking-tight mb-12 max-w-xl">
-          Alles, was der Alltag in der Gastronomie braucht.
-        </h2>
+      <section className="mx-auto max-w-7xl px-5 pb-24 md:px-10 md:pb-36"><div className="rounded-[2rem] border border-black/15 p-8 md:p-16"><p className="gc-kicker">Der nächste Schritt</p><h2 className="mt-5 max-w-3xl text-4xl font-semibold tracking-[-.05em] md:text-6xl">Bereit für mehr <Accent>Zusammenarbeit</Accent>?</h2><p className="gc-long mt-6 max-w-xl text-xl leading-relaxed text-black/60">Entdecken Sie, wie GastroConnect Bestellungen, Kommunikation und Lieferantenbeziehungen an einem Ort zusammenführt.</p><Link href="/register" className="mt-9 inline-flex items-center gap-2 rounded-full bg-[#171918] px-6 py-3 text-sm font-medium text-white transition-transform hover:-translate-y-0.5">Jetzt starten <ArrowRight className="h-4 w-4" /></Link></div></section>
+    </main>
+    <PublicFooter />
+  </div>;
+}
 
-        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {features.map((f) => {
-            const Icon = f.icon;
-            return (
-              <div
-                key={f.title}
-                className="rounded-2xl border border-border bg-muted/30 p-6 flex flex-col gap-4 hover:bg-muted/50 transition-colors"
-              >
-                <div className="h-10 w-10 rounded-xl flex items-center justify-center bg-foreground text-background">
-                  <Icon className="h-5 w-5" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-base mb-1.5">{f.title}</h3>
-                  <p className="text-sm text-muted-foreground leading-relaxed">{f.desc}</p>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
+export function PublicHeader() {
+  return <header className="mx-auto flex max-w-7xl items-center justify-between px-5 py-5 md:px-10"><Link href="/" aria-label="GastroConnect Startseite"><Logo size="nav" variant="dark" thick /></Link><nav className="hidden items-center gap-6 text-sm md:flex"><Link href="/features" className="hover:underline">Funktionen</Link><Link href="/how-it-works" className="hover:underline">So funktioniert es</Link><Link href="/faq" className="hover:underline">FAQ</Link><Link href="/contact" className="hover:underline">Kontakt</Link></nav><Link href="/register" className="rounded-full bg-[#171918] px-4 py-2 text-sm text-white">Starten <ArrowUpRight className="ml-1 inline h-3.5 w-3.5" /></Link></header>;
+}
 
-      {/* ── DIVIDER ──────────────────────────────────────────── */}
-      <div className="max-w-5xl mx-auto px-4 md:px-8">
-        <div className="border-t border-border" />
-      </div>
-
-      {/* ── VALUES ───────────────────────────────────────────── */}
-      <div className="max-w-5xl mx-auto px-4 md:px-8 py-20">
-        <p className="text-xs font-semibold uppercase tracking-widest text-primary mb-3">Unsere Überzeugung</p>
-        <h2 className="text-2xl md:text-4xl font-semibold tracking-tight mb-12 max-w-xl">
-          Gebaut mit einer klaren Haltung.
-        </h2>
-
-        <div className="grid gap-6 md:grid-cols-3">
-          {values.map((v) => {
-            const Icon = v.icon;
-            return (
-              <div key={v.title} className="flex flex-col gap-3">
-                <div className="h-9 w-9 rounded-lg bg-foreground text-background flex items-center justify-center">
-                  <Icon className="h-4.5 w-4.5" />
-                </div>
-                <h3 className="font-semibold text-base">{v.title}</h3>
-                <p className="text-sm text-muted-foreground leading-relaxed">{v.desc}</p>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* ── DIVIDER ──────────────────────────────────────────── */}
-      <div className="max-w-5xl mx-auto px-4 md:px-8">
-        <div className="border-t border-border" />
-      </div>
-
-      {/* ── TRUST & PRODUCT ──────────────────────────────────── */}
-      <div className="max-w-5xl mx-auto px-4 md:px-8 py-20">
-        <div className="grid gap-12 md:grid-cols-2">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-widest text-primary mb-3">Unser Versprechen</p>
-            <h2 className="text-2xl md:text-3xl font-semibold tracking-tight mb-5">
-              Vertrauen als Geschäftsmodell
-            </h2>
-            <p className="text-sm md:text-base text-muted-foreground leading-relaxed">
-              Das wichtigste Kapital von GastroConnect ist Vertrauen. Hotels müssen darauf vertrauen können, dass Produkte objektiv dargestellt werden. Lieferanten müssen darauf vertrauen können, dass keine Wettbewerber bevorzugt werden. Produzenten müssen darauf vertrauen können, dass Qualität sichtbar wird. Dieses Vertrauen ist langfristig wertvoller als kurzfristige Werbeeinnahmen.
-            </p>
-            <p className="mt-4 text-sm md:text-base text-muted-foreground leading-relaxed">
-              GastroConnect verkauft keine Werbung, keine bezahlten Rankings, keine gekauften Suchergebnisse, keine Weitergabe von Kundendaten und keine versteckten Provisionen.
-            </p>
-          </div>
-
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-widest text-primary mb-3">Unser Ansatz</p>
-            <h2 className="text-2xl md:text-3xl font-semibold tracking-tight mb-5">
-              Das Produkt
-            </h2>
-            <p className="text-sm md:text-base text-muted-foreground leading-relaxed">
-              GastroConnect ist keine klassische Bestellsoftware – es ist eine Informations- und Kollaborationsplattform. Bestellungen sind lediglich ein Bestandteil der Infrastruktur. Jede Funktion verfolgt denselben Zweck: mehr Transparenz für bessere Entscheidungen. Neue Funktionen werden nicht entwickelt, weil sie technisch möglich sind, sondern weil sie einen messbaren Mehrwert schaffen.
-            </p>
-            <p className="mt-4 text-sm md:text-base text-muted-foreground leading-relaxed">
-              Jede neue Funktion muss mindestens einen dieser Punkte erfüllen: Zeit sparen, Transparenz erhöhen, Zusammenarbeit verbessern, Regionalität stärken, Lebensmittelverschwendung reduzieren oder Entscheidungen verbessern.
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* ── FOOTER CTA ───────────────────────────────────────── */}
-      <div className="max-w-5xl mx-auto px-4 md:px-8 pb-20">
-        <div className="rounded-3xl border border-border bg-muted/30 px-6 md:px-8 py-16 text-center">
-          <h2 className="text-2xl md:text-4xl font-semibold tracking-tight text-foreground mb-4">
-            Bereit loszulegen?
-          </h2>
-          <p className="text-muted-foreground text-base mb-8 max-w-md mx-auto">
-            GastroConnect ist invite-only. Kontaktieren Sie uns — wir richten Ihren Zugang ein.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <Link href="/login">
-              <button
-                className="inline-flex items-center justify-center gap-2 bg-foreground hover:bg-foreground/90 text-background text-sm font-medium px-6 py-3 rounded-full transition-colors w-full sm:w-auto"
-                data-testid="button-footer-login"
-              >
-                Anmelden
-                <ArrowRight className="h-4 w-4" />
-              </button>
-            </Link>
-            <Link href="/">
-              <button
-                className="inline-flex items-center justify-center gap-2 border border-border text-foreground hover:bg-muted text-sm font-medium px-6 py-3 rounded-full transition-colors w-full sm:w-auto"
-                data-testid="button-footer-back"
-              >
-                Zur Startseite
-              </button>
-            </Link>
-          </div>
-        </div>
-      </div>
-
-    </div>
-  );
+export function PublicFooter() {
+  return <footer className="border-t border-black/15 px-5 py-10 md:px-10"><div className="mx-auto grid max-w-7xl gap-8 md:grid-cols-[1.5fr_1fr_1fr_1fr]"><div><Logo size="footer" variant="dark" thick /><p className="gc-long mt-4 max-w-xs text-sm text-black/55">Die digitale Plattform für die Zusammenarbeit in der Gastronomie.</p></div><div><p className="gc-kicker mb-4">Produkt</p><div className="grid gap-2 text-sm"><Link href="/features">Funktionen</Link><Link href="/how-it-works">So funktioniert es</Link><Link href="/faq">FAQ</Link></div></div><div><p className="gc-kicker mb-4">Unternehmen</p><div className="grid gap-2 text-sm"><Link href="/about">Über uns</Link><Link href="/contact">Kontakt</Link></div></div><div><p className="gc-kicker mb-4">Rechtliches</p><div className="grid gap-2 text-sm"><Link href="/impressum">Impressum</Link><Link href="/datenschutz">Datenschutz</Link><Link href="/agb">AGB</Link></div></div></div></footer>;
 }

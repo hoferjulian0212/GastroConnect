@@ -10,6 +10,7 @@ import type { Member, User } from "@shared/schema";
 import { can } from "@shared/permissions";
 import { generateToken, hashToken, INVITE_TTL_MS } from "./tokens";
 import { requireAuth } from "./middleware";
+import { getAuth } from "@clerk/express";
 import { sendEmail, renderNotificationEmail, isEmailConfigured } from "../emailService";
 
 const authLimiter = rateLimit({
@@ -39,12 +40,69 @@ export function registerAuthRoutes(app: Express) {
   // Auth is now Clerk-based; member + org are resolved by loadAuth middleware
   // from the Clerk session. This endpoint surfaces the result to the client.
   app.get("/api/auth/me", (req, res) => {
-    if (!req.auth) return res.json({ authenticated: false });
+    if (!req.auth) {
+      const clerkAuth = getAuth(req);
+      const email = clerkAuth?.sessionClaims?.email as string | undefined;
+      if (email) {
+        storage.getMemberByEmail(email.toLowerCase()).then(async (member) => {
+          const org = member ? await storage.getUser(member.organizationId) : undefined;
+          if (member && org && (org.approvalStatus === "pending" || org.approvalStatus === "denied")) {
+            return res.json({ authenticated: false, registrationStatus: org.approvalStatus, org: { id: org.id, name: org.name, companyName: org.companyName } });
+          }
+          return res.json({ authenticated: false });
+        }).catch(() => res.json({ authenticated: false }));
+        return;
+      }
+      return res.json({ authenticated: false });
+    }
     res.json({
       authenticated: true,
       member: sanitizeMember(req.auth.member),
       org: req.auth.org,
     });
+  });
+
+  // Completes the GastroConnect-only public onboarding after Clerk has
+  // verified the email with its code-based flow.
+  app.post("/api/auth/registration/complete", authLimiter, async (req, res) => {
+    try {
+      const clerkAuth = getAuth(req);
+      const email = (clerkAuth?.sessionClaims?.email as string | undefined)?.toLowerCase();
+      if (!email) return res.status(401).json({ error: "unauthenticated" });
+      const parsed = z.object({
+        role: z.enum(["restaurant", "supplier"]),
+        companyName: z.string().trim().min(2).max(120),
+        contactName: z.string().trim().min(2).max(120),
+        phone: z.string().trim().min(5).max(40),
+        address: z.string().trim().min(3).max(200),
+        city: z.string().trim().min(2).max(100),
+        postalCode: z.string().trim().min(3).max(20),
+        profile: z.string().trim().max(1000).optional().default(""),
+      }).safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ error: "invalid_registration", fields: parsed.error.flatten().fieldErrors });
+      const existing = await storage.getMemberByEmail(email);
+      if (existing) {
+        const existingOrg = await storage.getUser(existing.organizationId);
+        if (existingOrg) return res.json({ ok: true, status: existingOrg.approvalStatus });
+      }
+      const d = parsed.data;
+      const created = await storage.createBusinessSignup({
+        org: {
+          role: d.role, name: d.companyName, companyName: d.companyName, email,
+          phone: d.phone, address: d.address, city: d.city, postalCode: d.postalCode,
+          description: d.profile, verifiedAt: new Date(), approvalStatus: "pending",
+        },
+        admin: {
+          name: d.contactName, email, role: "admin", emailVerifiedAt: new Date(),
+          passwordHash: undefined as never,
+        },
+      });
+      logAuthEvent("registration.completed", req, { organizationId: created.org.id, role: d.role });
+      res.status(201).json({ ok: true, status: "pending" });
+    } catch (error) {
+      console.error("[auth] registration completion error", error);
+      res.status(500).json({ error: "server_error" });
+    }
   });
 
   // ── Invite a teammate ──────────────────────────────────────────────────────

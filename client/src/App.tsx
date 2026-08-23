@@ -39,6 +39,8 @@ import { navigate } from "wouter/use-browser-location";
 import { ClerkProvider, SignIn, SignUp, useClerk } from "@clerk/react";
 import { publishableKeyFromHost } from "@clerk/react/internal";
 import { shadcn } from "@clerk/themes";
+import { RegistrationPage, RegistrationCompletePage, PendingApprovalScreen } from "@/pages/Registration";
+import PublicInfo from "@/pages/PublicInfo";
 
 // ── Clerk configuration ────────────────────────────────────────────────────
 // REQUIRED — copy verbatim. Resolves the publishable key from the host so the
@@ -748,7 +750,7 @@ function DesktopProfileButton() {
 }
 
 function AppLayout() {
-  const { currentRole, isWarehouse, isDriver, isLoading, isAuthenticated, isClerkSignedInButUnauthorized } = useUser();
+  const { currentRole, isWarehouse, isDriver, isLoading, isAuthenticated, isClerkSignedInButUnauthorized, registrationStatus } = useUser();
   const { isInChat } = useChat();
   const [location] = useLocation();
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
@@ -793,7 +795,13 @@ function AppLayout() {
     return <SignInPage />;
   }
   if (pathOnly.startsWith("/sign-up")) {
-    return <SignUpPage />;
+    return <Redirect to="/register" />;
+  }
+  if (pathOnly === "/register/complete") {
+    return <RegistrationCompletePage />;
+  }
+  if (pathOnly.startsWith("/register")) {
+    return <RegistrationPage />;
   }
 
   if (pathOnly === "/") {
@@ -821,6 +829,13 @@ function AppLayout() {
   if (pathOnly === "/about") {
     return <About />;
   }
+  if (pathOnly === "/features") return <PublicInfo type="features" />;
+  if (pathOnly === "/how-it-works") return <PublicInfo type="how-it-works" />;
+  if (pathOnly === "/faq") return <PublicInfo type="faq" />;
+  if (pathOnly === "/contact") return <PublicInfo type="contact" />;
+  if (pathOnly === "/impressum") return <PublicInfo type="impressum" />;
+  if (pathOnly === "/datenschutz") return <PublicInfo type="datenschutz" />;
+  if (pathOnly === "/agb") return <PublicInfo type="agb" />;
 
   // Platform admin panel — completely separate auth, no org session needed.
   if (pathOnly === "/admin/login") {
@@ -875,6 +890,9 @@ function AppLayout() {
   // Clerk but hasn't been invited yet. Show a terminal access-denied screen
   // instead of redirecting to /sign-in (which would create an infinite loop).
   if (isClerkSignedInButUnauthorized) {
+    if (registrationStatus === "pending" || registrationStatus === "denied") {
+      return <PendingApprovalScreen denied={registrationStatus === "denied"} />;
+    }
     return <AccessDeniedScreen />;
   }
 

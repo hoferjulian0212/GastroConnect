@@ -40,6 +40,7 @@ interface OrgDetailResponse {
     city: string | null;
     postalCode: string | null;
     verifiedAt: string | null;
+    approvalStatus?: "pending" | "approved" | "denied";
     createdAt: string;
   };
   members: OrgMember[];
@@ -239,7 +240,7 @@ export default function AdminOrgDetail({ params }: { params: { id: string } }) {
 
   const { org, members } = data;
   const displayName = org.companyName || org.name;
-  const isPending = !org.verifiedAt;
+  const isPending = (org.approvalStatus ?? (org.verifiedAt ? "approved" : "pending")) === "pending";
 
   return (
     <AdminLayout>
@@ -326,10 +327,15 @@ export default function AdminOrgDetail({ params }: { params: { id: string } }) {
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
                 <h1 className="text-xl font-bold text-white">{displayName}</h1>
-                {org.verifiedAt ? (
+                {(org.approvalStatus ?? (org.verifiedAt ? "approved" : "pending")) === "approved" ? (
                   <span className="flex items-center gap-1 text-xs text-emerald-400">
                     <CheckCircle2 className="h-3.5 w-3.5" />
                     Verifiziert
+                  </span>
+                ) : org.approvalStatus === "denied" ? (
+                  <span className="flex items-center gap-1 text-xs text-red-400">
+                    <Clock className="h-3.5 w-3.5" />
+                    Abgelehnt
                   </span>
                 ) : (
                   <span className="flex items-center gap-1 text-xs text-amber-400">

@@ -286,6 +286,7 @@ export interface IStorage {
   markEmailVerificationUsed(id: string): Promise<void>;
   deleteEmailVerificationsForMember(memberId: string): Promise<void>;
   markOrganizationVerified(id: string): Promise<void>;
+  rejectOrganization(id: string): Promise<void>;
   // Self-signup: create a pending organization + its first admin member in one
   // transaction. The org starts unverified (verifiedAt null) and the admin has
   // a password but no emailVerifiedAt until the email link is confirmed.
@@ -2467,7 +2468,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   async markOrganizationVerified(id: string): Promise<void> {
-    await db.update(users).set({ verifiedAt: new Date() }).where(eq(users.id, id));
+    await db.update(users).set({ verifiedAt: new Date(), approvalStatus: "approved" }).where(eq(users.id, id));
+  }
+
+  async rejectOrganization(id: string): Promise<void> {
+    await db.update(users).set({ approvalStatus: "denied" }).where(eq(users.id, id));
   }
 
   async deleteOrganizationAndMembers(orgId: string): Promise<void> {
@@ -2480,14 +2485,14 @@ export class DatabaseStorage implements IStorage {
     await db.delete(users).where(eq(users.id, orgId));
   }
 
-  async createBusinessSignup(data: { org: InsertUser; admin: Omit<InsertMember, "organizationId"> & { passwordHash: string } }): Promise<{ org: User; member: Member }> {
+  async createBusinessSignup(data: { org: InsertUser; admin: Omit<InsertMember, "organizationId"> & { passwordHash?: string | null; emailVerifiedAt?: Date | null } }): Promise<{ org: User; member: Member }> {
     return await db.transaction(async (tx) => {
       const [org] = await tx.insert(users).values(data.org).returning();
       const { passwordHash, ...adminRest } = data.admin;
       const [member] = await tx.insert(members).values({
         ...adminRest,
         organizationId: org.id,
-        passwordHash,
+        ...(passwordHash ? { passwordHash } : {}),
       }).returning();
       return { org, member };
     });
@@ -2624,6 +2629,7 @@ export class DatabaseStorage implements IStorage {
   async runEmailVerificationMigration(): Promise<void> {
     // --- Idempotent DDL — safe to run on every boot. ---
     await db.execute(sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS verified_at timestamp`);
+    await db.execute(sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS approval_status text NOT NULL DEFAULT 'approved'`);
     await db.execute(sql`
       CREATE TABLE IF NOT EXISTS email_verifications (
         id varchar(36) PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -5749,7 +5755,7 @@ export class DatabaseStorage implements IStorage {
     const [row] = await db
       .select({ count: sql<number>`count(*)::int` })
       .from(users)
-      .where(isNull(users.verifiedAt));
+      .where(eq(users.approvalStatus, "pending"));
     return row?.count ?? 0;
   }
 

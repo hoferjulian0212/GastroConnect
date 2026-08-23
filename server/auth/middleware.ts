@@ -116,7 +116,14 @@ export async function resolveClerkAuth(email: string): Promise<AuthContext | nul
   let org = await storage.getUser(member.organizationId);
   if (!org) return null;
 
-  // Every member must have gone through the invitation flow at least once.
+  // A public registration creates its own member and is gated by approval,
+  // rather than by the invitation flow used for teammates.
+  if (org.approvalStatus === "pending" || org.approvalStatus === "denied") return null;
+  if (member.emailVerifiedAt && !member.passwordHash) {
+    return { member, org, memberId: member.id, organizationId: member.organizationId, role: member.role };
+  }
+
+  // Every invited member must have gone through the invitation flow at least once.
   // Check whether this member already has a previously accepted invitation
   // (i.e. has signed in before and consumed their invite on an earlier request).
   const acceptedInvitation = await storage.getAcceptedInvitationByMemberId(member.id);

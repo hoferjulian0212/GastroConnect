@@ -72,6 +72,9 @@ export const users = pgTable("users", {
   // Null means a self-registered owner has not yet confirmed their email, so
   // the org is pending and excluded from public directory listings.
   verifiedAt: timestamp("verified_at"),
+  // Email verification and platform approval are separate gates. Legacy and
+  // invited organizations default to approved; public registrations start pending.
+  approvalStatus: text("approval_status").default("approved").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

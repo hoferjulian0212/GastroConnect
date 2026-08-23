@@ -672,7 +672,7 @@ export function registerAdminAuthRoutes(app: Express) {
       const orgId = String(req.params.id);
       const org = await storage.getUser(orgId);
       if (!org) return res.status(404).json({ error: "not_found" });
-      if (org.verifiedAt) return res.status(409).json({ error: "already_verified" });
+      if (org.approvalStatus === "approved") return res.status(409).json({ error: "already_verified" });
 
       // Verify the org and all its members that have a password but are still unverified.
       await storage.markOrganizationVerified(orgId);
@@ -714,11 +714,11 @@ export function registerAdminAuthRoutes(app: Express) {
       const orgId = String(req.params.id);
       const org = await storage.getUser(orgId);
       if (!org) return res.status(404).json({ error: "not_found" });
-      if (org.verifiedAt) return res.status(409).json({ error: "org_already_verified", message: "Verified organisations cannot be deleted via this endpoint." });
+       if (org.approvalStatus === "approved") return res.status(409).json({ error: "org_already_verified", message: "Verified organisations cannot be deleted via this endpoint." });
 
-      await storage.deleteOrganizationAndMembers(orgId);
+       await storage.rejectOrganization(orgId);
       const adminName = req.platformAdmin?.admin.name ?? req.platformAdmin?.admin.replitUsername ?? "admin";
-      console.log(`[admin] org.deleted orgId=${orgId} name=${org.name} by=${adminName} ip=${req.ip}`);
+       console.log(`[admin] org.rejected orgId=${orgId} name=${org.name} by=${adminName} ip=${req.ip}`);
       res.json({ ok: true });
     } catch (err) {
       console.error("[admin] org delete error", err);
