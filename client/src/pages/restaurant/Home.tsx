@@ -978,11 +978,6 @@ export default function RestaurantHome() {
           </div>
         </div></HeroPortal>
       </div>
-      <ActiveDeliveryBanner
-        orders={activeDeliveryOrders}
-        lang={lang}
-        className="mx-3 md:mx-0"
-      />
       <DraggableCardGrid
         userId={currentUser?.id || ""}
         role="restaurant"
@@ -1045,6 +1040,12 @@ export default function RestaurantHome() {
             content: <LetzteBestellungenWidget restaurantId={currentUser?.id || ""} lang={lang} />,
           },
           { id: "upcoming-deliveries", defaultSize: "full" as const, queryKeys: [['/api/restaurant/upcoming-deliveries', currentUser?.id], [`/api/orders?restaurantId=${currentUser?.id}`]], content: (
+      <>
+      <ActiveDeliveryBanner
+        orders={activeDeliveryOrders}
+        lang={lang}
+        className="mb-3"
+      />
       <div className="md:rounded-xl md:border md:border-border md:bg-card md:shadow-[0_1px_2px_rgba(15,23,42,0.03),0_6px_16px_-8px_rgba(15,23,42,0.08),0_16px_28px_-20px_rgba(15,23,42,0.10)]">
         <div className="flex items-center justify-between gap-2 mb-3 md:mb-0 md:p-5 md:pb-4">
           <div className="flex items-center gap-2.5">
@@ -1378,6 +1379,7 @@ export default function RestaurantHome() {
         )}
         </div>
       </div>
+      </>
           )},
           { id: "unread-messages", defaultSize: "half" as const, queryKeys: [[`/api/conversations?userId=${currentUser?.id}`]], content: (
           <div className="md:rounded-xl md:border md:border-border md:bg-card md:shadow-[0_1px_2px_rgba(15,23,42,0.03),0_6px_16px_-8px_rgba(15,23,42,0.08),0_16px_28px_-20px_rgba(15,23,42,0.10)]">
