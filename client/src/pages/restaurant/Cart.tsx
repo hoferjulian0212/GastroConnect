@@ -171,6 +171,7 @@ export default function RestaurantCart() {
     total: string;
     itemCount: number;
     suppliers: string[];
+    orders: { id: string; orderNumber: string; supplierName: string }[];
     deliveryDate: string | null;
     notes: string;
     createdAt: string;
@@ -181,6 +182,7 @@ export default function RestaurantCart() {
   const [preConfirmDialog, setPreConfirmDialog] = useState<{
     mode: "all" | "single";
     supplierId?: string;
+    orderCount: number;
     supplierName: string;
     items: { name: string; quantity: number; price: string; unit: string }[];
     total: string;
@@ -256,6 +258,11 @@ export default function RestaurantCart() {
         total: grandTotal,
         itemCount,
         suppliers: supplierNames,
+        orders: orders.map((order, index) => ({
+          id: order.id,
+          orderNumber: formatOrderNumber(order),
+          supplierName: supplierNames[index] || "",
+        })),
         deliveryDate: firstDeliveryDate,
         notes: allNotes,
         createdAt: new Date().toISOString(),
@@ -495,8 +502,15 @@ export default function RestaurantCart() {
           <div className="flex justify-between items-start gap-4 py-1">
             <span className="text-sm text-muted-foreground shrink-0">{t("common", "suppliers")}</span>
             <div className="flex flex-col items-end gap-0.5">
-              {orderConfirmation.suppliers.map((name, i) => (
-                <span key={i} className="text-sm font-medium">{name}</span>
+              {orderConfirmation.orders.map((order) => (
+                <Link
+                  key={order.id}
+                  href={`/restaurant/orders/${order.id}`}
+                  className="text-sm font-medium hover:underline"
+                  data-testid={`link-confirmed-order-${order.id}`}
+                >
+                  #{order.orderNumber} · {order.supplierName}
+                </Link>
               ))}
             </div>
           </div>
@@ -881,6 +895,7 @@ export default function RestaurantCart() {
                         setPreConfirmDialog({
                           mode: "single",
                           supplierId,
+                          orderCount: 1,
                           supplierName: supplier.companyName || supplier.name,
                           items: items.map(item => ({ name: item.product.name, quantity: item.quantity, price: (getEffectivePrice(item) * item.quantity).toFixed(2), unit: item.product.unit })),
                           total: calculateTotal(items),
@@ -960,6 +975,7 @@ export default function RestaurantCart() {
                     const deliveryDateStr = firstDate ? format(parse(firstDate[1], "yyyy-MM-dd", new Date()), "EEEE, dd. MMMM yyyy", { locale: dateLocale }) : null;
                     setPreConfirmDialog({
                       mode: "all",
+                      orderCount: allSuppliers.length,
                       supplierName: supplierNames,
                       items: allItems,
                       total: grandTotal,
@@ -1065,7 +1081,9 @@ export default function RestaurantCart() {
               ) : (
                 <Send className="h-4 w-4" />
               )}
-              {lang === "de" ? "Jetzt bestellen" : "Ordina ora"}
+              {lang === "de"
+                ? `${preConfirmDialog?.orderCount ?? 1} ${(preConfirmDialog?.orderCount ?? 1) === 1 ? "Bestellung" : "Bestellungen"} für ${preConfirmDialog?.total ?? "0.00"} € senden`
+                : `Invia ${preConfirmDialog?.orderCount ?? 1} ${(preConfirmDialog?.orderCount ?? 1) === 1 ? "ordine" : "ordini"} per ${preConfirmDialog?.total ?? "0.00"} €`}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1117,6 +1135,7 @@ export default function RestaurantCart() {
         );
         setPreConfirmDialog({
           mode: "all",
+          orderCount: allSuppliers.length,
           supplierName: allSuppliers.map(([, group]) => group.supplier.companyName || group.supplier.name).join(", "),
           items: allItems,
           total: grandTotal,

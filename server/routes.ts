@@ -3413,50 +3413,56 @@ export async function registerRoutes(
           items: orderItems,
         })),
         restaurantId,
-        targetSupplierId,
+        targetSupplierId ?? undefined,
       );
 
       // External side effects happen only after the atomic write succeeds.
       for (const [index, order] of createdOrders.entries()) {
         const { supplierId, items, orderItems, totalAmount } = orderBatches[index];
-        // MAIN was debited (reserved) at placement; check low-stock now.
-        for (const item of orderItems) {
-          await checkAndNotifyLowStock(item.productId, supplierId);
+        try {
+          // MAIN was debited (reserved) at placement; check low-stock now.
+          for (const item of orderItems) {
+            await checkAndNotifyLowStock(item.productId, supplierId);
+          }
+
+          const conversation = await storage.getOrCreateConversation(restaurantId, supplierId);
+          const orderContent = JSON.stringify({
+            items: orderItems.map((item, idx) => ({
+              name: item.productName,
+              quantity: item.quantity,
+              price: item.totalPrice,
+              imageUrl: items[idx]?.product?.imageUrl || null
+            })),
+            total: totalAmount,
+            orderId: order.id,
+            orderNumber: formatOrderNumber(order),
+          });
+          await storage.sendMessage({
+            conversationId: conversation.id,
+            senderId: restaurantId,
+            senderMemberId: actingMemberId || null,
+            messageType: "order",
+            content: orderContent,
+            orderId: order.id,
+          });
+
+          const restaurant = await storage.getUser(restaurantId);
+          await createNotificationWithPush({
+            userId: supplierId,
+            type: "new_order",
+            title: `Neue Bestellung #${formatOrderNumber(order)}`,
+            message: `${restaurant?.companyName || restaurant?.name || "Ein Betrieb"} hat eine neue Bestellung aufgegeben #${formatOrderNumber(order)} (€${totalAmount})`,
+            referenceId: order.id
+          }, "supplier", {
+            title_it: `Nuovo ordine #${formatOrderNumber(order)}`,
+            message_it: `${restaurant?.companyName || restaurant?.name || "Un'azienda"} ha effettuato un nuovo ordine #${formatOrderNumber(order)} (€${totalAmount})`,
+          });
+        } catch (sideEffectError) {
+          // The atomic order already exists. Do not return 500 here: the
+          // client must not retry and create duplicates because chat/push
+          // delivery is temporarily unavailable.
+          console.error(`Post-checkout side effect failed for order ${order.id}:`, sideEffectError);
         }
-        
-        // Create order message in chat
-        const conversation = await storage.getOrCreateConversation(restaurantId, supplierId);
-        const orderContent = JSON.stringify({
-          items: orderItems.map((item, idx) => ({
-            name: item.productName,
-            quantity: item.quantity,
-            price: item.totalPrice,
-            imageUrl: items[idx]?.product?.imageUrl || null
-          })),
-          total: totalAmount,
-          orderId: order.id,
-          orderNumber: formatOrderNumber(order),
-        });
-        await storage.sendMessage({
-          conversationId: conversation.id,
-          senderId: restaurantId,
-          senderMemberId: actingMemberId || null,
-          messageType: "order",
-          content: orderContent,
-          orderId: order.id,
-        });
-        
-        const restaurant = await storage.getUser(restaurantId);
-        await createNotificationWithPush({
-          userId: supplierId,
-          type: "new_order",
-          title: `Neue Bestellung #${formatOrderNumber(order)}`,
-          message: `${restaurant?.companyName || restaurant?.name || "Ein Betrieb"} hat eine neue Bestellung aufgegeben #${formatOrderNumber(order)} (€${totalAmount})`,
-          referenceId: order.id
-        }, "supplier", {
-          title_it: `Nuovo ordine #${formatOrderNumber(order)}`,
-          message_it: `${restaurant?.companyName || restaurant?.name || "Un'azienda"} ha effettuato un nuovo ordine #${formatOrderNumber(order)} (€${totalAmount})`,
-        });
       }
 
       res.status(201).json(createdOrders);
