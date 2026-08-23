@@ -16,6 +16,16 @@ export function HeadlineReveal({
   const reduce = useReducedMotion();
   const Tag = as === "h1" ? motion.h1 : motion.h2;
   const words = text.split(" ");
+  const accentWords = new Set([
+    "händler", "betriebe", "commercianti", "aziende",
+    "suppliers", "restaurants", "restaurant", "suppliers.",
+    "restaurants.", "commercianti.", "aziende.",
+  ]);
+  const wordClass = (word: string) =>
+    accentWords.has(word.toLocaleLowerCase()) ||
+    accentWords.has(word.toLocaleLowerCase().replace(/[.,!?]/g, ""))
+      ? "landing-accent-word"
+      : undefined;
 
   if (reduce) {
     return (
@@ -26,7 +36,11 @@ export function HeadlineReveal({
         animate={{ opacity: 1 }}
         transition={{ duration: 0.4 }}
       >
-        {text}
+        {words.map((w, i) => (
+          <span key={i} className={`inline-block ${wordClass(w) ?? ""}`} style={{ marginRight: "0.27em" }}>
+            {w}
+          </span>
+        ))}
       </Tag>
     );
   }
@@ -46,7 +60,7 @@ export function HeadlineReveal({
       {words.map((w, i) => (
         <motion.span
           key={i}
-          className="inline-block"
+            className={`inline-block ${wordClass(w) ?? ""}`}
           style={{ marginRight: "0.27em", willChange: "transform, filter" }}
           variants={{
             hidden: { opacity: 0, y: 12, filter: "blur(8px)" },

@@ -1,7 +1,4 @@
-/* Landing typography: Manrope keeps the product language precise, while the
-   editorial serif is reserved for display moments. This is intentionally
-   scoped to the public landing page and does not change the app UI. */
-@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Manrope:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -233,183 +230,15 @@ input[type="date"].date-empty:not(.dark *)::-webkit-datetime-edit-year-field {
 }
 .animate-read-receipt { animation: read-receipt-fade 0.4s ease-out forwards; }
 
-/* ============================================================
-   Public landing page skin
-   Warm editorial surfaces, a restrained accent palette, and
-   intentional type contrast. Scoped so the authenticated product
-   remains on its existing design system.
-   ============================================================ */
-.landing-page {
-  --landing-ink: #18211e;
-  --landing-muted: #68716d;
-  --landing-cream: #f7f5ef;
-  --landing-sage: #dce8df;
-  --landing-coral: #e77b5c;
-  --landing-plum: #55405e;
-  position: relative;
-  overflow: hidden;
-  background:
-    radial-gradient(ellipse at 82% 5%, rgba(220, 232, 223, .8), transparent 31rem),
-    radial-gradient(ellipse at 8% 32%, rgba(231, 123, 92, .11), transparent 28rem),
-    var(--landing-cream) !important;
-  color: var(--landing-ink);
-  font-family: "Manrope", ui-sans-serif, system-ui, sans-serif;
-}
-
-.landing-page header {
-  mix-blend-mode: normal;
-}
-
-.landing-page header > div {
-  border-color: rgba(24, 33, 30, .10) !important;
-  background: rgba(250, 249, 245, .72) !important;
-  box-shadow: 0 14px 45px rgba(39, 51, 43, .08), inset 0 1px 0 rgba(255,255,255,.8) !important;
-}
-
-.landing-page header button,
-.landing-page header a {
-  font-family: inherit;
-}
-
-.landing-page > section:first-of-type {
-  position: relative;
-  isolation: isolate;
-}
-
-.landing-page > section:first-of-type::before {
-  content: "";
-  position: absolute;
-  z-index: -1;
-  width: 28rem;
-  height: 28rem;
-  left: 50%;
-  top: 13%;
-  transform: translateX(-50%);
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(231,123,92,.14), rgba(231,123,92,0) 68%);
-  filter: blur(8px);
-  pointer-events: none;
-}
-
-.landing-page h1,
-.landing-page h2 {
+/* Landing-only display contrast. The accent words intentionally inherit the
+   existing color and layout; only their typeface and rhythm change. */
+.landing-page .landing-accent-word {
   font-family: "DM Serif Display", Georgia, serif;
-  font-weight: 400 !important;
-  letter-spacing: -.035em !important;
+  font-style: italic;
+  font-weight: 400;
+  letter-spacing: -0.045em;
 }
 
-.landing-page h1 {
-  color: var(--landing-ink);
-  font-size: clamp(3.2rem, 7vw, 6.65rem) !important;
-  line-height: .98 !important;
-}
-
-.landing-page h2 {
-  font-size: clamp(2.35rem, 4.3vw, 4.25rem) !important;
-  line-height: 1.02 !important;
-}
-
-.landing-page p {
-  color: var(--landing-muted);
-}
-
-.landing-page [data-testid="link-hero-headline"] > :first-child {
-  border-color: rgba(231, 123, 92, .3);
-  background: rgba(255,255,255,.55);
-  box-shadow: 0 5px 18px rgba(85,64,94,.06);
-  color: var(--landing-plum);
-}
-
-.landing-page button.bg-primary {
-  background: var(--landing-ink) !important;
-  border-color: var(--landing-ink) !important;
-  box-shadow: 0 12px 24px rgba(24, 33, 30, .16);
-}
-
-.landing-page button.bg-primary:hover {
-  background: var(--landing-plum) !important;
-  border-color: var(--landing-plum) !important;
-  box-shadow: 0 15px 30px rgba(85, 64, 94, .2);
-}
-
-.landing-page button[class*="outline"],
-.landing-page a[class*="outline"] {
-  border-color: rgba(24, 33, 30, .18) !important;
-  background: rgba(255,255,255,.46);
-}
-
-.landing-page button,
-.landing-page a {
-  transition: transform .2s ease, box-shadow .2s ease, background-color .2s ease, border-color .2s ease;
-}
-
-.landing-page button:hover:not(:disabled),
-.landing-page a:hover {
-  transform: translateY(-1px);
-}
-
-.landing-page [data-testid="registration-guide"] > div {
-  border-color: rgba(24, 33, 30, .11);
-  background: rgba(255,255,255,.58);
-  box-shadow: 0 24px 70px rgba(58, 66, 58, .10), inset 0 1px 0 rgba(255,255,255,.9);
-}
-
-.landing-page [data-testid^="guide-step-"] {
-  background: rgba(220, 232, 223, .35);
-  border: 1px solid rgba(116, 142, 124, .12);
-}
-
-.landing-page [data-testid^="guide-step-"] > div {
-  background: var(--landing-plum);
-  color: white;
-}
-
-.landing-page section:nth-of-type(even) {
-  background: rgba(255,255,255,.27);
-}
-
-.landing-page section [class*="rounded-3xl"],
-.landing-page section [class*="rounded-2xl"] {
-  border-color: rgba(24, 33, 30, .10);
-}
-
-.landing-page section [class*="bg-card"],
-.landing-page section [class*="bg-muted"] {
-  box-shadow: 0 18px 50px rgba(48, 62, 53, .06);
-}
-
-.landing-page footer {
-  background: rgba(220, 232, 223, .32);
-  border-color: rgba(24, 33, 30, .10) !important;
-}
-
-.landing-page .text-primary {
-  color: var(--landing-coral) !important;
-}
-
-@media (max-width: 767px) {
-  .landing-page h1 {
-    font-size: clamp(2.75rem, 13vw, 4.3rem) !important;
-  }
-  .landing-page h2 {
-    font-size: clamp(2.25rem, 11vw, 3.2rem) !important;
-  }
-  .landing-page > section:first-of-type::before {
-    width: 20rem;
-    height: 20rem;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .landing-page button,
-  .landing-page a {
-    transition: none;
-  }
-  .landing-page button:hover:not(:disabled),
-  .landing-page a:hover {
-    transform: none;
-  }
-}
 
 @keyframes truck-float {
   0%, 100% { transform: translateY(0); }
