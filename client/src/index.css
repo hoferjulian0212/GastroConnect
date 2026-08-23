@@ -260,12 +260,6 @@ input[type="date"].date-empty:not(.dark *)::-webkit-datetime-edit-year-field {
   color: rgb(0 0 0 / .48);
 }
 
-.gc-public .gc-long,
-.landing-page .landing-long-copy {
-  font-family: "DM Serif Display", Georgia, serif;
-  font-weight: 400;
-  letter-spacing: -.018em;
-}
 
 /* Landing art direction. Keep these variables and effects page-scoped so the
    product UI remains untouched. */
