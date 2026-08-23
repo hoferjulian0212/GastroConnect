@@ -1471,8 +1471,8 @@ export const deliveryAssignments = pgTable("delivery_assignments", {
   // Last computed routing estimates (refreshed by route optimization).
   etaMinutes: integer("eta_minutes"),
   distanceKm: decimal("distance_km", { precision: 8, scale: 2 }),
-  // Encoded driving polyline from the Google Routes API (null when the
-  // estimate came from the haversine fallback — no route line to draw then).
+  // Encoded precision-5 driving polyline from OSRM (null when the estimate
+  // came from the fallback — no route line to draw then).
   routePolyline: text("route_polyline"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),

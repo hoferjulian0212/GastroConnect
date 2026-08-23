@@ -22,6 +22,36 @@ function stopIcon(index: number, done: boolean): L.DivIcon {
   return L.divIcon({ html, className: "driver-stop-pin", iconSize: [32, 40], iconAnchor: [16, 36] });
 }
 
+function decodePolyline(encoded: string): [number, number][] {
+  const points: [number, number][] = [];
+  let index = 0;
+  let lat = 0;
+  let lng = 0;
+  try {
+    while (index < encoded.length) {
+      const deltas: number[] = [];
+      for (let axis = 0; axis < 2; axis++) {
+        let result = 0;
+        let shift = 0;
+        let byte = 0;
+        do {
+          if (index >= encoded.length) return points;
+          byte = encoded.charCodeAt(index++) - 63;
+          result |= (byte & 0x1f) << shift;
+          shift += 5;
+        } while (byte >= 0x20);
+        deltas.push(result & 1 ? ~(result >> 1) : result >> 1);
+      }
+      lat += deltas[0];
+      lng += deltas[1];
+      points.push([lat / 1e5, lng / 1e5]);
+    }
+  } catch {
+    return [];
+  }
+  return points;
+}
+
 export default function DriverMap() {
   const { lang } = useLanguage();
   const [, setLocation] = useLocation();
@@ -42,9 +72,9 @@ export default function DriverMap() {
       .filter((s): s is { delivery: DeliveryAssignmentWithDetails; index: number; lat: number; lng: number } => !!s);
   }, [deliveries]);
 
-  const openPath = stops
-    .filter((s) => !["delivered", "problem"].includes(s.delivery.status))
-    .map((s) => [s.lat, s.lng] as [number, number]);
+  const roadSegments = stops
+    .map((s) => s.delivery.routePolyline ? decodePolyline(s.delivery.routePolyline) : [])
+    .filter((points) => points.length >= 2);
 
   const center: [number, number] = stops.length > 0 ? [stops[0].lat, stops[0].lng] : SOUTH_TYROL_CENTER;
 
@@ -82,8 +112,13 @@ export default function DriverMap() {
               attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
-            {openPath.length >= 2 && (
-              <Polyline positions={openPath} pathOptions={{ color: "#3b82f6", weight: 3, dashArray: "6 8", opacity: 0.7 }} />
+            {roadSegments.map((segment, i) => (
+              <Polyline key={`road-segment-${i}`} positions={segment} pathOptions={{ color: "#3b82f6", weight: 4, opacity: 0.8 }} />
+            ))}
+            {stops.some((s) => !["delivered", "problem"].includes(s.delivery.status)) && roadSegments.length === 0 && (
+              <div className="absolute bottom-3 left-3 right-3 z-[1000] rounded-lg bg-background/95 px-3 py-2 text-center text-xs text-muted-foreground shadow-sm">
+                {lang === "de" ? "Straßenrouten momentan nicht verfügbar" : "Percorsi stradali non disponibili"}
+              </div>
             )}
             {stops.map((s) => (
               <Marker

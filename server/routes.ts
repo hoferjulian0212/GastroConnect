@@ -8229,7 +8229,9 @@ export async function registerRoutes(
 
   type OptimizableStop = { id: string; lat: number; lng: number };
 
-  // Greedy nearest-neighbor fallback when no Google key is configured.
+  // Greedy nearest-neighbor fallback when the road-routing provider is
+  // temporarily unavailable. It is used for ordering only, never presented
+  // as a drawable driving route.
   function nearestNeighborOrder(stops: OptimizableStop[], origin: { lat: number; lng: number }): string[] {
     const remaining = [...stops];
     const ordered: string[] = [];
@@ -8248,49 +8250,42 @@ export async function registerRoutes(
     return ordered;
   }
 
-  // Traffic-aware waypoint optimization via the Google Routes API when a key
-  // is configured; falls back to haversine nearest-neighbor otherwise or on
-  // any API error (route planning must never hard-fail on a 3rd-party outage).
+  // Road-aware waypoint optimization via OSRM's public trip service. The
+  // service requires no API key; the local ordering fallback keeps route
+  // planning usable during a provider outage.
   async function optimizeStopOrder(stops: OptimizableStop[], origin: { lat: number; lng: number }): Promise<{ orderedIds: string[]; trafficAware: boolean }> {
     if (stops.length <= 1) return { orderedIds: stops.map((s) => s.id), trafficAware: false };
-    const key = process.env.GOOGLE_MAPS_API_KEY || process.env.VITE_GOOGLE_MAPS_API_KEY;
-    if (key && stops.length >= 2) {
-      try {
-        const resp = await fetch("https://routes.googleapis.com/directions/v2:computeRoutes", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "X-Goog-Api-Key": key,
-            "X-Goog-FieldMask": "routes.optimizedIntermediateWaypointIndex",
-          },
-          body: JSON.stringify({
-            origin: { location: { latLng: { latitude: origin.lat, longitude: origin.lng } } },
-            destination: { location: { latLng: { latitude: origin.lat, longitude: origin.lng } } },
-            intermediates: stops.map((s) => ({ location: { latLng: { latitude: s.lat, longitude: s.lng } } })),
-            travelMode: "DRIVE",
-            routingPreference: "TRAFFIC_AWARE",
-            optimizeWaypointOrder: true,
-          }),
-        });
-        if (resp.ok) {
-          const data: any = await resp.json();
-          const idx: number[] | undefined = data?.routes?.[0]?.optimizedIntermediateWaypointIndex;
-          if (Array.isArray(idx) && idx.length === stops.length) {
-            return { orderedIds: idx.map((i) => stops[i].id), trafficAware: true };
-          }
-        } else {
-          console.error("[driver] Google Routes optimize failed:", resp.status, (await resp.text()).slice(0, 300));
-        }
-      } catch (err: any) {
-        console.error("[driver] Google Routes optimize error:", err?.message);
+    try {
+      const coordinates = [
+        `${origin.lng},${origin.lat}`,
+        ...stops.map((s) => `${s.lng},${s.lat}`),
+      ].join(";");
+      const resp = await fetch(
+        `https://router.project-osrm.org/trip/v1/driving/${coordinates}?source=first&roundtrip=false&overview=false`,
+        { signal: AbortSignal.timeout(8_000) },
+      );
+      if (resp.ok) {
+        const data: any = await resp.json();
+        const waypoints = Array.isArray(data?.waypoints) ? data.waypoints : [];
+        const ordered = waypoints
+          .map((waypoint: any, inputIndex: number) => ({ waypoint, inputIndex }))
+          .filter(({ inputIndex }: { inputIndex: number }) => inputIndex > 0 && Number.isInteger(waypoints[inputIndex]?.waypoint_index))
+          .sort((a: any, b: any) => a.waypoint.waypoint_index - b.waypoint.waypoint_index)
+          .map(({ inputIndex }: { inputIndex: number }) => stops[inputIndex - 1]?.id)
+          .filter((id: string | undefined): id is string => !!id);
+        if (ordered.length === stops.length) return { orderedIds: ordered, trafficAware: false };
+      } else {
+        console.error("[driver] OSRM trip optimize failed:", resp.status);
       }
+    } catch (err: any) {
+      console.error("[driver] OSRM trip optimize error:", err?.message);
     }
     return { orderedIds: nearestNeighborOrder(stops, origin), trafficAware: false };
   }
 
-  // Google route recomputation is throttled per assignment: location pings can
-  // arrive every few seconds, but a 45s-old traffic-aware ETA is still far
-  // better than a fresh haversine guess — and it keeps API cost bounded.
+  // Route recomputation is throttled per assignment: location pings can arrive
+  // every few seconds, but a 45s-old road route is still useful and keeps the
+  // public routing service within a reasonable request rate.
   const ROUTE_RECALC_INTERVAL_MS = 45_000;
   const lastRouteCalcAt = new Map<string, number>();
   function shouldRecalcRoute(assignmentId: string): boolean {
@@ -8308,45 +8303,39 @@ export async function registerRoutes(
   }
 
   // Real driving ETA/distance + encoded route polyline for a single leg via
-  // the Google Routes API. Returns null when no key is configured or on any
-  // API error so callers can fall back to the haversine estimate.
+  // OSRM. OSRM's `polyline` geometry uses the same precision-5 encoding that
+  // the client decoder consumes. Returns null only on provider/coordinate
+  // failure; callers must not draw a straight line as a driving route.
   async function computeDrivingRoute(
     origin: { lat: number; lng: number },
     dest: { lat: number; lng: number },
   ): Promise<{ etaMinutes: number; distanceKm: number; polyline: string | null } | null> {
-    const key = process.env.GOOGLE_MAPS_API_KEY || process.env.VITE_GOOGLE_MAPS_API_KEY;
-    if (!key) return null;
+    if (
+      !Number.isFinite(origin.lat) || !Number.isFinite(origin.lng) ||
+      !Number.isFinite(dest.lat) || !Number.isFinite(dest.lng)
+    ) return null;
     try {
-      const resp = await fetch("https://routes.googleapis.com/directions/v2:computeRoutes", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Goog-Api-Key": key,
-          "X-Goog-FieldMask": "routes.duration,routes.distanceMeters,routes.polyline.encodedPolyline",
-        },
-        body: JSON.stringify({
-          origin: { location: { latLng: { latitude: origin.lat, longitude: origin.lng } } },
-          destination: { location: { latLng: { latitude: dest.lat, longitude: dest.lng } } },
-          travelMode: "DRIVE",
-          routingPreference: "TRAFFIC_AWARE",
-        }),
-      });
+      const coords = `${origin.lng},${origin.lat};${dest.lng},${dest.lat}`;
+      const resp = await fetch(
+        `https://router.project-osrm.org/route/v1/driving/${coords}?overview=full&geometries=polyline&steps=false`,
+        { signal: AbortSignal.timeout(8_000) },
+      );
       if (!resp.ok) {
-        console.error("[driver] Google Routes ETA failed:", resp.status, (await resp.text()).slice(0, 300));
+        console.error("[driver] OSRM route failed:", resp.status);
         return null;
       }
       const data: any = await resp.json();
-      const route = data?.routes?.[0];
-      const seconds = typeof route?.duration === "string" ? parseInt(route.duration, 10) : NaN;
-      const meters = typeof route?.distanceMeters === "number" ? route.distanceMeters : NaN;
+      const route = data?.code === "Ok" ? data?.routes?.[0] : null;
+      const seconds = typeof route?.duration === "number" ? route.duration : NaN;
+      const meters = typeof route?.distance === "number" ? route.distance : NaN;
       if (!Number.isFinite(seconds) || !Number.isFinite(meters)) return null;
       return {
         etaMinutes: Math.max(1, Math.round(seconds / 60)),
         distanceKm: meters / 1000,
-        polyline: typeof route?.polyline?.encodedPolyline === "string" ? route.polyline.encodedPolyline : null,
+        polyline: typeof route?.geometry === "string" ? route.geometry : null,
       };
     } catch (err: any) {
-      console.error("[driver] Google Routes ETA error:", err?.message);
+      console.error("[driver] OSRM route error:", err?.message);
       return null;
     }
   }
@@ -8426,13 +8415,26 @@ export async function registerRoutes(
       const lat = d.restaurant.latitude ? parseFloat(d.restaurant.latitude) : NaN;
       const lng = d.restaurant.longitude ? parseFloat(d.restaurant.longitude) : NaN;
       if (!Number.isFinite(lat) || !Number.isFinite(lng)) continue;
+      let legEta: number | null = null;
+      let legDistanceKm: number | null = null;
+      let legPolyline: string | null = null;
       if (previous) {
-        const legKm = haversineKm(previous.lat, previous.lng, lat, lng) * ROAD_FACTOR;
-        cumulative += Math.max(1, Math.round((legKm / Math.max(10, speedKmh)) * 60));
+        const driven = await computeDrivingRoute(previous, { lat, lng });
+        if (driven) {
+          legEta = driven.etaMinutes;
+          legDistanceKm = driven.distanceKm;
+          legPolyline = driven.polyline;
+        } else {
+          const legKm = haversineKm(previous.lat, previous.lng, lat, lng) * ROAD_FACTOR;
+          legDistanceKm = legKm;
+          legEta = Math.max(1, Math.round((legKm / Math.max(10, speedKmh)) * 60));
+        }
+        cumulative += legEta;
       }
       await storage.updateDeliveryAssignment(d.id, {
         etaMinutes: Math.max(1, cumulative),
-        distanceKm: previous ? (haversineKm(previous.lat, previous.lng, lat, lng) * ROAD_FACTOR).toFixed(2) : null,
+        distanceKm: legDistanceKm != null ? legDistanceKm.toFixed(2) : null,
+        routePolyline: legPolyline,
       });
       previous = { lat, lng };
     }
@@ -9285,14 +9287,12 @@ export async function registerRoutes(
       } catch (etaErr) {
         console.error("[driver] rolling ETA refresh error:", etaErr);
       }
-      // Refresh ETA/distance for the driver's active stops (en_route/arriving)
-      // from this live ping. Straight-line distance is corrected by a road
-      // factor; ETA uses the reported speed when plausible, else a rural
-      // delivery average. Best-effort: a failure here must never fail the ping.
+        // Refresh ETA/distance and road geometry for the driver's active stops
+        // from this live ping. Best-effort: a routing failure must never fail
+        // the location ping.
       try {
         const deliveries = await storage.getDeliveriesForDriver(req.auth!.memberId, romeToday());
         const active = deliveries.filter((d) => ["en_route", "arriving"].includes(d.status));
-        const ROAD_FACTOR = 1.3;
         const speed = parsed.speedKmh != null && parsed.speedKmh >= 10 && parsed.speedKmh <= 130
           ? parsed.speedKmh
           : 35;
@@ -9300,12 +9300,9 @@ export async function registerRoutes(
           const destLat = d.restaurant.latitude ? parseFloat(d.restaurant.latitude) : NaN;
           const destLng = d.restaurant.longitude ? parseFloat(d.restaurant.longitude) : NaN;
           if (!Number.isFinite(destLat) || !Number.isFinite(destLng)) return;
-          // Prefer real driving time/distance + route line from the Google
-          // Routes API; haversine estimate when no key or the API fails.
-          // The Google path is throttled per stop — a <45s-old traffic-aware
-          // ETA stays in place instead of paying for a recompute every ping.
-          const hasGoogleKey = !!(process.env.GOOGLE_MAPS_API_KEY || process.env.VITE_GOOGLE_MAPS_API_KEY);
-          if (hasGoogleKey && !shouldRecalcRoute(d.id)) return;
+          // OSRM is throttled per stop — a <45s-old road route stays in place
+          // instead of querying the public service on every location ping.
+          if (!shouldRecalcRoute(d.id)) return;
           const driven = await computeDrivingRoute(
             { lat: parsed.latitude, lng: parsed.longitude },
             { lat: destLat, lng: destLng },
@@ -9318,11 +9315,11 @@ export async function registerRoutes(
             });
             return;
           }
-          const roadKm = haversineKm(parsed.latitude, parsed.longitude, destLat, destLng) * ROAD_FACTOR;
-          const etaMinutes = Math.max(1, Math.round((roadKm / speed) * 60));
+          const directKm = haversineKm(parsed.latitude, parsed.longitude, destLat, destLng);
+          const etaMinutes = Math.max(1, Math.round((directKm * 1.3 / speed) * 60));
           await storage.updateDeliveryAssignment(d.id, {
             etaMinutes,
-            distanceKm: roadKm.toFixed(2),
+            distanceKm: (directKm * 1.3).toFixed(2),
             routePolyline: null,
           });
         }));

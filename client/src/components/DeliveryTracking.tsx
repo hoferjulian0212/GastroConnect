@@ -148,16 +148,10 @@ export function DeliveryTracking({
   const center: [number, number] = driverPos ?? destPos ?? SOUTH_TYROL_CENTER;
   const isMoving = ["en_route", "arriving"].includes(assignment.status);
   const showEtaBanner = isMoving && assignment.etaMinutes != null;
-  // The routing service can return a distance/ETA without a drawable road
-  // polyline (for example while its fallback estimator is in use). Keep the
-  // destination visible and draw a clear direct leg rather than showing a map
-  // with no indication of where the driver is heading.
-  const displayRoute: [number, number][] =
-    routePoints.length >= 2
-      ? routePoints
-      : driverPos && destPos
-        ? [driverPos, destPos]
-        : [];
+  // Never draw a direct point-to-point line: it would look like a driving
+  // route while ignoring the actual road network. A route is drawable only
+  // when OSRM returned a valid encoded road geometry.
+  const displayRoute: [number, number][] = routePoints.length >= 2 ? routePoints : [];
 
   return (
     <div className="rounded-xl border border-border bg-card overflow-hidden shadow-sm min-w-0" data-testid="section-delivery-tracking">
@@ -255,6 +249,11 @@ export function DeliveryTracking({
                 }}
                 data-testid="tracking-route-line"
               />
+            )}
+            {driverPos && destPos && displayRoute.length < 2 && (
+              <div className="absolute bottom-3 left-3 right-3 z-[1000] rounded-lg bg-background/95 px-3 py-2 text-center text-xs text-muted-foreground shadow-sm">
+                {lang === "de" ? "Straßenroute momentan nicht verfügbar" : "Percorso stradale non disponibile"}
+              </div>
             )}
             {driverPos && <Marker position={driverPos} icon={driverIcon} />}
             {destPos && <Marker position={destPos} icon={destinationIcon} />}
