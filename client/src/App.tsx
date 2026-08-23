@@ -40,7 +40,15 @@ import { ClerkProvider, SignIn, SignUp, useClerk } from "@clerk/react";
 import { publishableKeyFromHost } from "@clerk/react/internal";
 import { shadcn } from "@clerk/themes";
 import { RegistrationPage, RegistrationCompletePage, PendingApprovalScreen } from "@/pages/Registration";
-import PublicInfo from "@/pages/PublicInfo";
+import {
+  FeaturesRoute,
+  HowItWorksRoute,
+  FaqRoute,
+  ContactRoute,
+  ImpressumRoute,
+  DatenschutzRoute,
+  AgbRoute,
+} from "@/pages/PublicInfo";
 
 // ── Clerk configuration ────────────────────────────────────────────────────
 // REQUIRED — copy verbatim. Resolves the publishable key from the host so the
@@ -829,13 +837,13 @@ function AppLayout() {
   if (pathOnly === "/about") {
     return <About />;
   }
-  if (pathOnly === "/features") return <PublicInfo type="features" />;
-  if (pathOnly === "/how-it-works") return <PublicInfo type="how-it-works" />;
-  if (pathOnly === "/faq") return <PublicInfo type="faq" />;
-  if (pathOnly === "/contact") return <PublicInfo type="contact" />;
-  if (pathOnly === "/impressum") return <PublicInfo type="impressum" />;
-  if (pathOnly === "/datenschutz") return <PublicInfo type="datenschutz" />;
-  if (pathOnly === "/agb") return <PublicInfo type="agb" />;
+  if (pathOnly === "/features") return <FeaturesRoute />;
+  if (pathOnly === "/how-it-works") return <HowItWorksRoute />;
+  if (pathOnly === "/faq") return <FaqRoute />;
+  if (pathOnly === "/contact") return <ContactRoute />;
+  if (pathOnly === "/impressum") return <ImpressumRoute />;
+  if (pathOnly === "/datenschutz") return <DatenschutzRoute />;
+  if (pathOnly === "/agb") return <AgbRoute />;
 
   // Platform admin panel — completely separate auth, no org session needed.
   if (pathOnly === "/admin/login") {
