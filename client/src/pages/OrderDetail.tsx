@@ -920,7 +920,7 @@ export default function OrderDetail() {
         <div className="px-4 md:px-6 lg:px-8 pt-5 pb-8">
           <div className="min-w-0">
             <div>
-          <div className="space-y-5" data-testid="section-updates">
+          <div className="space-y-3" data-testid="section-updates">
             {/* Mobile vertical timeline — replaces horizontal stepper on small screens */}
             {order.status !== "cancelled" && (
               <div className={`md:hidden rounded-xl border border-border bg-card p-4 shadow-sm ${mobileTab === "updates" ? "" : "hidden"}`} data-testid="status-stepper-mobile">
@@ -1090,8 +1090,8 @@ export default function OrderDetail() {
             )}
 
             {/* Two-column layout: Products spans full height, Meta + History stack on the right */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 items-start">
-            <div className={`rounded-xl border border-border bg-card overflow-hidden shadow-sm md:row-span-2 min-w-0 ${tabClsDetails}`} data-testid="section-products">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 items-start">
+            <div className={`rounded-xl border border-border bg-card overflow-hidden shadow-sm min-w-0 ${tabClsDetails}`} data-testid="section-products">
               <div className="px-4 py-3 border-b border-border/30 flex items-center justify-between">
                 <p className="text-sm font-semibold">{lang === "de" ? "Produkte" : "Prodotti"}</p>
                 <p className="text-[11px] text-muted-foreground">
