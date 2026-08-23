@@ -82,7 +82,7 @@ export default function OrderDetail() {
   // Supplier-side: current driver assignment for this order.
   const { data: trackingInfo } = useQuery<OrderTrackingInfo>({
     queryKey: ["/api/orders", orderId, "tracking"],
-    enabled: isSupplier && !!orderId && !!order && ["confirmed", "partially_confirmed", "in_delivery", "delivered"].includes(order.status),
+    enabled: !!orderId && !!order && ["confirmed", "partially_confirmed", "scheduled", "in_delivery", "delivered"].includes(order.status),
     retry: false,
   });
 

@@ -1415,6 +1415,28 @@ export type OauthProvider = typeof OAUTH_PROVIDERS[number];
 export const deliveryStatusEnum = pgEnum("delivery_status", ["assigned", "picked_up", "en_route", "arriving", "delivered", "problem", "rejected"]);
 export const DELIVERY_STATUSES = ["assigned", "picked_up", "en_route", "arriving", "delivered", "problem", "rejected"] as const;
 export type DeliveryStatus = typeof DELIVERY_STATUSES[number];
+export const routeStatusEnum = pgEnum("route_status", ["draft", "confirmed", "active", "completed"]);
+export const ROUTE_STATUSES = ["draft", "confirmed", "active", "completed"] as const;
+export type RouteStatus = typeof ROUTE_STATUSES[number];
+
+// One route per driver and delivery day. Assignment statuses remain the
+// source of truth for POD/problems; this table only coordinates the day.
+export const driverRoutes = pgTable("driver_routes", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  driverMemberId: varchar("driver_member_id", { length: 36 }).notNull().references(() => members.id),
+  supplierId: varchar("supplier_id", { length: 36 }).notNull().references(() => users.id),
+  deliveryDate: varchar("delivery_date", { length: 10 }).notNull(),
+  status: routeStatusEnum("status").default("draft").notNull(),
+  orderedStopIds: jsonb("ordered_stop_ids").$type<string[]>().notNull().default(sql`'[]'::jsonb`),
+  activeStopId: varchar("active_stop_id", { length: 36 }),
+  startedAt: timestamp("started_at"),
+  confirmedAt: timestamp("confirmed_at"),
+  completedAt: timestamp("completed_at"),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex("uniq_driver_routes_driver_date").on(table.driverMemberId, table.deliveryDate),
+  index("idx_driver_routes_supplier_date").on(table.supplierId, table.deliveryDate),
+]);
 
 export const deliveryAssignments = pgTable("delivery_assignments", {
   id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
@@ -1519,6 +1541,7 @@ export const insertDriverLocationSchema = createInsertSchema(driverLocations).om
 export const insertInternalMessageSchema = createInsertSchema(internalMessages).omit({ id: true, createdAt: true });
 
 export type DeliveryAssignment = typeof deliveryAssignments.$inferSelect;
+export type DriverRoute = typeof driverRoutes.$inferSelect;
 export type InsertDeliveryAssignment = z.infer<typeof insertDeliveryAssignmentSchema>;
 export type DriverLocation = typeof driverLocations.$inferSelect;
 export type InsertDriverLocation = z.infer<typeof insertDriverLocationSchema>;

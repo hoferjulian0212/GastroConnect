@@ -23,7 +23,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { GripVertical, MapPin, Sparkles, Loader2, Clock, Route as RouteIcon, CheckCircle2 } from "lucide-react";
+import { GripVertical, MapPin, Sparkles, Loader2, Clock, Route as RouteIcon, CheckCircle2, Play, CalendarDays } from "lucide-react";
 import { StatusPill } from "./DeliveryStatus";
 import type { DeliveryAssignmentWithDetails } from "@shared/schema";
 
@@ -113,15 +113,22 @@ export default function DriverRoutePlanner() {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const [orderedIds, setOrderedIds] = useState<string[] | null>(null);
+  const [date, setDate] = useState(romeToday);
 
-  const { data: deliveries, isLoading } = useQuery<DeliveryAssignmentWithDetails[]>({
-    queryKey: ["/api/driver/deliveries"],
+  const { data: routeData, isLoading } = useQuery<{ route: any; deliveries: DeliveryAssignmentWithDetails[] }>({
+    queryKey: ["/api/driver/route", date],
+    queryFn: async () => {
+      const r = await fetch(`/api/driver/route?date=${date}`);
+      if (!r.ok) throw new Error("route-load");
+      return r.json();
+    },
     refetchInterval: 60_000,
   });
 
-  const list = deliveries ?? [];
-  const doneList = list.filter((d) => ["delivered", "problem"].includes(d.status));
-  const openList = list.filter((d) => !["delivered", "problem"].includes(d.status));
+  const list = routeData?.deliveries ?? [];
+  const route = routeData?.route;
+  const doneList = list.filter((d) => ["delivered", "problem", "rejected"].includes(d.status));
+  const openList = list.filter((d) => !["delivered", "problem", "rejected"].includes(d.status));
 
   // Local drag order (open stops only); resets when server data changes.
   useEffect(() => {
@@ -132,6 +139,7 @@ export default function DriverRoutePlanner() {
   const orderedOpen = (orderedIds ?? openList.map((d) => d.id))
     .map((id) => openList.find((d) => d.id === id))
     .filter((d): d is DeliveryAssignmentWithDetails => !!d);
+  const missingCoordinates = openList.filter((d) => !d.restaurant.latitude || !d.restaurant.longitude);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -141,25 +149,25 @@ export default function DriverRoutePlanner() {
   const reorderMutation = useMutation({
     mutationFn: async (ids: string[]) => {
       const r = await apiRequest("PATCH", "/api/driver/route/reorder", {
-        deliveryDate: romeToday(),
+        deliveryDate: date,
         orderedIds: [...doneList.map((d) => d.id), ...ids],
       });
       return r.json();
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/driver/deliveries"] }),
+      onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/driver/route", date] }),
     onError: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/driver/deliveries"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/driver/route", date] });
       toast({ title: lang === "de" ? "Speichern fehlgeschlagen" : "Salvataggio non riuscito", variant: "destructive" });
     },
   });
 
   const optimizeMutation = useMutation({
     mutationFn: async () => {
-      const r = await apiRequest("POST", "/api/driver/route/optimize", { deliveryDate: romeToday() });
+      const r = await apiRequest("POST", "/api/driver/route/optimize", { deliveryDate: date });
       return r.json() as Promise<{ deliveries: DeliveryAssignmentWithDetails[]; optimized: boolean; trafficAware: boolean; message?: string }>;
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/driver/deliveries"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/driver/route", date] });
       if (!data.optimized) {
         toast({ title: data.message ?? (lang === "de" ? "Keine Optimierung möglich" : "Ottimizzazione non possibile") });
       } else {
@@ -177,6 +185,15 @@ export default function DriverRoutePlanner() {
     },
     onError: () =>
       toast({ title: lang === "de" ? "Optimierung fehlgeschlagen" : "Ottimizzazione non riuscita", variant: "destructive" }),
+  });
+
+  const confirmMutation = useMutation({
+    mutationFn: async () => (await apiRequest("POST", "/api/driver/route/confirm", { deliveryDate: date })).json(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/driver/route", date] });
+      toast({ title: lang === "de" ? "Route bestätigt ✓" : "Percorso confermato ✓" });
+    },
+    onError: () => toast({ title: lang === "de" ? "Route konnte nicht bestätigt werden" : "Percorso non confermato", variant: "destructive" }),
   });
 
   const handleDragEnd = (event: DragEndEvent) => {
@@ -204,11 +221,28 @@ export default function DriverRoutePlanner() {
                 ? "Stopps per Ziehen sortieren oder automatisch optimieren."
                 : "Trascina le fermate per ordinarle o ottimizza automaticamente."}
             </p>
+            <div className="flex items-center gap-2 pt-2">
+              <CalendarDays className="h-4 w-4 text-white/60" />
+              <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="rounded-lg bg-white/10 text-white px-2 py-1.5 text-sm" data-testid="input-route-date" />
+              <span className="rounded-full bg-white/10 px-2.5 py-1 text-xs text-white/75" data-testid="route-state">
+                {route?.status === "confirmed" ? (lang === "de" ? "Bestätigt" : "Confermato") :
+                  route?.status === "active" ? (lang === "de" ? "Aktiv" : "Attivo") :
+                  route?.status === "completed" ? (lang === "de" ? "Abgeschlossen" : "Completato") :
+                  (lang === "de" ? "Entwurf" : "Bozza")}
+              </span>
+            </div>
+            {missingCoordinates.length > 0 && (
+              <p className="text-xs text-amber-200" data-testid="route-warning-coordinates">
+                {lang === "de"
+                  ? `${missingCoordinates.length} Stopp(s) ohne Koordinaten bleiben am Ende der Route.`
+                  : `${missingCoordinates.length} fermata/e senza coordinate rimangono alla fine del percorso.`}
+              </p>
+            )}
           </div>
           <Button
             size="lg"
             className="w-full md:w-auto h-12 font-semibold border-0 bg-white text-black hover:bg-white/90"
-            disabled={optimizeMutation.isPending || openList.length < 2}
+            disabled={optimizeMutation.isPending || openList.length < 2 || route?.status === "active"}
             onClick={() => optimizeMutation.mutate()}
             data-testid="button-optimize-route"
           >
@@ -219,6 +253,12 @@ export default function DriverRoutePlanner() {
             )}
             {lang === "de" ? "Route optimieren" : "Ottimizza percorso"}
           </Button>
+          {route?.status === "draft" && (
+            <Button size="lg" variant="outline" className="w-full md:w-auto h-12 font-semibold bg-transparent text-white border-white/30 hover:bg-white/10 hover:text-white" onClick={() => confirmMutation.mutate()} disabled={confirmMutation.isPending || openList.length === 0} data-testid="button-confirm-route">
+              {confirmMutation.isPending ? <Loader2 className="h-5 w-5 mr-2 animate-spin" /> : <CheckCircle2 className="h-5 w-5 mr-2" />}
+              {lang === "de" ? "Route bestätigen" : "Conferma percorso"}
+            </Button>
+          )}
         </div>
       </HeroPortal>
 
@@ -263,7 +303,7 @@ export default function DriverRoutePlanner() {
                     delivery={d}
                     index={i}
                     lang={lang}
-                    disabled={false}
+                   disabled={route?.status !== "draft"}
                     onOpen={() => setLocation(`/supplier/delivery/${d.id}`)}
                   />
                 ))}

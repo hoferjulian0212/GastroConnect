@@ -8366,6 +8366,78 @@ export async function registerRoutes(
     return null;
   }
 
+  async function notifyRouteDeparture(assignment: any, actorName = "Ihr Fahrer") {
+    const order = await storage.getOrder(assignment.orderId);
+    if (!order) return;
+    await createNotificationWithPush({
+      userId: order.restaurantId,
+      type: "delivery_update",
+      title: `Lieferung unterwegs #${formatOrderNumber(order)}`,
+      message: `${order.restaurant?.companyName || order.restaurant?.name || "Ihre Bestellung"} ist jetzt unterwegs.`,
+      referenceId: order.id,
+    }, "restaurant", {
+      title_it: `Consegna in corso #${formatOrderNumber(order)}`,
+      message_it: `Il tuo ordine #${formatOrderNumber(order)} è in viaggio.`,
+    });
+    try {
+      const conversation = await storage.getOrCreateConversation(order.restaurantId, order.supplierId);
+      await storage.sendMessage({
+        conversationId: conversation.id, senderId: order.supplierId, messageType: "delivery_status",
+        content: JSON.stringify({ type: "in_delivery", orderId: order.id, orderNumber: formatOrderNumber(order) }),
+        orderId: order.id,
+      });
+    } catch (err) { console.error("Failed to post route departure message:", err); }
+    return order;
+  }
+
+  async function advanceRouteAfterStop(driverMemberId: string, deliveryDate: string, stopId: string, actorName: string) {
+    const advanced = await storage.advanceDriverRoute(driverMemberId, deliveryDate, stopId);
+    if (!advanced?.activeStopId) return advanced;
+    const next = await storage.getDeliveryAssignment(advanced.activeStopId);
+    if (!next) return advanced;
+    const updated = await storage.updateDeliveryAssignment(next.id, { status: "en_route", enRouteAt: new Date() });
+    await refreshRouteEtas(driverMemberId, deliveryDate);
+    const order = await notifyRouteDeparture(updated ?? next, actorName);
+    if (order && ["confirmed", "partially_confirmed", "scheduled"].includes(order.status)) {
+      try {
+        await transitionOrderWithStock({ order, newStatus: "in_delivery", previousStatus: order.status, changedByMemberId: driverMemberId, actorName, movementType: null });
+      } catch (err) { if (!(err instanceof OrderTransitionConflictError)) throw err; }
+    }
+    return advanced;
+  }
+
+  // Fallback route timing for all open stops. A future stop's ETA is the
+  // cumulative drive time through each preceding leg, so it remains useful
+  // even when the routing provider is unavailable. Live pings replace the
+  // origin with the driver's current position.
+  async function refreshRouteEtas(driverMemberId: string, deliveryDate: string, liveOrigin?: { lat: number; lng: number }, speedKmh = 35) {
+    const deliveries = await storage.getDeliveriesForDriver(driverMemberId, deliveryDate);
+    const route = await storage.getDriverRoute(driverMemberId, deliveryDate);
+    const ordered = route?.orderedStopIds?.length
+      ? route.orderedStopIds.map((id) => deliveries.find((d) => d.id === id)).filter(Boolean) as typeof deliveries
+      : deliveries;
+    const location = liveOrigin ? null : await storage.getDriverLocation(driverMemberId);
+    let previous = liveOrigin
+      ?? (location ? { lat: parseFloat(location.latitude), lng: parseFloat(location.longitude) } : null);
+    let cumulative = 0;
+    const ROAD_FACTOR = 1.3;
+    for (const d of ordered) {
+      if (["delivered", "problem", "rejected"].includes(d.status)) continue;
+      const lat = d.restaurant.latitude ? parseFloat(d.restaurant.latitude) : NaN;
+      const lng = d.restaurant.longitude ? parseFloat(d.restaurant.longitude) : NaN;
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) continue;
+      if (previous) {
+        const legKm = haversineKm(previous.lat, previous.lng, lat, lng) * ROAD_FACTOR;
+        cumulative += Math.max(1, Math.round((legKm / Math.max(10, speedKmh)) * 60));
+      }
+      await storage.updateDeliveryAssignment(d.id, {
+        etaMinutes: Math.max(1, cumulative),
+        distanceKm: previous ? (haversineKm(previous.lat, previous.lng, lat, lng) * ROAD_FACTOR).toFixed(2) : null,
+      });
+      previous = { lat, lng };
+    }
+  }
+
   // ── Office: assign / unassign a driver ────────────────────────────────────
   app.post("/api/orders/:id/assign-driver", async (req, res) => {
     try {
@@ -8722,6 +8794,7 @@ export async function registerRoutes(
           message_it: bodiesIT[status],
         });
       }
+      await advanceRouteAfterStop(req.auth!.memberId, assignment.deliveryDate, assignment.id, req.auth!.member.name);
 
       res.json(updated);
     } catch (error: any) {
@@ -8807,6 +8880,7 @@ export async function registerRoutes(
           message_it: `${req.auth!.member.name} ha consegnato l'ordine #${formatOrderNumber(order)}.`,
         });
       }
+      await advanceRouteAfterStop(req.auth!.memberId, assignment.deliveryDate, assignment.id, req.auth!.member.name);
 
       res.json(updated);
     } catch (error: any) {
@@ -8878,6 +8952,7 @@ export async function registerRoutes(
           message_it: `Ci sono problemi con la consegna del tuo ordine #${formatOrderNumber(order)}. Il fornitore è stato informato.`,
         });
       }
+      await advanceRouteAfterStop(req.auth!.memberId, assignment.deliveryDate, assignment.id, req.auth!.member.name);
 
       res.json(updated);
     } catch (error: any) {
@@ -9059,12 +9134,37 @@ export async function registerRoutes(
   });
 
   // ── Driver: route planning (manual reorder + traffic-aware optimize) ─────
+  app.get("/api/driver/route", async (req, res) => {
+    try {
+      const denied = requireDriver(req);
+      if (denied) return res.status(denied.status).json(denied.body);
+      const date = typeof req.query.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(req.query.date) ? req.query.date : romeToday();
+      const deliveries = await storage.getDeliveriesForDriver(req.auth!.memberId, date);
+      const existing = await storage.getDriverRoute(req.auth!.memberId, date);
+      const route = existing ?? await storage.upsertDriverRoute(req.auth!.memberId, req.auth!.organizationId, date, deliveries.map((d) => d.id));
+      res.json({ route, deliveries });
+    } catch (error) {
+      console.error("Driver route error:", error);
+      res.status(500).json({ error: "Failed to load route" });
+    }
+  });
+
   app.patch("/api/driver/route/reorder", async (req, res) => {
     try {
       const denied = requireDriver(req);
       if (denied) return res.status(denied.status).json(denied.body);
       const parsed = reorderRouteSchema.parse(req.body);
+      const deliveries = await storage.getDeliveriesForDriver(req.auth!.memberId, parsed.deliveryDate);
+      const valid = new Set(deliveries.map((d) => d.id));
+      if (parsed.orderedIds.length !== valid.size || parsed.orderedIds.some((id) => !valid.has(id))) {
+        return res.status(400).json({ error: "invalid_route", message: "Die Route enthält nicht genau die zugewiesenen Stopps." });
+      }
+      const current = await storage.getDriverRoute(req.auth!.memberId, parsed.deliveryDate);
+      if (current?.status === "active" || current?.status === "completed") {
+        return res.status(409).json({ error: "route_locked", message: "Eine aktive Route kann nicht mehr umsortiert werden." });
+      }
       await storage.reorderDeliveryStops(req.auth!.memberId, parsed.deliveryDate, parsed.orderedIds);
+      await storage.upsertDriverRoute(req.auth!.memberId, req.auth!.organizationId, parsed.deliveryDate, parsed.orderedIds);
       const rows = await storage.getDeliveriesForDriver(req.auth!.memberId, parsed.deliveryDate);
       res.json(rows);
     } catch (error: any) {
@@ -9111,11 +9211,55 @@ export async function registerRoutes(
       const noCoord = open.filter((d) => !orderedIds.includes(d.id)).map((d) => d.id);
       const finalOrder = [...done.map((d) => d.id), ...orderedIds, ...noCoord];
       await storage.reorderDeliveryStops(req.auth!.memberId, date, finalOrder);
+      await storage.upsertDriverRoute(req.auth!.memberId, req.auth!.organizationId, date, finalOrder);
       const rows = await storage.getDeliveriesForDriver(req.auth!.memberId, date);
       res.json({ deliveries: rows, optimized: true, trafficAware });
     } catch (error) {
       console.error("Route optimize error:", error);
       res.status(500).json({ error: "Failed to optimize route" });
+    }
+  });
+
+  app.post("/api/driver/route/confirm", async (req, res) => {
+    try {
+      const denied = requireDriver(req);
+      if (denied) return res.status(denied.status).json(denied.body);
+      const date = typeof req.body?.deliveryDate === "string" && /^\d{4}-\d{2}-\d{2}$/.test(req.body.deliveryDate) ? req.body.deliveryDate : romeToday();
+      const deliveries = await storage.getDeliveriesForDriver(req.auth!.memberId, date);
+      const open = deliveries.filter((d) => !["delivered", "problem", "rejected"].includes(d.status));
+      if (open.length === 0) return res.status(400).json({ error: "empty_route", message: "Keine offenen Stopps vorhanden." });
+      const current = await storage.getDriverRoute(req.auth!.memberId, date);
+      if (!current) await storage.upsertDriverRoute(req.auth!.memberId, req.auth!.organizationId, date, deliveries.map((d) => d.id));
+      const route = await storage.confirmDriverRoute(req.auth!.memberId, date);
+      if (!route) return res.status(409).json({ error: "route_locked", message: "Die Route kann in ihrem aktuellen Status nicht bestätigt werden." });
+      res.json(route);
+    } catch (error) {
+      console.error("Route confirm error:", error);
+      res.status(500).json({ error: "Failed to confirm route" });
+    }
+  });
+
+  app.post("/api/driver/route/start", async (req, res) => {
+    try {
+      const denied = requireDriver(req);
+      if (denied) return res.status(denied.status).json(denied.body);
+      const date = typeof req.body?.deliveryDate === "string" && /^\d{4}-\d{2}-\d{2}$/.test(req.body.deliveryDate) ? req.body.deliveryDate : romeToday();
+      const started = await storage.startDriverRoute(req.auth!.memberId, date);
+      if (!started) return res.status(409).json({ error: "route_not_ready", message: "Die Route muss zuerst bestätigt werden oder ist bereits gestartet." });
+      const assignment = await storage.getDeliveryAssignment(started.activeStopId);
+      if (!assignment) return res.status(404).json({ error: "stop_not_found" });
+      const updated = await storage.updateDeliveryAssignment(assignment.id, { status: "en_route", enRouteAt: new Date() });
+      await refreshRouteEtas(req.auth!.memberId, date);
+      const order = await notifyRouteDeparture(updated ?? assignment, req.auth!.member.name);
+      if (order && ["confirmed", "partially_confirmed", "scheduled"].includes(order.status)) {
+        try {
+          await transitionOrderWithStock({ order, newStatus: "in_delivery", previousStatus: order.status, changedByMemberId: req.auth!.memberId, actorName: req.auth!.member.name, movementType: null });
+        } catch (err) { if (!(err instanceof OrderTransitionConflictError)) throw err; }
+      }
+      res.json({ route: started.route, activeStop: updated });
+    } catch (error) {
+      console.error("Route start error:", error);
+      res.status(500).json({ error: "Failed to start route" });
     }
   });
 
@@ -9133,6 +9277,14 @@ export async function registerRoutes(
         heading: parsed.heading ?? null,
         speedKmh: parsed.speedKmh ?? null,
       });
+      try {
+        await refreshRouteEtas(req.auth!.memberId, romeToday(), {
+          lat: parsed.latitude,
+          lng: parsed.longitude,
+        }, parsed.speedKmh ?? 35);
+      } catch (etaErr) {
+        console.error("[driver] rolling ETA refresh error:", etaErr);
+      }
       // Refresh ETA/distance for the driver's active stops (en_route/arriving)
       // from this live ping. Straight-line distance is corrected by a road
       // factor; ETA uses the reported speed when plausible, else a rural

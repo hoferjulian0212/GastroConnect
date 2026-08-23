@@ -1,9 +1,10 @@
 import { useLocation } from "wouter";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { HeroPortal } from "@/context/HeroContext";
 import { useUser } from "@/context/UserContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { queryClient } from "@/lib/queryClient";
+import { apiRequest } from "@/lib/queryClient";
 import PullToRefreshWrapper from "@/components/PullToRefreshWrapper";
 import StaggeredList from "@/components/StaggeredList";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -45,7 +46,7 @@ export function DeliveryStopCard({
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between gap-2">
-            <p className="font-semibold truncate" data-testid={`text-restaurant-${delivery.id}`}>
+             <p className="font-semibold truncate" data-testid={`text-restaurant-${delivery.id}`}>
               {r.companyName || r.name}
             </p>
             <StatusPill status={delivery.status} lang={lang} />
@@ -96,6 +97,26 @@ export default function DriverHome() {
     queryKey: ["/api/driver/deliveries"],
     refetchInterval: 30_000,
   });
+  const { data: routeData } = useQuery<{ route: { status: string; activeStopId: string | null } }>({
+    queryKey: ["/api/driver/route", "today"],
+    queryFn: async () => {
+      const d = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Rome" }).format(new Date());
+      const r = await fetch(`/api/driver/route?date=${d}`);
+      if (!r.ok) throw new Error("route-load");
+      return r.json();
+    },
+    refetchInterval: 15_000,
+  });
+  const startRoute = useMutation({
+    mutationFn: async () => {
+      const d = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Rome" }).format(new Date());
+      return (await apiRequest("POST", "/api/driver/route/start", { deliveryDate: d })).json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/driver/deliveries"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/driver/route", "today"] });
+    },
+  });
 
   const refresh = async () => {
     await queryClient.invalidateQueries({ queryKey: ["/api/driver/deliveries"] });
@@ -103,7 +124,7 @@ export default function DriverHome() {
 
   const list = deliveries ?? [];
   const deliveredCount = list.filter((d) => d.status === "delivered").length;
-  const openCount = list.length - deliveredCount;
+  const openCount = list.filter((d) => !["delivered", "problem", "rejected"].includes(d.status)).length;
   const today = new Date().toLocaleDateString(lang === "de" ? "de-DE" : "it-IT", {
     weekday: "long",
     day: "numeric",
@@ -176,7 +197,18 @@ export default function DriverHome() {
           </StaggeredList>
         )}
 
-        {openCount > 1 && (
+        {openCount > 0 && routeData?.route.status === "confirmed" && (
+          <button
+            onClick={() => startRoute.mutate()}
+            disabled={startRoute.isPending}
+            className="w-full rounded-2xl bg-emerald-600 p-4 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60 transition-colors flex items-center justify-center gap-2"
+            data-testid="button-start-route"
+          >
+            <Flag className="h-4 w-4" />
+            {startRoute.isPending ? (lang === "de" ? "Route wird gestartet…" : "Avvio percorso…") : (lang === "de" ? "Gesamte Route starten" : "Avvia percorso completo")}
+          </button>
+        )}
+        {openCount > 0 && routeData?.route.status !== "active" && routeData?.route.status !== "completed" && (
           <button
             onClick={() => setLocation("/supplier/route")}
             className="w-full rounded-2xl border border-dashed p-4 text-sm font-medium text-muted-foreground hover:bg-muted/40 transition-colors"

@@ -50,11 +50,11 @@ import {
   type Invitation, type InsertInvitation, type PasswordReset, type InsertPasswordReset,
   type EmailVerification, type InsertEmailVerification,
   type OauthAccount, type InsertOauthAccount, type OauthProvider,
-  deliveryAssignments, driverLocations, internalMessages, internalChatReads,
+  deliveryAssignments, driverLocations, internalMessages, internalChatReads, driverRoutes,
   type DeliveryAssignment, type InsertDeliveryAssignment, type DeliveryAssignmentWithDetails,
   type DriverLocation, type InsertDriverLocation, type DriverLocationWithDriver,
   type InternalMessage, type InsertInternalMessage, type InternalMessageWithSender,
-  type InternalThread, type SafeMember, type OrderItemWithProduct,
+  type InternalThread, type SafeMember, type OrderItemWithProduct, type DriverRoute,
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { encryptJson, decryptJson } from "./erpCrypto";
@@ -298,6 +298,11 @@ export interface IStorage {
   upsertDriverLocation(data: InsertDriverLocation): Promise<DriverLocation>;
   getDriverLocation(driverMemberId: string): Promise<DriverLocation | undefined>;
   getDriverLocationsForSupplier(supplierId: string): Promise<DriverLocationWithDriver[]>;
+  getDriverRoute(driverMemberId: string, deliveryDate: string): Promise<DriverRoute | undefined>;
+  upsertDriverRoute(driverMemberId: string, supplierId: string, deliveryDate: string, orderedStopIds: string[]): Promise<DriverRoute>;
+  confirmDriverRoute(driverMemberId: string, deliveryDate: string): Promise<DriverRoute | undefined>;
+  startDriverRoute(driverMemberId: string, deliveryDate: string): Promise<{ route: DriverRoute; activeStopId: string } | undefined>;
+  advanceDriverRoute(driverMemberId: string, deliveryDate: string, completedStopId: string): Promise<{ route: DriverRoute; activeStopId: string | null } | undefined>;
   getInternalMessages(orgId: string, memberId: string, otherMemberId: string, limit?: number): Promise<InternalMessageWithSender[]>;
   getInternalThreads(orgId: string, memberId: string): Promise<InternalThread[]>;
   createInternalMessage(data: InsertInternalMessage): Promise<InternalMessage>;
@@ -4948,6 +4953,35 @@ export class DatabaseStorage implements IStorage {
     await db.execute(sql`ALTER TYPE notification_type ADD VALUE IF NOT EXISTS 'delivery_update'`);
     await db.execute(sql`ALTER TYPE notification_type ADD VALUE IF NOT EXISTS 'delivery_problem'`);
     await db.execute(sql`ALTER TYPE notification_type ADD VALUE IF NOT EXISTS 'internal_message'`);
+    // Two self-contained test servers can bootstrap simultaneously. PostgreSQL
+    // reports a unique catalog violation (rather than duplicate_object) when
+    // both sessions pass the existence check in the same instant.
+    try {
+      await db.execute(sql`
+        DO $$ BEGIN
+          CREATE TYPE route_status AS ENUM ('draft', 'confirmed', 'active', 'completed');
+        EXCEPTION WHEN duplicate_object THEN null; END $$
+      `);
+    } catch (error: any) {
+      if (error?.code !== "23505") throw error;
+    }
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS driver_routes (
+        id varchar(36) PRIMARY KEY DEFAULT gen_random_uuid(),
+        driver_member_id varchar(36) NOT NULL REFERENCES members(id),
+        supplier_id varchar(36) NOT NULL REFERENCES users(id),
+        delivery_date varchar(10) NOT NULL,
+        status route_status NOT NULL DEFAULT 'draft',
+        ordered_stop_ids jsonb NOT NULL DEFAULT '[]'::jsonb,
+        active_stop_id varchar(36),
+        started_at timestamp,
+        confirmed_at timestamp,
+        completed_at timestamp,
+        updated_at timestamp NOT NULL DEFAULT now()
+      )
+    `);
+    await db.execute(sql`CREATE UNIQUE INDEX IF NOT EXISTS uniq_driver_routes_driver_date ON driver_routes (driver_member_id, delivery_date)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_driver_routes_supplier_date ON driver_routes (supplier_id, delivery_date)`);
     await db.execute(sql`
       DO $$ BEGIN
         CREATE TYPE delivery_status AS ENUM ('assigned', 'picked_up', 'en_route', 'arriving', 'delivered', 'problem');
@@ -5194,6 +5228,79 @@ export class DatabaseStorage implements IStorage {
     return rows.map((r) => {
       const { passwordHash: _ph, emailVerifiedAt: _ev, lastLoginAt: _ll, ...safeDriver } = r.driver;
       return { ...r.location, driver: safeDriver };
+    });
+  }
+
+  async getDriverRoute(driverMemberId: string, deliveryDate: string): Promise<DriverRoute | undefined> {
+    const [row] = await db.select().from(driverRoutes).where(and(
+      eq(driverRoutes.driverMemberId, driverMemberId),
+      eq(driverRoutes.deliveryDate, deliveryDate),
+    )).limit(1);
+    return row;
+  }
+
+  async upsertDriverRoute(driverMemberId: string, supplierId: string, deliveryDate: string, orderedStopIds: string[]): Promise<DriverRoute> {
+    const [row] = await db.insert(driverRoutes).values({
+      driverMemberId, supplierId, deliveryDate, orderedStopIds,
+    }).onConflictDoUpdate({
+      target: [driverRoutes.driverMemberId, driverRoutes.deliveryDate],
+      set: { orderedStopIds, updatedAt: new Date() },
+    }).returning();
+    return row;
+  }
+
+  async confirmDriverRoute(driverMemberId: string, deliveryDate: string): Promise<DriverRoute | undefined> {
+    const [row] = await db.update(driverRoutes).set({
+      status: "confirmed", confirmedAt: new Date(), updatedAt: new Date(),
+    }).where(and(
+      eq(driverRoutes.driverMemberId, driverMemberId),
+      eq(driverRoutes.deliveryDate, deliveryDate),
+      eq(driverRoutes.status, "draft"),
+    )).returning();
+    return row;
+  }
+
+  async startDriverRoute(driverMemberId: string, deliveryDate: string): Promise<{ route: DriverRoute; activeStopId: string } | undefined> {
+    return db.transaction(async (tx) => {
+      const [route] = await tx.select().from(driverRoutes).where(and(
+        eq(driverRoutes.driverMemberId, driverMemberId), eq(driverRoutes.deliveryDate, deliveryDate),
+      )).limit(1).for("update");
+      if (!route || route.status !== "confirmed") return undefined;
+      const [next] = await tx.select({ id: deliveryAssignments.id }).from(deliveryAssignments).where(and(
+        eq(deliveryAssignments.driverMemberId, driverMemberId),
+        eq(deliveryAssignments.deliveryDate, deliveryDate),
+        inArray(deliveryAssignments.id, route.orderedStopIds),
+        notInArray(deliveryAssignments.status, ["delivered", "problem", "rejected"]),
+      )).orderBy(deliveryAssignments.stopSequence).limit(1);
+      if (!next) return undefined;
+      const [updated] = await tx.update(driverRoutes).set({
+        status: "active", activeStopId: next.id, startedAt: new Date(), updatedAt: new Date(),
+      }).where(and(eq(driverRoutes.id, route.id), eq(driverRoutes.status, "confirmed"))).returning();
+      if (!updated) return undefined;
+      return { route: updated, activeStopId: next.id };
+    });
+  }
+
+  async advanceDriverRoute(driverMemberId: string, deliveryDate: string, completedStopId: string): Promise<{ route: DriverRoute; activeStopId: string | null } | undefined> {
+    return db.transaction(async (tx) => {
+      const [route] = await tx.select().from(driverRoutes).where(and(
+        eq(driverRoutes.driverMemberId, driverMemberId), eq(driverRoutes.deliveryDate, deliveryDate),
+      )).limit(1).for("update");
+      if (!route || route.status !== "active" || route.activeStopId !== completedStopId) return undefined;
+      const [next] = await tx.select({ id: deliveryAssignments.id }).from(deliveryAssignments).where(and(
+        eq(deliveryAssignments.driverMemberId, driverMemberId),
+        eq(deliveryAssignments.deliveryDate, deliveryDate),
+        inArray(deliveryAssignments.id, route.orderedStopIds),
+        notInArray(deliveryAssignments.status, ["delivered", "problem", "rejected"]),
+      )).orderBy(deliveryAssignments.stopSequence).limit(1);
+      const [updated] = await tx.update(driverRoutes).set({
+        activeStopId: next?.id ?? null,
+        status: next ? "active" : "completed",
+        completedAt: next ? null : new Date(),
+        updatedAt: new Date(),
+      }).where(and(eq(driverRoutes.id, route.id), eq(driverRoutes.status, "active"), eq(driverRoutes.activeStopId, completedStopId))).returning();
+      if (!updated) return undefined;
+      return { route: updated, activeStopId: next?.id ?? null };
     });
   }
 
