@@ -869,7 +869,7 @@ export default function Landing() {
   return (
     <div className="landing-page min-h-screen bg-white dark:bg-background text-foreground">
       {/* HEADER — floating pill */}
-      <header className="fixed top-0 left-0 right-0 z-50 flex justify-center pt-3 md:pt-4 px-4 pointer-events-none">
+       <header className="fixed top-0 left-0 right-0 z-50 flex justify-center pt-4 md:pt-5 px-4 pointer-events-none">
          <div className={`landing-header-inner pointer-events-auto w-full max-w-6xl flex items-center gap-3 px-5 py-3 md:px-7 md:py-3.5 rounded-full border transition-all duration-300 ${
           scrolled
             ? "bg-white/92 dark:bg-background/92 backdrop-blur-md border-black/[0.06] dark:border-white/10 shadow-lg shadow-black/[0.07]"
