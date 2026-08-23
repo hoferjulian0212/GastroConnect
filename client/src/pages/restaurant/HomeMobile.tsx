@@ -229,7 +229,6 @@ export default function RestaurantHomeMobile({
         <ActiveDeliveryBanner
           orders={activeDeliveryOrders}
           lang={lang}
-          className="mx-2 mt-3"
         />
 
         {currentUser?.id && (
