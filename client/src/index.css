@@ -239,6 +239,183 @@ input[type="date"].date-empty:not(.dark *)::-webkit-datetime-edit-year-field {
   letter-spacing: -0.045em;
 }
 
+/* Landing art direction. Keep these variables and effects page-scoped so the
+   product UI remains untouched. */
+.landing-page {
+  --landing-ink: #171918;
+  --landing-muted: #6f7672;
+  --landing-line: rgba(23, 25, 24, .11);
+  --landing-paper: #fbfaf7;
+  --landing-sage: #eef2ed;
+  --landing-plum: #5b4a63;
+  position: relative;
+  background:
+    radial-gradient(circle at 84% 7%, rgba(210, 224, 215, .42), transparent 26rem),
+    radial-gradient(circle at 8% 38%, rgba(231, 207, 192, .18), transparent 30rem),
+    var(--landing-paper) !important;
+  color: var(--landing-ink);
+}
+
+.landing-page .landing-header-inner {
+  border-color: var(--landing-line) !important;
+  background: rgba(251, 250, 247, .78) !important;
+  box-shadow:
+    0 12px 36px rgba(36, 43, 38, .07),
+    inset 0 1px 0 rgba(255, 255, 255, .9) !important;
+}
+
+.landing-page .landing-hero {
+  isolation: isolate;
+}
+
+.landing-page .landing-hero::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  width: min(72vw, 56rem);
+  height: min(52vw, 38rem);
+  left: 50%;
+  top: 7rem;
+  transform: translateX(-50%);
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at center, rgba(236, 224, 213, .38), transparent 68%),
+    repeating-linear-gradient(90deg, transparent 0 79px, rgba(23, 25, 24, .025) 80px);
+  mask-image: radial-gradient(ellipse at center, black 0 40%, transparent 75%);
+}
+
+.landing-page .landing-hero h1 {
+  text-wrap: balance;
+}
+
+.landing-page .landing-hero [data-testid="registration-guide"] > div {
+  border-color: var(--landing-line);
+  background: rgba(255, 255, 255, .54);
+  box-shadow:
+    0 22px 70px rgba(52, 62, 55, .08),
+    inset 0 1px 0 rgba(255, 255, 255, .9);
+}
+
+.landing-page .landing-hero [data-testid^="guide-step-"] {
+  background: rgba(238, 242, 237, .58);
+  border: 1px solid rgba(99, 119, 103, .10);
+}
+
+.landing-page [data-testid="section-lifestyle"] > div:first-child {
+  box-shadow: 0 24px 70px rgba(30, 34, 30, .16);
+}
+
+.landing-page [data-testid^="card-pillar-"],
+.landing-page [data-testid^="feature-"] {
+  border-color: var(--landing-line) !important;
+  box-shadow: 0 12px 34px rgba(44, 52, 46, .045);
+  transition: transform .28s cubic-bezier(.2, .8, .2, 1),
+    box-shadow .28s ease, border-color .28s ease;
+}
+
+.landing-page [data-testid^="card-pillar-"]:hover,
+.landing-page [data-testid^="feature-"]:hover {
+  transform: translateY(-4px);
+  border-color: rgba(91, 74, 99, .25) !important;
+  box-shadow: 0 22px 48px rgba(44, 52, 46, .10);
+}
+
+.landing-page [data-testid^="card-pillar-"] h3,
+.landing-page [data-testid^="feature-"] h3,
+.landing-page [data-testid^="card-step-"] h3 {
+  text-wrap: balance;
+}
+
+.landing-page [data-testid^="card-pillar-"] > div:first-child {
+  box-shadow: 0 10px 22px rgba(23, 25, 24, .12);
+}
+
+.landing-page [data-testid^="card-step-"] {
+  position: relative;
+}
+
+.landing-page [data-testid^="card-step-"]::before {
+  content: "";
+  position: absolute;
+  left: 2rem;
+  top: 0;
+  width: 2rem;
+  height: 1px;
+  background: var(--landing-line);
+}
+
+.landing-page [data-testid="section-whats-new"] {
+  background: rgba(238, 242, 237, .38);
+}
+
+.landing-page [data-testid="section-whats-new"] span.inline-flex {
+  background: rgba(255, 255, 255, .66);
+  border-color: var(--landing-line);
+  transition: transform .2s ease, box-shadow .2s ease;
+}
+
+.landing-page [data-testid="section-whats-new"] span.inline-flex:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 18px rgba(44, 52, 46, .08);
+}
+
+.landing-page [data-testid^="pinned-story-"] img {
+  transition: filter .5s ease;
+}
+
+.landing-page [data-testid^="pinned-story-"] [class*="cursor-zoom-in"]:hover img {
+  filter: saturate(1.05) contrast(1.02);
+}
+
+.landing-page .landing-final-cta {
+  position: relative;
+  isolation: isolate;
+}
+
+.landing-page .landing-final-cta::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: 12% 14%;
+  border: 1px solid var(--landing-line);
+  border-radius: 2rem;
+  background: linear-gradient(135deg, rgba(238, 242, 237, .52), rgba(255, 255, 255, .22));
+  pointer-events: none;
+}
+
+.landing-page footer {
+  background: rgba(238, 242, 237, .45);
+  border-color: var(--landing-line) !important;
+}
+
+@media (max-width: 767px) {
+  .landing-page .landing-hero::before {
+    width: 100vw;
+    height: 24rem;
+  }
+  .landing-page [data-testid^="card-step-"]::before {
+    left: 0;
+  }
+  .landing-page .landing-final-cta::before {
+    inset: 8% 4%;
+    border-radius: 1.25rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-page [data-testid^="card-pillar-"],
+  .landing-page [data-testid^="feature-"],
+  .landing-page [data-testid="section-whats-new"] span.inline-flex,
+  .landing-page [data-testid^="pinned-story-"] img {
+    transition: none;
+  }
+  .landing-page [data-testid^="card-pillar-"]:hover,
+  .landing-page [data-testid^="feature-"]:hover,
+  .landing-page [data-testid="section-whats-new"] span.inline-flex:hover {
+    transform: none;
+  }
+}
+
 
 @keyframes truck-float {
   0%, 100% { transform: translateY(0); }

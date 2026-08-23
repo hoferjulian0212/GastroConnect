@@ -876,7 +876,7 @@ export default function Landing() {
     <div className="landing-page min-h-screen bg-white dark:bg-background text-foreground">
       {/* HEADER — floating pill */}
       <header className="fixed top-0 left-0 right-0 z-50 flex justify-center pt-3 md:pt-4 px-4 pointer-events-none">
-        <div className={`pointer-events-auto w-full max-w-5xl flex items-center gap-2 px-4 py-2.5 md:px-5 rounded-full border transition-all duration-300 ${
+        <div className={`landing-header-inner pointer-events-auto w-full max-w-5xl flex items-center gap-2 px-4 py-2.5 md:px-5 rounded-full border transition-all duration-300 ${
           scrolled
             ? "bg-white/92 dark:bg-background/92 backdrop-blur-md border-black/[0.06] dark:border-white/10 shadow-lg shadow-black/[0.07]"
             : "bg-white/75 dark:bg-background/75 backdrop-blur-sm border-black/[0.04] dark:border-white/[0.08] shadow-sm"
@@ -1015,7 +1015,7 @@ export default function Landing() {
       <div id="top" />
 
       {/* HERO */}
-      <section className="relative px-4 md:px-8 pt-24 md:pt-28 pb-6 md:pb-8">
+      <section className="landing-hero relative px-4 md:px-8 pt-24 md:pt-28 pb-6 md:pb-8">
         <div className="mx-auto max-w-5xl text-center flex flex-col justify-center gap-10 md:gap-14 min-h-[calc(100svh-5rem)]">
           {/* Headline + subtitle */}
           <div>
@@ -1621,7 +1621,7 @@ export default function Landing() {
       </section>
 
       {/* FINAL CTA */}
-      <section className="px-4 md:px-8 py-24 md:py-32">
+      <section className="landing-final-cta px-4 md:px-8 py-24 md:py-32">
         <div className="mx-auto max-w-3xl text-center">
           <span className="inline-block mb-3 text-xs font-semibold uppercase tracking-widest text-primary">
             {t.eyebrowCta}

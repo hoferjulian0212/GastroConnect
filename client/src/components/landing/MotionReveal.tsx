@@ -15,7 +15,7 @@ export function MotionReveal({
   className,
   delay = 0,
   y = 24,
-  blur = true,
+  blur = false,
   once = true,
 }: MotionRevealProps) {
   const reduce = useReducedMotion();
