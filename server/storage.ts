@@ -115,6 +115,11 @@ export interface IStorage {
   getRecentOrdersBySupplier(supplierId: string): Promise<OrderWithDetails[]>;
   getOrder(id: string): Promise<OrderWithDetails | undefined>;
   createOrder(order: InsertOrder, items: InsertOrderItem[]): Promise<Order>;
+  createOrdersAtomically(
+    entries: { order: InsertOrder; items: InsertOrderItem[] }[],
+    restaurantId: string,
+    supplierId?: string,
+  ): Promise<Order[]>;
   updateOrderStatus(id: string, status: string, requestedDeliveryDate?: string, deliveryNotes?: string | null): Promise<Order | undefined>;
   updateOrderItems(id: string, items: InsertOrderItem[], totalAmount: string, requestedDeliveryDate?: string | null): Promise<Order | undefined>;
   updateOrderItemConfirmation(orderItemId: string, confirmedQuantity: number, rejectedQuantity: number): Promise<OrderItem | undefined>;
@@ -1150,6 +1155,61 @@ export class DatabaseStorage implements IStorage {
         }
       }
 
+      return created;
+    });
+  }
+
+  async createOrdersAtomically(
+    entries: { order: InsertOrder; items: InsertOrderItem[] }[],
+    restaurantId: string,
+    supplierId?: string,
+  ): Promise<Order[]> {
+    return await db.transaction(async (tx) => {
+      const created: Order[] = [];
+      for (const entry of entries) {
+        const orderNumber = await this.generateUniqueOrderNumber();
+        const [order] = await tx.insert(orders).values({ ...entry.order, orderNumber }).returning();
+        for (const item of entry.items) {
+          await tx.insert(orderItems).values({ ...item, orderId: order.id });
+        }
+
+        const reserveByProduct = new Map<string, { qty: number; name: string }>();
+        for (const item of entry.items) {
+          const productId = item.productId;
+          const qty = Number(item.quantity) || 0;
+          if (!productId || qty <= 0) continue;
+          const existing = reserveByProduct.get(productId);
+          if (existing) existing.qty += qty;
+          else reserveByProduct.set(productId, { qty, name: item.productName });
+        }
+        for (const [productId, reservation] of reserveByProduct) {
+          await applyBucketMovement(tx, {
+            orderId: order.id,
+            supplierId: entry.order.supplierId,
+            productId,
+            productName: reservation.name,
+            type: "order_reserved",
+            qty: reservation.qty,
+            actorId: entry.order.createdByUserId ?? entry.order.restaurantId,
+            note: `Bestellung #${orderNumber} aufgegeben – ins Zwischenlager reserviert`,
+            strict: true,
+          });
+        }
+        await tx.insert(orderStatusHistory).values({
+          orderId: order.id,
+          fromStatus: null,
+          toStatus: "pending",
+          changedBy: entry.order.createdByUserId ?? entry.order.restaurantId,
+          changedByMemberId: entry.order.createdByMemberId ?? null,
+        });
+        created.push(order);
+      }
+
+      if (supplierId) {
+        await tx.delete(cartItems).where(and(eq(cartItems.restaurantId, restaurantId), eq(cartItems.supplierId, supplierId)));
+      } else {
+        await tx.delete(cartItems).where(eq(cartItems.restaurantId, restaurantId));
+      }
       return created;
     });
   }

@@ -3371,8 +3371,10 @@ export async function registerRoutes(
         });
       }
 
-      // Create orders for each supplier
-      const createdOrders = [];
+      // Prepare every supplier order before writing anything. The actual
+      // inserts, stock reservations, status history, and cart clear happen in
+      // one transaction below, so a failure cannot leave a partial checkout.
+      const orderBatches: { supplierId: string; items: typeof cartItems; orderItems: any[]; totalAmount: string }[] = [];
       for (const [supplierId, items] of Object.entries(bySupplier)) {
         const orderItems = items.map(item => {
           const promo = promoMap.get(item.productId);
@@ -3393,22 +3395,35 @@ export async function registerRoutes(
         const totalAmount = orderItems
           .reduce((sum, item) => sum + parseFloat(item.totalPrice), 0)
           .toFixed(2);
+        orderBatches.push({ supplierId, items, orderItems, totalAmount });
+      }
 
-        const supplierDeliveryDate = deliveryDates?.[supplierId] || requestedDeliveryDate || null;
-        const supplierNotes = perSupplierNotes?.[supplierId] || notes || null;
-        const order = await storage.createOrder(
-          { restaurantId, supplierId, totalAmount, status: "pending", notes: supplierNotes, requestedDeliveryDate: supplierDeliveryDate, createdByUserId: createdByUserId || restaurantId, createdByMemberId: actingMemberId || null },
-          orderItems as any,
-          { reserveStock: true, strictReserve: true }
-        );
-        createdOrders.push(order);
+      const createdOrders = await storage.createOrdersAtomically(
+        orderBatches.map(({ supplierId, orderItems, totalAmount }) => ({
+          order: {
+            restaurantId,
+            supplierId,
+            totalAmount,
+            status: "pending",
+            notes: perSupplierNotes?.[supplierId] || notes || null,
+            requestedDeliveryDate: deliveryDates?.[supplierId] || requestedDeliveryDate || null,
+            createdByUserId: createdByUserId || restaurantId,
+            createdByMemberId: actingMemberId || null,
+          },
+          items: orderItems,
+        })),
+        restaurantId,
+        targetSupplierId,
+      );
+
+      // External side effects happen only after the atomic write succeeds.
+      for (const [index, order] of createdOrders.entries()) {
+        const { supplierId, items, orderItems, totalAmount } = orderBatches[index];
         // MAIN was debited (reserved) at placement; check low-stock now.
         for (const item of orderItems) {
           await checkAndNotifyLowStock(item.productId, supplierId);
         }
         
-        await storage.addOrderStatusHistory(order.id, null, "pending", createdByUserId || restaurantId, actingMemberId || null);
-
         // Create order message in chat
         const conversation = await storage.getOrCreateConversation(restaurantId, supplierId);
         const orderContent = JSON.stringify({
@@ -3442,13 +3457,6 @@ export async function registerRoutes(
           title_it: `Nuovo ordine #${formatOrderNumber(order)}`,
           message_it: `${restaurant?.companyName || restaurant?.name || "Un'azienda"} ha effettuato un nuovo ordine #${formatOrderNumber(order)} (€${totalAmount})`,
         });
-      }
-
-      // Clear cart - only for targeted supplier or all
-      if (targetSupplierId) {
-        await storage.clearCartBySupplier(restaurantId, targetSupplierId);
-      } else {
-        await storage.clearCart(restaurantId);
       }
 
       res.status(201).json(createdOrders);
