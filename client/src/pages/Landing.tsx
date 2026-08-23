@@ -56,6 +56,7 @@ import {
   Search,
   ChevronRight,
   ArrowRight,
+  ArrowUpRight,
   Utensils,
   Store,
   Menu,
