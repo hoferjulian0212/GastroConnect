@@ -876,7 +876,7 @@ export default function Landing() {
     <div className="landing-page min-h-screen bg-white dark:bg-background text-foreground">
       {/* HEADER — floating pill */}
       <header className="fixed top-0 left-0 right-0 z-50 flex justify-center pt-3 md:pt-4 px-4 pointer-events-none">
-        <div className={`landing-header-inner pointer-events-auto w-full max-w-5xl flex items-center gap-2 px-4 py-2.5 md:px-5 rounded-full border transition-all duration-300 ${
+         <div className={`landing-header-inner pointer-events-auto w-full max-w-6xl flex items-center gap-3 px-5 py-3 md:px-7 md:py-3.5 rounded-full border transition-all duration-300 ${
           scrolled
             ? "bg-white/92 dark:bg-background/92 backdrop-blur-md border-black/[0.06] dark:border-white/10 shadow-lg shadow-black/[0.07]"
             : "bg-white/75 dark:bg-background/75 backdrop-blur-sm border-black/[0.04] dark:border-white/[0.08] shadow-sm"
@@ -911,35 +911,16 @@ export default function Landing() {
             ))}
           </div>
 
-          {/* Right: lang + auth buttons */}
+           {/* Right: one prominent auth action */}
           <div className="flex items-center gap-2 shrink-0 ml-auto lg:ml-0">
-            <div
-              className="hidden md:flex items-center rounded-full border border-black/[0.06] dark:border-white/10 bg-black/[0.04] dark:bg-white/[0.06] backdrop-blur-sm p-0.5 text-xs font-medium"
-              data-testid="lang-switcher"
-            >
-              {(["de", "it", "en"] as const).map((code) => (
-                <button
-                  key={code}
-                  onClick={() => changeLang(code)}
-                  className={`px-2.5 self-stretch flex items-center rounded-full uppercase tracking-wide transition-colors ${
-                    lang === code
-                      ? "bg-foreground text-background"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                  data-testid={`lang-${code}`}
-                >
-                  {code}
-                </button>
-              ))}
-            </div>
             <Button
-              variant="ghost"
-              size="sm"
-              className="hidden md:inline-flex"
+               variant="default"
+               className="hidden md:inline-flex h-10 rounded-full bg-black px-5 text-sm font-medium text-white shadow-none hover:bg-black/85 dark:bg-white dark:text-black dark:hover:bg-white/90"
               onClick={handleLogin}
               data-testid="link-login"
             >
-              {t.navLogin}
+               {t.navLogin}
+               <ArrowUpRight className="ml-1 h-4 w-4" />
             </Button>
 
             {/* Mobile menu */}

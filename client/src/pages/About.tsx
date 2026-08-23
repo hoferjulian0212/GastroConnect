@@ -22,8 +22,8 @@ export function PublicHeader() {
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 flex justify-center pt-3 md:pt-4 px-4 pointer-events-none">
-      <div
-        className={`pointer-events-auto w-full max-w-5xl flex items-center gap-2 px-4 py-2.5 md:px-5 rounded-full border transition-all duration-300 ${
+       <div
+        className={`pointer-events-auto w-full max-w-6xl flex items-center gap-3 px-5 py-3 md:px-7 md:py-3.5 rounded-full border transition-all duration-300 ${
           scrolled
             ? "bg-white/95 backdrop-blur-md border-black/[0.07] shadow-lg shadow-black/[0.06]"
             : "bg-white/80 backdrop-blur-sm border-black/[0.05] shadow-sm"
@@ -55,19 +55,13 @@ export function PublicHeader() {
           ))}
         </nav>
 
-        {/* Auth */}
+        {/* Right: one prominent auth action */}
         <div className="flex items-center gap-2 shrink-0 ml-auto lg:ml-0">
           <Link
-            href="/sign-in"
-            className="hidden md:inline-flex px-3 py-1.5 text-sm font-medium text-black/55 hover:text-black transition-colors rounded-full"
+            href="/login"
+            className="hidden md:inline-flex h-10 items-center rounded-full bg-black px-5 text-sm font-medium text-white hover:bg-black/85 transition-colors"
           >
-            Anmelden
-          </Link>
-          <Link
-            href="/register"
-            className="rounded-full bg-black px-4 py-2 text-sm font-medium text-white hover:bg-black/85 transition-colors"
-          >
-            Starten <ArrowUpRight className="ml-0.5 inline h-3.5 w-3.5" />
+            Anmelden <ArrowUpRight className="ml-1 h-4 w-4" />
           </Link>
         </div>
       </div>
