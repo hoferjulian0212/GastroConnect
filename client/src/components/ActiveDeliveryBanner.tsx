@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { Truck, X } from "lucide-react";
 import type { OrderWithDetails } from "@shared/schema";
@@ -18,8 +18,20 @@ interface ActiveDeliveryBannerProps {
  */
 export function ActiveDeliveryBanner({ orders, lang }: ActiveDeliveryBannerProps) {
   const [expanded, setExpanded] = useState(false);
+  const [aiOpen, setAiOpen] = useState(() =>
+    typeof document !== "undefined" && document.body.dataset.aiAssistantOpen === "true",
+  );
   const [, navigate] = useLocation();
 
+  useEffect(() => {
+    const onAiVisibility = (event: Event) => {
+      setAiOpen(Boolean((event as CustomEvent<{ open?: boolean }>).detail?.open));
+    };
+    window.addEventListener("gc:ai-visibility", onAiVisibility);
+    return () => window.removeEventListener("gc:ai-visibility", onAiVisibility);
+  }, []);
+
+  if (aiOpen) return null;
   if (orders.length === 0) return null;
 
   const first = orders[0];

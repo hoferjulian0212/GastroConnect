@@ -228,6 +228,11 @@ input[type="date"].date-empty:not(.dark *)::-webkit-datetime-edit-year-field {
 }
 .animate-read-receipt { animation: read-receipt-fade 0.4s ease-out forwards; }
 
+@keyframes truck-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-2px); }
+}
+
 /* AI assistant solving indicator — a compact 3D assistant avatar used beside
    the status bubble, like an incoming message in a chat. */
 @keyframes ai-solving-orb-spin {

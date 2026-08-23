@@ -143,6 +143,14 @@ export function AiAssistant() {
     if (open) setNudgeVisible(false);
   }, [open]);
 
+  // Floating dashboard controls use this signal to avoid being covered by
+  // the assistant panel. Keep the body marker as well so a launcher mounted
+  // after navigation can read the current state immediately.
+  useEffect(() => {
+    document.body.dataset.aiAssistantOpen = String(open);
+    window.dispatchEvent(new CustomEvent("gc:ai-visibility", { detail: { open } }));
+  }, [open]);
+
   // Auto-scroll the thread to the bottom on new messages / loading.
   useEffect(() => {
     if (view !== "chat") return;
