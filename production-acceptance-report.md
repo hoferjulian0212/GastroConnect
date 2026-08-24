@@ -36,19 +36,37 @@ provider delivery, or deployment rollback.
 
 ### Published health contract release check
 
-Run this check against the exact published deployment URL before enabling
-external monitoring or approving a canary:
+The deployment build in `.replit` runs the release gate automatically after
+building the artifact. Before approving a release, the operator must provide
+the exact existing published deployment URL as `PUBLISHED_URL` in the release
+environment:
+
+```sh
+PUBLISHED_URL=https://your-published-deployment.example npm run release:build
+```
+
+The gate can also be inspected independently (or rerun after a failed release)
+with:
 
 ```sh
 npm run check:published-health -- https://your-published-deployment.example
 ```
 
-The URL may also be supplied as `PUBLISHED_URL`. The check sends unauthenticated
-`GET` requests to `/health/live`, `/health/ready`, and `/health/metrics`, and
-fails unless each response has a 2xx status, an `application/json` content type,
-and the required health-contract fields. In particular, a 200 SPA HTML
-fallback fails immediately rather than being mistaken for a healthy deployment.
-No credentials are embedded or sent by this check.
+The URL may also be supplied as `PUBLISHED_URL` for the standalone check. The
+release command is intentionally ordered as `npm run build && npm run
+check:published-health`, so a build failure or a health-check failure blocks
+release approval. The check sends unauthenticated `GET` requests to
+`/health/live`, `/health/ready`, and `/health/metrics`, and fails unless each
+response has a 2xx status, an `application/json` content type, and the required
+health-contract fields. In particular, a 200 SPA HTML fallback fails
+immediately rather than being mistaken for a healthy deployment. No
+credentials are embedded or sent by this check.
+
+The release output prints one `PASS` or `FAIL` line per endpoint followed by a
+contract summary. Inspect the deployment build logs for those lines; a failed
+status, content type, JSON parse, or contract-field validation exits with
+status 1 and prevents approval. A missing or invalid `PUBLISHED_URL` exits with
+status 2 before any request is made.
 
 ## Role-path acceptance coverage
 
