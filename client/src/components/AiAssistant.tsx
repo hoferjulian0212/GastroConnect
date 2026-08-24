@@ -70,7 +70,9 @@ interface ChatSummary {
 
 type View = "chat" | "history";
 
-const NUDGE_KEY = "gc:ai-nudge-shown";
+const DASHBOARD_NUDGE_KEY = "gc:ai-dashboard-nudge-shown";
+const NUDGE_DURATION_MS = 12_000;
+const NUDGE_EXIT_DURATION_MS = 360;
 
 export function AiAssistant() {
   const { currentUser, currentRole } = useUser();
@@ -78,9 +80,11 @@ export function AiAssistant() {
   const [location, setLocation] = useLocation();
 
   const isInboxPage = location === "/restaurant/inbox" || location === "/supplier/inbox";
+  const isDashboardPage = ["/restaurant", "/supplier", "/warehouse", "/driver"].includes(location);
 
   const [open, setOpen] = useState(false);
   const [nudgeVisible, setNudgeVisible] = useState(false);
+  const [nudgeExiting, setNudgeExiting] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [view, setView] = useState<View>("chat");
   const [chatId, setChatId] = useState<string | null>(null);
@@ -94,6 +98,7 @@ export function AiAssistant() {
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
   const sendRef = useRef<(text: string) => void>(() => {});
+  const nudgeExitTimerRef = useRef<number | null>(null);
 
   const newChat = () => {
     setChatId(null);
@@ -122,21 +127,46 @@ export function AiAssistant() {
     return () => window.removeEventListener(OPEN_EVENT, onOpen as EventListener);
   }, []);
 
-  // Show nudge once per session after 8 s (only on desktop, only if not already shown).
+  // Show the welcome nudge once when a dashboard is opened. It stays long
+  // enough to read, then exits while leaving the assistant button in place.
   useEffect(() => {
-    if (typeof sessionStorage === "undefined") return;
-    if (sessionStorage.getItem(NUDGE_KEY)) return;
-    const timer = setTimeout(() => {
-      if (!open) setNudgeVisible(true);
-    }, 8000);
-    return () => clearTimeout(timer);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    if (
+      !userId
+      || !isDashboardPage
+      || isInboxPage
+      || typeof sessionStorage === "undefined"
+      || sessionStorage.getItem(DASHBOARD_NUDGE_KEY)
+    ) return;
 
-  // Dismiss nudge on route change.
+    sessionStorage.setItem(DASHBOARD_NUDGE_KEY, "1");
+    setNudgeVisible(true);
+    setNudgeExiting(false);
+    const timer = window.setTimeout(() => {
+      setNudgeExiting(true);
+      nudgeExitTimerRef.current = window.setTimeout(() => {
+        setNudgeVisible(false);
+        setNudgeExiting(false);
+        nudgeExitTimerRef.current = null;
+      }, NUDGE_EXIT_DURATION_MS);
+    }, NUDGE_DURATION_MS);
+
+    return () => {
+      window.clearTimeout(timer);
+      if (nudgeExitTimerRef.current !== null) {
+        window.clearTimeout(nudgeExitTimerRef.current);
+        nudgeExitTimerRef.current = null;
+      }
+    };
+  }, [userId, isDashboardPage, isInboxPage]);
+
+  // The launcher is only a dashboard welcome, never a distraction on a deep
+  // link or while the user is in the full-screen inbox.
   useEffect(() => {
-    setNudgeVisible(false);
-  }, [location]);
+    if (!isDashboardPage || isInboxPage) {
+      setNudgeVisible(false);
+      setNudgeExiting(false);
+    }
+  }, [isDashboardPage, isInboxPage]);
 
   // Dismiss nudge when the panel opens.
   useEffect(() => {
@@ -333,27 +363,34 @@ export function AiAssistant() {
     : "md:w-[400px] md:h-[600px]";
 
   const dismissNudge = () => {
-    setNudgeVisible(false);
-    sessionStorage.setItem(NUDGE_KEY, "1");
+    setNudgeExiting(true);
+    window.setTimeout(() => {
+      setNudgeVisible(false);
+      setNudgeExiting(false);
+    }, NUDGE_EXIT_DURATION_MS);
+    sessionStorage.setItem(DASHBOARD_NUDGE_KEY, "1");
   };
 
   const firstName = currentUser?.name?.split(" ")[0] ?? "";
 
   return (
     <>
-      {!open && !isInboxPage && (
+      {!open && isDashboardPage && !isInboxPage && (
         <>
-          {/* FAB row — pill sits to the left, FAB on the right, both centered */}
-          <div className="hidden md:flex fixed bottom-6 right-6 z-[56] items-center gap-3">
+          {/* The welcome pill and icon enter together; the icon remains after
+              the pill exits so help is always one tap away. */}
+          <div className="fixed bottom-[calc(var(--mobile-cta-offset)+16px)] right-4 z-[56] flex items-center gap-2 md:bottom-6 md:right-6 md:gap-3">
             {nudgeVisible && (
               <div
-                className="flex items-center gap-2 bg-[#161921] text-white rounded-full px-4 py-2.5 shadow-lg shadow-black/20 whitespace-nowrap text-sm font-medium animate-in fade-in slide-in-from-right-2 duration-300"
+                className={`flex max-w-[calc(100vw-6rem)] items-center gap-2 rounded-full bg-[#161921] px-3 py-2.5 text-sm font-medium text-white shadow-lg shadow-black/20 md:px-4 ${
+                  nudgeExiting ? "animate-ai-launcher-out" : "animate-ai-launcher-in"
+                }`}
                 data-testid="ai-nudge-pill"
               >
                 <button
                   type="button"
                   onClick={() => { dismissNudge(); setOpen(true); setView("chat"); }}
-                  className="flex-shrink-0 text-left hover:opacity-90 transition-opacity"
+                  className="min-w-0 flex-shrink text-left leading-snug hover:opacity-90 transition-opacity"
                   data-testid="button-ai-nudge-open"
                 >
                   {t(
@@ -379,7 +416,7 @@ export function AiAssistant() {
                 setOpen(true);
                 setView("chat");
               }}
-              className="flex-shrink-0 inline-flex h-16 w-16 items-center justify-center rounded-full bg-[#161921] text-white shadow-lg shadow-black/20 hover:scale-105 active:scale-95 transition-transform"
+              className="flex-shrink-0 inline-flex h-14 w-14 animate-ai-launcher-in items-center justify-center rounded-full bg-[#161921] text-white shadow-lg shadow-black/20 transition-transform hover:scale-105 active:scale-95 md:h-16 md:w-16"
               aria-label={t("KI-Assistent öffnen", "Apri assistente AI")}
               data-testid="button-ai-fab"
             >

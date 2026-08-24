@@ -799,6 +799,9 @@ function AppLayout() {
   const isInboxPage = pathOnly === '/restaurant/inbox' || pathOnly === '/supplier/inbox';
 
   // Clerk sign-in / sign-up (sub-paths like /sign-in/sso-callback included).
+  if (pathOnly === "/demo-login") {
+    return <DemoLoginPage />;
+  }
   if (pathOnly.startsWith("/sign-in")) {
     return <SignInPage />;
   }
@@ -1117,8 +1120,82 @@ function SignInPage() {
       >
         <Logo size="nav" variant="light" thick showText={false} data-testid="logo-back-to-landing" />
       </Link>
-      <DemoLoginButtons />
-      <SignIn routing="path" path={`${basePath}/sign-in`} signUpUrl={`${basePath}/sign-up`} />
+      <main className="w-full max-w-5xl">
+        <div className="mb-8 text-center">
+          <p className="mb-2 text-xs font-semibold uppercase tracking-[0.22em] text-white/40">
+            GastroConnect
+          </p>
+          <h1 className="text-3xl font-semibold tracking-tight text-white md:text-4xl">
+            Willkommen zurück
+          </h1>
+          <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-white/55">
+            Wählen Sie den passenden Zugang für Ihren nächsten Schritt.
+          </p>
+        </div>
+
+        <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,440px)_minmax(0,1fr)] lg:gap-5">
+          <section className="overflow-hidden rounded-3xl border border-white/10 bg-white/[0.03]" aria-labelledby="registered-login-heading">
+            <div className="border-b border-white/10 px-5 py-4 md:px-6">
+              <h2 id="registered-login-heading" className="text-base font-semibold text-white">
+                Bereits registriert?
+              </h2>
+              <p className="mt-1 text-xs text-white/45">
+                Melden Sie sich mit Ihrem GastroConnect-Konto an.
+              </p>
+            </div>
+            <SignIn routing="path" path={`${basePath}/sign-in`} signUpUrl={`${basePath}/sign-up`} />
+          </section>
+
+          <div className="grid gap-4">
+            <section className="rounded-3xl border border-white/10 bg-white/[0.03] p-5 md:p-6" aria-labelledby="registration-choice-heading">
+              <h2 id="registration-choice-heading" className="text-base font-semibold text-white">
+                Noch kein Konto?
+              </h2>
+              <p className="mt-2 max-w-lg text-sm leading-relaxed text-white/55">
+                Durchlaufen Sie die Registrierung für Ihr Restaurant oder Ihren Lieferanten.
+                Nach der E-Mail-Bestätigung prüft unser Team Ihre Angaben und schaltet den Zugang frei.
+              </p>
+              <Link
+                href="/register"
+                className="mt-5 inline-flex min-h-11 items-center rounded-full bg-white px-5 text-sm font-semibold text-[#161921] transition-colors hover:bg-white/85"
+                data-testid="link-start-registration"
+              >
+                Registrierung starten
+              </Link>
+            </section>
+
+            <section className="rounded-3xl border border-white/10 bg-white/[0.03] p-5 md:p-6" aria-labelledby="demo-choice-heading">
+              <h2 id="demo-choice-heading" className="text-base font-semibold text-white">
+                Demo-Benutzer ausprobieren?
+              </h2>
+              <p className="mt-2 max-w-lg text-sm leading-relaxed text-white/55">
+                Testen Sie GastroConnect ohne eigene E-Mail-Adresse. Wählen Sie im nächsten
+                Schritt zuerst Restaurant oder Lieferant und dann einen einzelnen Demo-Benutzer.
+              </p>
+              <Link
+                href="/demo-login"
+                className="mt-5 inline-flex min-h-11 items-center rounded-full border border-white/20 bg-white/[0.06] px-5 text-sm font-semibold text-white transition-colors hover:bg-white/[0.12]"
+                data-testid="link-demo-login"
+              >
+                Demo-Zugang auswählen
+              </Link>
+            </section>
+          </div>
+        </div>
+      </main>
+    </div>
+  );
+}
+
+function DemoLoginPage() {
+  return (
+    <div className="min-h-dvh bg-[#161921] px-4 py-8 text-white md:py-12">
+      <div className="mx-auto flex w-full max-w-xl flex-col items-center">
+        <Link href="/" aria-label="Zurück zur Startseite" className="mb-8">
+          <Logo size="nav" variant="light" thick showText={false} />
+        </Link>
+        <DemoLoginButtons standalone />
+      </div>
     </div>
   );
 }

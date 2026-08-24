@@ -1,6 +1,5 @@
 /**
- * Demo account quick-login panel shown below the Clerk sign-in widget
- * in non-production environments only.
+ * Demo account quick-login selector for the dedicated demo sign-in page.
  *
  * Clicking a tile calls POST /api/demo-login → gets a one-time Clerk
  * sign-in token → signs the user in instantly with no email/device
@@ -14,7 +13,7 @@ import { useRef, useState } from "react";
 import { useSignIn } from "@clerk/react/legacy";
 import { useAuth, useClerk } from "@clerk/react";
 import { useLocation } from "wouter";
-import { Loader2 } from "lucide-react";
+import { ArrowLeft, Building2, Loader2, Store } from "lucide-react";
 
 interface DemoAccount {
   email: string;
@@ -36,7 +35,7 @@ const DEMO_ACCOUNTS: DemoAccount[] = [
   { email: "fahrer@frische-produkte.de",   label: "Fahrer", role: "Fahrer",    group: "supplier" },
 ];
 
-export function DemoLoginButtons() {
+export function DemoLoginButtons({ standalone = false }: { standalone?: boolean }) {
   const { signIn, setActive } = useSignIn();
   const { isSignedIn } = useAuth();
   const { signOut } = useClerk();
@@ -97,56 +96,77 @@ export function DemoLoginButtons() {
   const restaurant = DEMO_ACCOUNTS.filter((a) => a.group === "restaurant");
   const supplier   = DEMO_ACCOUNTS.filter((a) => a.group === "supplier");
 
+  const accountList = (accounts: DemoAccount[]) => (
+    <div className="space-y-2">
+      {accounts.map((a) => (
+        <DemoTile
+          key={a.email}
+          account={a}
+          loading={loadingEmail === a.email}
+          disabled={loadingEmail !== null}
+          onLogin={handleLogin}
+        />
+      ))}
+    </div>
+  );
+
   return (
-    <div className="w-[440px] max-w-full mt-3">
-      <div className="rounded-2xl border border-white/10 bg-white/[0.03] overflow-hidden">
-        <div className="px-5 pt-4 pb-2">
-          <p className="text-[11px] font-semibold text-white/40 uppercase tracking-widest">
-            Demo-Zugänge
-          </p>
-        </div>
-
-        {/* Restaurant group */}
-        <div className="px-5 pb-3">
-          <p className="text-[10px] text-white/30 uppercase tracking-wider mb-2">
-            Restaurant · Gasthof Alpenblick
-          </p>
-          <div className="grid grid-cols-3 gap-2">
-            {restaurant.map((a) => (
-              <DemoTile
-                key={a.email}
-                account={a}
-                loading={loadingEmail === a.email}
-                disabled={loadingEmail !== null}
-                onLogin={handleLogin}
-              />
-            ))}
+    <div className={standalone ? "w-full max-w-xl" : "w-full"}>
+      {standalone && (
+        <button
+          type="button"
+          onClick={() => setLocation("/sign-in")}
+          className="mb-5 inline-flex items-center gap-2 text-sm text-white/55 transition-colors hover:text-white"
+          data-testid="button-demo-back"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Zur normalen Anmeldung
+        </button>
+      )}
+      <div className="overflow-hidden rounded-3xl border border-white/10 bg-white/[0.03]">
+        <div className="border-b border-white/10 px-5 py-5 md:px-7">
+          <div className="flex items-start gap-3">
+            <div className="rounded-2xl bg-white/10 p-2.5 text-white">
+              <Building2 className="h-5 w-5" />
+            </div>
+            <div>
+              <h1 className="text-xl font-semibold text-white">Demo-Benutzer anmelden</h1>
+              <p className="mt-1 text-sm leading-relaxed text-white/55">
+                Wählen Sie zuerst den Bereich und anschließend den gewünschten Benutzer.
+                Keine echte E-Mail-Adresse und keine Verifizierung erforderlich.
+              </p>
+            </div>
           </div>
         </div>
 
-        {/* Divider */}
-        <div className="mx-5 h-px bg-white/[0.07]" />
+        <div className="grid gap-5 p-5 md:grid-cols-2 md:p-7">
+          <section aria-labelledby="demo-restaurant-heading">
+            <div className="mb-3 flex items-center gap-2 text-white">
+              <Store className="h-4 w-4 text-white/60" />
+              <h2 id="demo-restaurant-heading" className="text-sm font-semibold">
+                Restaurant
+              </h2>
+            </div>
+            <p className="mb-3 text-xs text-white/40">Gasthof Alpenblick</p>
+            {accountList(restaurant)}
+          </section>
 
-        {/* Supplier group */}
-        <div className="px-5 pt-3 pb-4">
-          <p className="text-[10px] text-white/30 uppercase tracking-wider mb-2">
-            Lieferant · Frische Produkte
-          </p>
-          <div className="grid grid-cols-4 gap-2">
-            {supplier.map((a) => (
-              <DemoTile
-                key={a.email}
-                account={a}
-                loading={loadingEmail === a.email}
-                disabled={loadingEmail !== null}
-                onLogin={handleLogin}
-              />
-            ))}
-          </div>
+          <section aria-labelledby="demo-supplier-heading">
+            <div className="mb-3 flex items-center gap-2 text-white">
+              <Building2 className="h-4 w-4 text-white/60" />
+              <h2 id="demo-supplier-heading" className="text-sm font-semibold">
+                Lieferant
+              </h2>
+            </div>
+            <p className="mb-3 text-xs text-white/40">Frische Produkte</p>
+            {accountList(supplier)}
+          </section>
         </div>
 
         {error && (
-          <div className="px-5 pb-4 text-xs text-red-400 text-center">{error}</div>
+          <div className="border-t border-red-400/20 bg-red-400/10 px-5 py-3 text-center text-xs text-red-300" role="alert">
+            Die Demo-Anmeldung konnte nicht gestartet werden. Bitte versuchen Sie es erneut.
+          </div>
         )}
       </div>
     </div>
@@ -169,20 +189,19 @@ function DemoTile({
       type="button"
       disabled={disabled}
       onClick={() => onLogin(account)}
-      className="flex flex-col items-center justify-center gap-1 rounded-xl border border-white/10 bg-white/[0.05] hover:bg-white/[0.09] active:bg-white/[0.12] transition-colors px-1 py-2.5 disabled:opacity-50 disabled:cursor-not-allowed"
+      className="flex w-full items-center justify-between rounded-2xl border border-white/10 bg-white/[0.05] px-3.5 py-3 text-left transition-colors hover:bg-white/[0.09] active:bg-white/[0.12] disabled:cursor-not-allowed disabled:opacity-50"
+      aria-label={`${account.label}, ${account.role}`}
+      data-testid={`button-demo-login-${account.email}`}
     >
       {loading ? (
         <Loader2 className="h-3.5 w-3.5 animate-spin text-white/60" />
       ) : (
-        <>
-          <span className="text-white text-[13px] font-medium leading-none">
-            {account.label}
-          </span>
-          <span className="text-white/40 text-[10px] leading-none">
-            {account.role}
-          </span>
-        </>
+        <span className="min-w-0">
+          <span className="block text-sm font-medium text-white">{account.label}</span>
+          <span className="mt-0.5 block truncate text-[11px] text-white/40">{account.email}</span>
+        </span>
       )}
+      {!loading && <span className="ml-3 shrink-0 text-xs font-medium text-white/45">{account.role}</span>}
     </button>
   );
 }
