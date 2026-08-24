@@ -467,7 +467,8 @@ input[type="date"].date-empty:not(.dark *)::-webkit-datetime-edit-year-field {
 }
 
 .landing-page footer {
-  background: rgba(238, 242, 237, .45);
+  background: #fff !important;
+  color: #000;
   border-color: var(--landing-line) !important;
 }
 
@@ -509,7 +510,8 @@ input[type="date"].date-empty:not(.dark *)::-webkit-datetime-edit-year-field {
 }
 
 .dark .landing-page footer {
-  background: rgba(255, 255, 255, .035);
+  background: #fff !important;
+  color: #000;
 }
 
 @media (max-width: 767px) {

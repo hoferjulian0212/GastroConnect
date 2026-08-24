@@ -275,7 +275,7 @@ export function PublicHeader({
 export function PublicFooter({ lang }: { lang: PublicLang }) {
   const t = footerT[lang];
   return (
-    <footer className="border-t border-black/[0.08] px-4 py-12 md:px-8 md:py-16">
+    <footer className="bg-white text-black border-t border-black/[0.08] px-4 py-12 md:px-8 md:py-16">
       <div className="mx-auto max-w-5xl grid gap-10 md:grid-cols-[1.6fr_1fr_1fr_1fr]">
         <div>
           <Logo size="footer" variant="dark" thick />
