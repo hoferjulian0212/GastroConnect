@@ -963,7 +963,7 @@ export default function Landing() {
               <SheetTrigger asChild>
                 <button
                   type="button"
-                  className="lg:hidden inline-flex h-9 w-10 items-center justify-center rounded-full border border-black/10 bg-black/[0.04] text-foreground transition-colors hover:bg-black/[0.08] dark:border-white/10 dark:bg-white/[0.06]"
+                  className="lg:hidden inline-flex h-9 w-10 items-center justify-center text-foreground transition-colors hover:opacity-60"
                   aria-label={t.navMenu}
                   data-testid="button-mobile-menu"
                 >
@@ -1059,7 +1059,7 @@ export default function Landing() {
       <div id="top" />
 
       {/* HERO */}
-      <section className="landing-hero relative px-4 pb-6 pt-32 md:px-8 md:pb-8 md:pt-28">
+      <section className="landing-hero relative px-4 pb-6 pt-24 md:px-8 md:pb-8 md:pt-28">
         <div className="mx-auto max-w-5xl text-center flex flex-col justify-center gap-10 md:gap-14 min-h-[calc(100svh-5rem)]">
           {/* Headline + subtitle */}
           <div>

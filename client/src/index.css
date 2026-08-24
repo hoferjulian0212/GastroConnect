@@ -486,6 +486,17 @@ input[type="date"].date-empty:not(.dark *)::-webkit-datetime-edit-year-field {
 }
 
 @media (max-width: 767px) {
+  /* The public landing page is intentionally a white canvas on mobile.
+     Override the app theme/body surface so the image-led sections do not
+     introduce a second grey page background. */
+  .landing-page,
+  .landing-page > section,
+  .landing-page > footer,
+  .dark .landing-page {
+    background-color: #fff !important;
+    background-image: none !important;
+  }
+
   .landing-page .landing-hero::before {
     width: 100vw;
     height: 24rem;
