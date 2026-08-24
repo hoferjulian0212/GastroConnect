@@ -27,3 +27,4 @@
 - [Registration approval gate](registration-approval-gate.md) — self-registration email verification and platform approval are separate; pending/denied organizations never receive protected API auth.
 - [Checkout delivery outbox](checkout-delivery-outbox.md) — checkout order, initial status, and supplier-delivery retry must commit together; leases and sink uniqueness prevent duplicate recovery sends.
 - [Checkout deployment migrations](checkout-deployment-migrations.md) — legacy databases lack a reliable Drizzle baseline; checkout schema changes use the dedicated preflighted deployment ledger.
+- [Published health contract](published-health-contract.md) — public health checks must validate JSON content, not only an HTTP 200, to reject SPA fallbacks.

@@ -3,7 +3,7 @@
 **Run date:** 2026-08-24  
 **Environment:** Replit development workflow (`Start application`, port 5000), shared
 development database, seeded demo data  
-**Release decision:** **Conditional / not production sign-off**
+**Release decision:** **Blocked / not production sign-off**
 
 This report records executable acceptance evidence from the application workspace.
 It does not present local or simulated checks as proof of production backups,
@@ -31,8 +31,8 @@ provider delivery, or deployment rollback.
 | Object storage | **Not verified end-to-end** | Requires a real upload/download/failure drill |
 | PMS/ERP | **Partially verified** | Correct-secret PMS webhook returns 200 and ERP adapter/sync tests pass; live provider import and outage recovery were not proven |
 | Backup/restore | **Not verified** | Requires an operator-owned database and object-storage restore drill |
-| Monitoring and alert routing | **Configured in application; external delivery pending** | `/health/live`, `/health/ready`, and `/health/metrics` are pollable without session state; metrics include five-minute API 5xx rate, retry-outbox backlog/terminal counts, oldest pending age, process uptime, and PostgreSQL pool exhaustion |
-| Deployment rollback | **Not verified** | Requires a deployment canary/rollback drill and attached deployment evidence |
+| Monitoring and alert routing | **Configured in development; production route check failed** | Development endpoints are pollable without session state; metrics are rate-limited, time-bounded, short-cached, fail closed on outbox-query/schema errors, and include five-minute API 5xx rate, retry-outbox backlog/recent terminal failures, oldest pending age, process uptime, and PostgreSQL pool exhaustion. At 2026-08-24T10:56:57Z the published URL returned SPA HTML, not health JSON, for all three health paths. |
+| Deployment rollback | **Not verified / blocked** | Requires a deployed server release exposing the health contract, then an operator-owned canary/rollback drill with attached deployment evidence |
 
 ## Role-path acceptance coverage
 
@@ -72,6 +72,41 @@ The application code and existing tests provide evidence for:
 They do not replace provider outage, device offline, data restore, external
 monitoring, or deployment rollback drills.
 
+## Recovery and rollback evidence ledger
+
+This ledger records both the evidence available in the application workspace and
+the operator-owned evidence that is still absent. A blank measurement is not a
+successful drill: it means the drill was not run from an environment with
+production database, object-storage, and deployment controls.
+
+| Check | Timestamp (UTC) | Result | Recovery measurement / readiness |
+| --- | --- | --- | --- |
+| Development checkout migration preflight | 2026-08-24T10:56:16Z | Passed | No duplicate checkout artifacts found; read-only preflight completed. |
+| Development checkout migration catalog verification | 2026-08-24T10:56:16Z | Passed | Required checkout schema and indexes are present. This is migration readiness, not a restore. |
+| Development liveness, readiness, and metrics checks | 2026-08-24T11:01:21Z | Passed | All returned JSON HTTP 200. Metrics reported no pending/recent-terminal retry records and a non-exhausted pool. |
+| Published health-route inspection | 2026-08-24T10:56:57Z | **Failed** | `/health/live`, `/health/ready`, and `/health/metrics` each returned HTTP 200 with `text/html` SPA content instead of the expected JSON health response. External monitoring must not be enabled against this deployment until the corrected server release is published and rechecked. |
+| PostgreSQL backup and isolated restore | Not executed | **Not proven** | RPO: not measured. RTO: not measured. Post-restore readiness: not measured. Requires an operations owner, production backup inventory, and an isolated restore target. |
+| Object-storage backup and isolated restore | Not executed | **Not proven** | RPO: not measured. RTO: not measured. Object count/checksum and signed-download validation: not measured. Requires an operations owner and isolated restore bucket. |
+| Canary deployment and rollback | Not executed | **Blocked** | Canary start/end, rollback start/end, and post-rollback readiness: not measured. The current published route mismatch must be fixed before this drill. |
+
+### Required operator drill evidence before sign-off
+
+1. Record backup identifiers, completion timestamps, retention policy, and
+   accountable operations owner for PostgreSQL and object storage.
+2. Restore each backup into isolated targets; record restore start/end, measured
+   RPO and RTO, row/object counts, checksum or sample-download verification,
+   and `/health/ready` response from the restored application.
+3. Publish the server release that exposes the JSON health endpoints, then
+   verify status code **and** `application/json` content type on all three
+   production health paths. A 200 HTML SPA fallback is a failure.
+4. Route a canary to the new release. Record deployment ID, start/end time,
+   migration preflight result, canary error rate, and readiness result.
+5. Roll back to the previously known-good release. Record rollback start/end,
+   measured recovery time, post-rollback `/health/live` and `/health/ready`
+   bodies, and a read-only order/checkout smoke check. Preserve business data
+   and outbox records; do not treat a code rollback as permission to delete
+   records or reverse schema destructively.
+
 ## Release checklist and remaining owners
 
 Before production sign-off, attach evidence for:
@@ -91,20 +126,23 @@ Before production sign-off, attach evidence for:
    | Readiness | non-2xx for 2 consecutive checks | external monitor's incident channel | Platform operations |
    | API errors | `api.serverErrorRate >= 0.05` and `api.requests >= 20` in 5 minutes | external monitor's incident channel | Backend on-call |
    | Retry backlog | `retryOutbox.pending >= 10` for 10 minutes | external monitor's incident channel | Integrations on-call |
-   | Terminal deliveries | `retryOutbox.terminal >= 1` | external monitor's incident channel | Integrations on-call |
+   | Recent terminal deliveries | `retryOutbox.terminalRecent >= 1` in the prior 24 hours | external monitor's incident channel | Integrations on-call |
    | Database exhaustion | `database.pool.exhausted == true` for 2 minutes | external monitor's incident channel | Backend on-call |
 
    External delivery was **not exercised in this workspace** because no
    monitor account, incident channel, or production URL is provisioned here.
    The named operational owners above must create the checks, send a test
    notification, and attach the provider delivery ID/timestamp to this
-   report before production sign-off. The application-side metrics endpoint
-   and alert contract are ready for that handoff.
+    report before production sign-off. The application-side metrics endpoint
+    and alert contract are ready for that handoff in development, but the
+    published deployment must first be updated because it currently serves SPA
+    HTML for the health routes.
 4. **QA/device:** restaurant → supplier → driver → restaurant browser journey,
    refresh and stale tabs, duplicate clicks, concurrent actions, and offline
    reconnect on supported desktop and mobile devices.
 5. **Integrations:** successful and failed drills for Resend, push, object
    storage, PMS, and ERP, including user-visible recovery behavior.
 
-Until those artifacts exist, the release should be treated as conditionally
-validated rather than fully accepted for production.
+Until those artifacts exist, the release is **blocked from production sign-off**.
+The failed published-health-route inspection is an immediate release blocker, not
+a conditionally accepted result.
