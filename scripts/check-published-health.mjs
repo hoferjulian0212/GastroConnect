@@ -7,16 +7,43 @@
  * Usage:
  *   node scripts/check-published-health.mjs https://example.replit.app
  *   PUBLISHED_URL=https://example.replit.app npm run check:published-health
+ *   node scripts/check-published-health.mjs --compare .release-health/history.jsonl
  *
  * This intentionally sends no credentials. The health endpoints are public
  * and the check must be safe to run from a release pipeline.
  */
 
-const deploymentUrl = process.argv[2] ?? process.env.PUBLISHED_URL;
+import { appendFile, mkdir, readFile } from "node:fs/promises";
+import { dirname } from "node:path";
+
+const args = process.argv.slice(2);
+const compareIndex = args.indexOf("--compare");
+if (compareIndex !== -1) {
+  const historyPath = args[compareIndex + 1] ?? process.env.RELEASE_HEALTH_HISTORY_FILE ?? ".release-health/history.jsonl";
+  process.exitCode = await printComparison(historyPath, Number(process.env.RELEASE_HEALTH_COMPARE_LIMIT ?? 10));
+  // Do not use process.exit here: allow stdout/stderr to flush.
+  await new Promise((resolve) => setImmediate(resolve));
+  process.exit();
+}
+
+const historyIndex = args.indexOf("--history-file");
+const historyPath = historyIndex === -1
+  ? process.env.RELEASE_HEALTH_HISTORY_FILE
+  : args[historyIndex + 1];
+if (historyIndex !== -1 && !historyPath) {
+  console.error("--history-file requires a path.");
+  process.exit(2);
+}
+
+const deploymentUrl = args.find((arg, index) =>
+  !arg.startsWith("--") && !(historyIndex !== -1 && index === historyIndex + 1))
+  ?? process.env.PUBLISHED_URL;
 if (!deploymentUrl) {
   console.error(
     "Usage: node scripts/check-published-health.mjs <deployment-url>\n" +
-      "Or set PUBLISHED_URL to the published deployment URL.",
+      "Or set PUBLISHED_URL to the published deployment URL.\n" +
+      "Add --history-file <path> (or RELEASE_HEALTH_HISTORY_FILE) to retain results.\n" +
+      "Use --compare <path> to compare recent retained releases.",
   );
   process.exit(2);
 }
@@ -122,9 +149,81 @@ for (const result of results) {
   }
 }
 
+if (historyPath) {
+  const record = {
+    checkedAt: new Date().toISOString(),
+    deployment: deploymentMetadata(),
+    origin: baseUrl.origin,
+    passed: !failed,
+    endpoints: results,
+  };
+  try {
+    await mkdir(dirname(historyPath), { recursive: true });
+    await appendFile(historyPath, `${JSON.stringify(record)}\n`, "utf8");
+    console.log(`RELEASE_HEALTH_HISTORY path=${historyPath} retained=true`);
+  } catch (error) {
+    console.error(
+      `Unable to retain release health result in ${historyPath}: ${
+        error instanceof Error ? error.message : String(error)
+      }`,
+    );
+    process.exit(1);
+  }
+}
+
 if (failed) {
   console.error(`Published health contract failed for ${baseUrl.origin}.`);
   process.exit(1);
 }
 
 console.log(`Published health contract passed for ${baseUrl.origin}.`);
+
+function deploymentMetadata() {
+  const first = (...names) => names.map((name) => process.env[name]).find(Boolean) ?? null;
+  return {
+    id: first("RELEASE_DEPLOYMENT_ID", "DEPLOYMENT_ID", "REPL_DEPLOYMENT_ID"),
+    version: first("RELEASE_VERSION", "DEPLOYMENT_VERSION", "RELEASE_TAG"),
+    commit: first("RELEASE_COMMIT", "GIT_COMMIT", "CI_COMMIT_SHA"),
+    environment: first("RELEASE_ENVIRONMENT", "DEPLOYMENT_ENVIRONMENT", "NODE_ENV"),
+  };
+}
+
+async function printComparison(historyPath, requestedLimit) {
+  let content;
+  try {
+    content = await readFile(historyPath, "utf8");
+  } catch (error) {
+    if (error?.code === "ENOENT") {
+      console.error(`No release health history found at ${historyPath}.`);
+      return 1;
+    }
+    throw error;
+  }
+
+  const records = content.split(/\r?\n/).filter(Boolean).flatMap((line, lineNumber) => {
+    try {
+      const record = JSON.parse(line);
+      return record?.checkedAt && Array.isArray(record.endpoints) ? [record] : [];
+    } catch {
+      console.error(`Ignoring malformed release health history line ${lineNumber + 1}.`);
+      return [];
+    }
+  });
+  const limit = Number.isInteger(requestedLimit) && requestedLimit > 0 ? requestedLimit : 10;
+  const recent = records.slice(-limit).reverse();
+  console.log(`RELEASE_HEALTH_COMPARISON releases=${recent.length} history=${historyPath}`);
+  if (!recent.length) {
+    console.log("No release health results recorded.");
+    return 0;
+  }
+  console.log("checked_at | deployment | version | result | endpoint outcomes");
+  for (const record of recent) {
+    const deployment = record.deployment?.id ?? record.origin ?? "unknown";
+    const version = record.deployment?.version ?? record.deployment?.commit ?? "unknown";
+    const outcomes = record.endpoints
+      .map((endpoint) => `${endpoint.path}=${endpoint.result}${endpoint.reason ? ` (${endpoint.reason})` : ""}`)
+      .join("; ");
+    console.log(`${record.checkedAt} | ${deployment} | ${version} | ${record.passed ? "PASS" : "FAIL"} | ${outcomes}`);
+  }
+  return 0;
+}

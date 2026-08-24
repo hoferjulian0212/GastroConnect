@@ -4,6 +4,7 @@ import { once } from "node:events";
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { describe, test } from "node:test";
+import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 
@@ -66,12 +67,14 @@ async function startFixtureServer(overrides: Record<string, Fixture>) {
   };
 }
 
-async function runChecker(url: string, timeoutMs?: number) {
+async function runChecker(url: string, timeoutMs?: number, historyFile?: string, extraEnv?: Record<string, string>) {
   const child = spawn(process.execPath, [checkerPath, url], {
     cwd: projectRoot,
     env: {
       ...process.env,
       ...(timeoutMs === undefined ? {} : { PUBLISHED_HEALTH_TIMEOUT_MS: String(timeoutMs) }),
+      ...(historyFile === undefined ? {} : { RELEASE_HEALTH_HISTORY_FILE: historyFile }),
+      ...extraEnv,
     },
     stdio: ["ignore", "pipe", "pipe"],
   });
@@ -160,6 +163,82 @@ describe("published health contract checker", () => {
       assert.match(result.stdout, /RELEASE_HEALTH_SUMMARY/);
     } finally {
       await server.close();
+    }
+  });
+
+  test("retains passing and failing endpoint outcomes with deployment metadata", async () => {
+    const server = await startFixtureServer({
+      "/health/ready": { status: 503, body: JSON.stringify({ status: "unavailable" }) },
+    });
+    const directory = await mkdtemp(resolve(projectRoot, "published-health-test-"));
+    const historyFile = resolve(directory, "history.jsonl");
+
+    try {
+      const result = await runChecker(server.url, undefined, historyFile, {
+        RELEASE_DEPLOYMENT_ID: "deployment-a",
+        RELEASE_VERSION: "2026.08.24",
+        RELEASE_COMMIT: "abc123",
+      });
+      assert.notEqual(result.exitCode, 0, result.stdout + result.stderr);
+      const records = (await readFile(historyFile, "utf8")).trim().split("\n").map((line) => JSON.parse(line));
+      assert.equal(records.length, 1);
+      assert.equal(records[0].passed, false);
+      assert.deepEqual(records[0].deployment, {
+        id: "deployment-a",
+        version: "2026.08.24",
+        commit: "abc123",
+        environment: null,
+      });
+      assert.deepEqual(records[0].endpoints.find((endpoint: { path: string }) => endpoint.path === "/health/live"), {
+        path: "/health/live",
+        result: "PASS",
+      });
+      assert.equal(records[0].endpoints.find((endpoint: { path: string }) => endpoint.path === "/health/ready").result, "FAIL");
+      assert.match(records[0].endpoints.find((endpoint: { path: string }) => endpoint.path === "/health/ready").reason, /HTTP 503/);
+    } finally {
+      await server.close();
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+
+  test("compares recent retained releases and includes failure reasons", async () => {
+    const directory = await mkdtemp(resolve(projectRoot, "published-health-test-"));
+    const historyFile = resolve(directory, "history.jsonl");
+    const records = [
+      {
+        checkedAt: "2026-08-23T12:00:00.000Z",
+        deployment: { id: "old", version: "v1", commit: null, environment: null },
+        origin: "https://old.example",
+        passed: false,
+        endpoints: [{ path: "/health/live", result: "FAIL", reason: "content-type text/html" }],
+      },
+      {
+        checkedAt: "2026-08-24T12:00:00.000Z",
+        deployment: { id: "new", version: "v2", commit: null, environment: null },
+        origin: "https://new.example",
+        passed: true,
+        endpoints: [{ path: "/health/live", result: "PASS" }],
+      },
+    ];
+    const { writeFile } = await import("node:fs/promises");
+    await writeFile(historyFile, records.map((record) => JSON.stringify(record)).join("\n") + "\n");
+    try {
+      const result = await new Promise<{ exitCode: number | null; stdout: string; stderr: string }>((resolveResult) => {
+        const child = spawn(process.execPath, [checkerPath, "--compare", historyFile], {
+          cwd: projectRoot,
+          stdio: ["ignore", "pipe", "pipe"],
+        });
+        Promise.all([streamText(child.stdout), streamText(child.stderr)]).then(([stdout, stderr]) => {
+          child.once("close", (exitCode) => resolveResult({ exitCode, stdout, stderr }));
+        });
+      });
+      assert.equal(result.exitCode, 0, result.stdout + result.stderr);
+      assert.match(result.stdout, /RELEASE_HEALTH_COMPARISON releases=2/);
+      assert.match(result.stdout, /old \| v1 \| FAIL/);
+      assert.match(result.stdout, /content-type text\/html/);
+      assert.match(result.stdout, /new \| v2 \| PASS/);
+    } finally {
+      await rm(directory, { recursive: true, force: true });
     }
   });
 

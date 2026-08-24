@@ -10,6 +10,7 @@
     "start": "NODE_ENV=production node dist/index.cjs",
     "test": "node --import tsx --test server/*.test.ts && npx vitest run",
     "check:published-health": "node scripts/check-published-health.mjs",
+    "compare:published-health": "node scripts/check-published-health.mjs --compare",
     "check": "tsc",
     "db:push": "drizzle-kit push",
     "db:migrate": "tsx scripts/migrate.ts",

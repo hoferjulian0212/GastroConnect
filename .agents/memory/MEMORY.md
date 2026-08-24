@@ -28,3 +28,4 @@
 - [Checkout delivery outbox](checkout-delivery-outbox.md) — checkout order, initial status, and supplier-delivery retry must commit together; leases and sink uniqueness prevent duplicate recovery sends.
 - [Checkout deployment migrations](checkout-deployment-migrations.md) — legacy databases lack a reliable Drizzle baseline; checkout schema changes use the dedicated preflighted deployment ledger.
 - [Published health contract](published-health-contract.md) — public health checks must validate JSON content, not only an HTTP 200, to reject SPA fallbacks.
+- [Release health history](release-health-history.md) — comparison needs a pipeline-retained JSONL path; local release workspaces are not durable history.
