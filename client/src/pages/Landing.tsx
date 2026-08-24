@@ -1320,14 +1320,13 @@ export default function Landing() {
                 accent: "blue",
               },
             ].map((p, pIdx) => (
-              <MotionReveal
+              <div
                 key={p.testid}
-                delay={pIdx * 120}
                 className="w-full min-w-full shrink-0 snap-center md:min-w-0 md:shrink"
               >
               <div
                 data-pillar-slide={pIdx}
-                className="h-full rounded-3xl p-6 md:p-10 flex flex-col border bg-white dark:bg-neutral-900 border-neutral-200 dark:border-neutral-800"
+                className="h-full rounded-3xl p-6 md:p-10 flex flex-col border border-neutral-200 bg-white dark:border-neutral-200 dark:bg-white"
                 data-testid={p.testid}
               >
                 {/* Icon */}
@@ -1358,7 +1357,7 @@ export default function Landing() {
                   </ul>
                 </div>
               </div>
-              </MotionReveal>
+              </div>
             ))}
             <div className="w-1/2 min-w-[50%] shrink-0 md:hidden" aria-hidden="true" />
           </div>
@@ -1395,7 +1394,7 @@ export default function Landing() {
       {/* Scroll-driven marquee separator */}
       {!reduceMotion && (
         <div
-          className="overflow-hidden py-5 md:py-7 mt-10 md:mt-16 select-none pointer-events-none"
+          className="hidden overflow-hidden py-5 md:py-7 mt-10 md:mt-16 select-none pointer-events-none md:block"
           aria-hidden
         >
           <ScrollMarquee
