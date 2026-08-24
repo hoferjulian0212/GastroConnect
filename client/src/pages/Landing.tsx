@@ -969,9 +969,6 @@ export default function Landing() {
                 <div className="flex h-full flex-col">
                   <div className="flex items-center justify-between border-b border-border px-5 py-5">
                     <Logo size="nav" variant="dark" thick data-testid="logo-landing-mobile-menu" />
-                    <span className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                      {t.navMenu}
-                    </span>
                   </div>
                   <nav className="flex-1 overflow-y-auto px-5 py-5" aria-label={t.navMenu}>
                     <div className="space-y-1">
@@ -992,7 +989,7 @@ export default function Landing() {
                       ))}
                     </div>
                   </nav>
-                  <div className="space-y-3 border-t border-border px-5 py-5">
+                  <div className="space-y-3 border-t border-border px-5 pb-[calc(env(safe-area-inset-bottom,0px)+2.75rem)] pt-5">
                     <Button
                       className="h-12 w-full rounded-full bg-black text-white shadow-none hover:bg-black/85 dark:bg-white dark:text-black dark:hover:bg-white/90"
                       onClick={() => {
