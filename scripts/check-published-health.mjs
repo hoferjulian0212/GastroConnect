@@ -8,18 +8,30 @@
  *   node scripts/check-published-health.mjs https://example.replit.app
  *   PUBLISHED_URL=https://example.replit.app npm run check:published-health
  *   node scripts/check-published-health.mjs --compare .release-health/history.jsonl
+ *   RELEASE_HEALTH_HISTORY_ARTIFACT=/path/to/retained/history.jsonl npm run release:restore-health-history
+ *   RELEASE_HEALTH_HISTORY_ARTIFACT=/path/to/retained/history.jsonl npm run release:publish-health-history
  *
  * This intentionally sends no credentials. The health endpoints are public
  * and the check must be safe to run from a release pipeline.
  */
 
-import { appendFile, mkdir, readFile } from "node:fs/promises";
+import { appendFile, copyFile, mkdir, readFile, rename } from "node:fs/promises";
 import { dirname } from "node:path";
 
 const args = process.argv.slice(2);
+if (args.includes("--restore-history") || args.includes("--publish-history")) {
+  const operation = args.includes("--restore-history") ? "restore" : "publish";
+  process.exitCode = await retainHistory(operation);
+  await new Promise((resolve) => setImmediate(resolve));
+  process.exit();
+}
+
 const compareIndex = args.indexOf("--compare");
 if (compareIndex !== -1) {
-  const historyPath = args[compareIndex + 1] ?? process.env.RELEASE_HEALTH_HISTORY_FILE ?? ".release-health/history.jsonl";
+  const historyPath = args[compareIndex + 1]
+    ?? process.env.RELEASE_HEALTH_HISTORY_ARTIFACT
+    ?? process.env.RELEASE_HEALTH_HISTORY_FILE
+    ?? ".release-health/history.jsonl";
   process.exitCode = await printComparison(historyPath, Number(process.env.RELEASE_HEALTH_COMPARE_LIMIT ?? 10));
   // Do not use process.exit here: allow stdout/stderr to flush.
   await new Promise((resolve) => setImmediate(resolve));
@@ -226,4 +238,54 @@ async function printComparison(historyPath, requestedLimit) {
     console.log(`${record.checkedAt} | ${deployment} | ${version} | ${record.passed ? "PASS" : "FAIL"} | ${outcomes}`);
   }
   return 0;
+}
+
+async function retainHistory(operation) {
+  const artifactPath = process.env.RELEASE_HEALTH_HISTORY_ARTIFACT;
+  const historyFile = process.env.RELEASE_HEALTH_HISTORY_FILE ?? ".release-health/history.jsonl";
+
+  if (!artifactPath) {
+    console.log(
+      `RELEASE_HEALTH_HISTORY_${operation.toUpperCase()} skipped=true ` +
+        "reason=RELEASE_HEALTH_HISTORY_ARTIFACT is not configured",
+    );
+    return 0;
+  }
+
+  if (artifactPath === historyFile) {
+    console.log(`RELEASE_HEALTH_HISTORY_${operation.toUpperCase()} path=${historyFile} retained=true`);
+    return 0;
+  }
+
+  if (operation === "restore") {
+    try {
+      await mkdir(dirname(historyFile), { recursive: true });
+      await copyFile(artifactPath, historyFile);
+      console.log(`RELEASE_HEALTH_HISTORY_RESTORE source=${artifactPath} path=${historyFile} retained=true`);
+    } catch (error) {
+      if (error?.code === "ENOENT") {
+        console.log(`RELEASE_HEALTH_HISTORY_RESTORE source=${artifactPath} path=${historyFile} retained=false reason=not_found`);
+        return 0;
+      }
+      console.error(`Unable to restore release health history from ${artifactPath}: ${errorMessage(error)}`);
+      return 1;
+    }
+    return 0;
+  }
+
+  try {
+    await mkdir(dirname(artifactPath), { recursive: true });
+    const temporaryPath = `${artifactPath}.tmp-${process.pid}`;
+    await copyFile(historyFile, temporaryPath);
+    await rename(temporaryPath, artifactPath);
+    console.log(`RELEASE_HEALTH_HISTORY_PUBLISH path=${artifactPath} retained=true`);
+    return 0;
+  } catch (error) {
+    console.error(`Unable to publish release health history to ${artifactPath}: ${errorMessage(error)}`);
+    return 1;
+  }
+}
+
+function errorMessage(error) {
+  return error instanceof Error ? error.message : String(error);
 }

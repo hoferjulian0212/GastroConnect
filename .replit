@@ -29,6 +29,9 @@ deploymentTarget = "autoscale"
 run = ["node", "./dist/index.cjs"]
 # The published URL is supplied by the release operator as PUBLISHED_URL.
 # A failing health contract stops the release before the new artifact is approved.
+# RELEASE_HEALTH_HISTORY_ARTIFACT must point to the CI/release artifact file that
+# is restored and overwritten on each release. Comparison reads the durable
+# artifact when configured: npm run compare:published-health.
 build = ["npm", "run", "release:build"]
 
 [workflows]

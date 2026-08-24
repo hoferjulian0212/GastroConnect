@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "NODE_ENV=development tsx server/index.ts",
     "build": "tsx script/build.ts",
-    "release:build": "npm run build && npm run check:published-health",
+    "release:build": "npm run release:restore-health-history && npm run build && npm run check:published-health -- --history-file .release-health/history.jsonl; check_status=$?; npm run release:publish-health-history; publish_status=$?; if [ $check_status -ne 0 ]; then exit $check_status; else exit $publish_status; fi",
+    "release:restore-health-history": "node scripts/check-published-health.mjs --restore-history",
+    "release:publish-health-history": "node scripts/check-published-health.mjs --publish-history",
     "start": "NODE_ENV=production node dist/index.cjs",
     "test": "node --import tsx --test server/*.test.ts && npx vitest run",
     "check:published-health": "node scripts/check-published-health.mjs",

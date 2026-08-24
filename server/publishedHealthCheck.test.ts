@@ -4,7 +4,7 @@ import { once } from "node:events";
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { describe, test } from "node:test";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 
@@ -85,6 +85,17 @@ async function runChecker(url: string, timeoutMs?: number, historyFile?: string,
   ]);
   const [exitCode] = await once(child, "close");
 
+  return { exitCode, stdout, stderr };
+}
+
+async function runHistoryCommand(command: "--restore-history" | "--publish-history", env: Record<string, string>) {
+  const child = spawn(process.execPath, [checkerPath, command], {
+    cwd: projectRoot,
+    env: { ...process.env, ...env },
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  const [stdout, stderr] = await Promise.all([streamText(child.stdout), streamText(child.stderr)]);
+  const [exitCode] = await once(child, "close");
   return { exitCode, stdout, stderr };
 }
 
@@ -220,7 +231,6 @@ describe("published health contract checker", () => {
         endpoints: [{ path: "/health/live", result: "PASS" }],
       },
     ];
-    const { writeFile } = await import("node:fs/promises");
     await writeFile(historyFile, records.map((record) => JSON.stringify(record)).join("\n") + "\n");
     try {
       const result = await new Promise<{ exitCode: number | null; stdout: string; stderr: string }>((resolveResult) => {
@@ -237,6 +247,42 @@ describe("published health contract checker", () => {
       assert.match(result.stdout, /old \| v1 \| FAIL/);
       assert.match(result.stdout, /content-type text\/html/);
       assert.match(result.stdout, /new \| v2 \| PASS/);
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+
+  test("restores prior history and publishes the updated ledger", async () => {
+    const directory = await mkdtemp(resolve(projectRoot, "published-health-test-"));
+    const artifact = resolve(directory, "artifact", "history.jsonl");
+    const historyFile = resolve(directory, "workspace", "history.jsonl");
+    const priorRecord = {
+      checkedAt: "2026-08-23T12:00:00.000Z",
+      deployment: { id: "prior" },
+      endpoints: [{ path: "/health/live", result: "PASS" }],
+    };
+
+    try {
+      await mkdir(resolve(directory, "artifact"), { recursive: true });
+      await writeFile(artifact, `${JSON.stringify(priorRecord)}\n`);
+      const restore = await runHistoryCommand("--restore-history", {
+        RELEASE_HEALTH_HISTORY_ARTIFACT: artifact,
+        RELEASE_HEALTH_HISTORY_FILE: historyFile,
+      });
+      assert.equal(restore.exitCode, 0, restore.stdout + restore.stderr);
+      assert.equal((await readFile(historyFile, "utf8")).trim(), JSON.stringify(priorRecord));
+
+      await writeFile(historyFile, `${JSON.stringify(priorRecord)}\n${JSON.stringify({
+        ...priorRecord,
+        checkedAt: "2026-08-24T12:00:00.000Z",
+        deployment: { id: "current" },
+      })}\n`);
+      const publish = await runHistoryCommand("--publish-history", {
+        RELEASE_HEALTH_HISTORY_ARTIFACT: artifact,
+        RELEASE_HEALTH_HISTORY_FILE: historyFile,
+      });
+      assert.equal(publish.exitCode, 0, publish.stdout + publish.stderr);
+      assert.equal(await readFile(artifact, "utf8"), await readFile(historyFile, "utf8"));
     } finally {
       await rm(directory, { recursive: true, force: true });
     }
