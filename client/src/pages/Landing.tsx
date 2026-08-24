@@ -779,6 +779,9 @@ function OrderingProcessCanvas({
       if (document.hidden) return;
       video.muted = true;
       video.defaultMuted = true;
+      video.setAttribute("muted", "");
+      video.setAttribute("playsinline", "");
+      video.setAttribute("webkit-playsinline", "");
       void video.play().then(renderFrames).catch(() => {
         // Retry in case the browser is still decoding or waking the media
         // element after the page scrolls into place.
@@ -792,6 +795,7 @@ function OrderingProcessCanvas({
     };
 
     const onScroll = () => tryPlay();
+    const onUserGesture = () => tryPlay();
     const onVisibilityChange = () => {
       if (document.hidden) {
         video.pause();
@@ -802,8 +806,11 @@ function OrderingProcessCanvas({
 
     video.addEventListener("loadedmetadata", renderFrames);
     video.addEventListener("loadeddata", renderFrames);
+    video.addEventListener("canplay", tryPlay);
     video.addEventListener("play", renderFrames);
     window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("pointerdown", onUserGesture, { passive: true });
+    window.addEventListener("touchstart", onUserGesture, { passive: true });
     document.addEventListener("visibilitychange", onVisibilityChange);
     video.load();
     renderFrames();
@@ -812,8 +819,11 @@ function OrderingProcessCanvas({
     return () => {
       video.removeEventListener("loadedmetadata", renderFrames);
       video.removeEventListener("loadeddata", renderFrames);
+      video.removeEventListener("canplay", tryPlay);
       video.removeEventListener("play", renderFrames);
       window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("pointerdown", onUserGesture);
+      window.removeEventListener("touchstart", onUserGesture);
       document.removeEventListener("visibilitychange", onVisibilityChange);
       if (retryTimer !== null) window.clearTimeout(retryTimer);
       if (animationFrame !== null) window.cancelAnimationFrame(animationFrame);
