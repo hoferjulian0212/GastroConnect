@@ -72,7 +72,10 @@ const checks = [
   },
 ];
 
-const timeoutMs = 10_000;
+const configuredTimeoutMs = Number(process.env.PUBLISHED_HEALTH_TIMEOUT_MS ?? 10_000);
+const timeoutMs = Number.isFinite(configuredTimeoutMs) && configuredTimeoutMs > 0
+  ? configuredTimeoutMs
+  : 10_000;
 let failed = false;
 
 for (const check of checks) {

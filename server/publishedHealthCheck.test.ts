@@ -31,17 +31,23 @@ type Fixture = {
   status?: number;
   contentType?: string;
   body: string;
+  hang?: boolean;
 };
 
 async function startFixtureServer(overrides: Record<string, Fixture>) {
+  const sockets = new Set<import("node:net").Socket>();
   const server: Server = createServer((request: IncomingMessage, response: ServerResponse) => {
     const path = new URL(request.url ?? "/", "http://fixture").pathname;
     const override = overrides[path];
+    if (override?.hang) return;
+
     const body = override?.body ?? JSON.stringify(validResponses[path]);
     response.statusCode = override?.status ?? 200;
     response.setHeader("content-type", override?.contentType ?? "application/json");
     response.end(body);
   });
+  server.on("connection", (socket) => sockets.add(socket));
+  server.on("close", () => sockets.clear());
 
   server.listen(0, "127.0.0.1");
   await once(server, "listening");
@@ -51,15 +57,19 @@ async function startFixtureServer(overrides: Record<string, Fixture>) {
   return {
     url: `http://127.0.0.1:${address.port}`,
     close: () => new Promise<void>((resolveClose, reject) => {
+      for (const socket of sockets) socket.destroy();
       server.close((error) => error ? reject(error) : resolveClose());
     }),
   };
 }
 
-async function runChecker(url: string) {
+async function runChecker(url: string, timeoutMs?: number) {
   const child = spawn(process.execPath, [checkerPath, url], {
     cwd: projectRoot,
-    env: { ...process.env },
+    env: {
+      ...process.env,
+      ...(timeoutMs === undefined ? {} : { PUBLISHED_HEALTH_TIMEOUT_MS: String(timeoutMs) }),
+    },
     stdio: ["ignore", "pipe", "pipe"],
   });
 
@@ -113,4 +123,29 @@ describe("published health contract checker", () => {
       }
     });
   }
+
+  test("rejects a health endpoint that never responds and identifies it", async () => {
+    const server = await startFixtureServer({
+      "/health/live": { body: "", hang: true },
+    });
+
+    try {
+      const result = await runChecker(server.url, 50);
+      assert.notEqual(result.exitCode, 0, result.stdout + result.stderr);
+      assert.match(result.stderr, /FAIL \/health\/live:/);
+      assert.match(result.stderr, /timeout|abort/i);
+    } finally {
+      await server.close();
+    }
+  });
+
+  test("rejects an unreachable deployment and identifies the affected endpoint", async () => {
+    const server = await startFixtureServer({});
+    const unreachableUrl = server.url;
+    await server.close();
+
+    const result = await runChecker(unreachableUrl);
+    assert.notEqual(result.exitCode, 0, result.stdout + result.stderr);
+    assert.match(result.stderr, /FAIL \/health\/live:/);
+  });
 });
