@@ -4,6 +4,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import {
   Bell,
   ShoppingCart,
+  Truck,
   Settings as SettingsIcon,
   MessageSquare,
   ShoppingBag,
@@ -15,7 +16,6 @@ import {
   MoreHorizontal,
   User as UserIcon,
   HelpCircle,
-  Sparkles,
   Moon,
   Sun,
   LogOut,
@@ -23,7 +23,7 @@ import {
   UserRound,
 } from "lucide-react";
 import { openGlobalSearch } from "@/components/GlobalSearch";
-import { openAiAssistant } from "@/components/AiAssistant";
+import { openAiAssistant, SupportChatIcon } from "@/components/AiAssistant";
 import { useUser } from "@/context/UserContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { useTheme } from "@/hooks/use-theme";
@@ -49,7 +49,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { can } from "@shared/permissions";
-import type { Notification } from "@shared/schema";
+import type { Notification, OrderWithDetails } from "@shared/schema";
 
 interface MobileTopActionsProps {
   variant?: "dark" | "light";
@@ -109,6 +109,14 @@ export function MobileTopActions({
     enabled: !!currentUser?.id,
   });
   const unreadCount = notifCount?.count || 0;
+  const { data: restaurantOrders } = useQuery<OrderWithDetails[]>({
+    queryKey: [`/api/orders?restaurantId=${currentUser?.id}`],
+    enabled: !!currentUser?.id && currentRole === "restaurant",
+  });
+  const activeDeliveryOrders = (restaurantOrders || []).filter(
+    (order) => order.status === "in_delivery",
+  );
+  const hasActiveDelivery = activeDeliveryOrders.length > 0;
 
   const onCart = location.startsWith("/restaurant/cart");
   const showCart =
@@ -122,12 +130,6 @@ export function MobileTopActions({
     testId: "button-mobile-more-search",
   });
   overflowActions.push({
-    icon: <Sparkles className="h-5 w-5" />,
-    label: lang === "it" ? "Assistente AI" : "KI-Assistent",
-    onClick: () => { setMoreOpen(false); openAiAssistant(); },
-    testId: "button-mobile-more-ai",
-  });
-  overflowActions.push({
     icon: <HelpCircle className="h-5 w-5" />,
     label: lang === "it" ? "Aiuto" : "Hilfe",
     onClick: () => { setMoreOpen(false); setLocation(`/${currentRole}/help`); },
@@ -137,49 +139,63 @@ export function MobileTopActions({
   return (
     <>
       <div
-        className={`flex items-center gap-1.5 ${className ?? ""}`}
+        className={`flex w-full items-center justify-between gap-1.5 ${className ?? ""}`}
         data-testid="mobile-top-actions"
       >
         <button
-          onClick={() => setNotifOpen(true)}
+          onClick={() => openAiAssistant()}
           className={btnCls}
-          data-testid="button-mobile-notifications"
-          aria-label="Notifications"
+          data-testid="button-mobile-ai"
+          aria-label={lang === "it" ? "Apri assistente AI" : "KI-Assistent öffnen"}
         >
-          <Bell className="h-[18px] w-[18px]" />
-          {unreadCount > 0 && (
-            <span className="absolute -top-0.5 -right-0.5 h-4 min-w-4 px-1 flex items-center justify-center text-[10px] font-medium bg-primary text-primary-foreground rounded-full">
-              {unreadCount > 99 ? "99+" : unreadCount}
-            </span>
-          )}
+          <SupportChatIcon className="h-[18px] w-[18px]" />
         </button>
 
-        {showCart && (
+        <div className="flex items-center gap-1.5">
           <button
-            onClick={() => setLocation("/restaurant/cart")}
-            className={btnCls}
-            data-testid="button-mobile-cart"
-            aria-label={lang === "it" ? "Carrello" : "Warenkorb"}
+            onClick={() => setNotifOpen(true)}
+            className={`${btnCls} ${hasActiveDelivery ? "animate-delivery-notification" : ""}`}
+            data-testid="button-mobile-notifications"
+            aria-label={hasActiveDelivery
+              ? (lang === "it" ? "Notifiche e consegne in viaggio" : "Benachrichtigungen und Lieferungen unterwegs")
+              : "Notifications"}
           >
-            <ShoppingCart className="h-[18px] w-[18px]" />
-            {cartTotal > 0 && (
+            <Bell className="h-[18px] w-[18px]" />
+            {unreadCount > 0 ? (
               <span className="absolute -top-0.5 -right-0.5 h-4 min-w-4 px-1 flex items-center justify-center text-[10px] font-medium bg-primary text-primary-foreground rounded-full">
-                {cartTotal > 99 ? "99+" : cartTotal}
+                {unreadCount > 99 ? "99+" : unreadCount}
               </span>
-            )}
+            ) : hasActiveDelivery ? (
+              <span className="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-blue-600 ring-2 ring-background" />
+            ) : null}
           </button>
-        )}
 
-        <button
-          onClick={() => setMoreOpen(true)}
-          className={btnCls}
-          data-testid="button-mobile-more"
-          aria-label="More"
-        >
-          <MoreHorizontal className="h-[18px] w-[18px]" />
-        </button>
+          {showCart && (
+            <button
+              onClick={() => setLocation("/restaurant/cart")}
+              className={btnCls}
+              data-testid="button-mobile-cart"
+              aria-label={lang === "it" ? "Carrello" : "Warenkorb"}
+            >
+              <ShoppingCart className="h-[18px] w-[18px]" />
+              {cartTotal > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 h-4 min-w-4 px-1 flex items-center justify-center text-[10px] font-medium bg-primary text-primary-foreground rounded-full">
+                  {cartTotal > 99 ? "99+" : cartTotal}
+                </span>
+              )}
+            </button>
+          )}
 
-        <DropdownMenu>
+          <button
+            onClick={() => setMoreOpen(true)}
+            className={btnCls}
+            data-testid="button-mobile-more"
+            aria-label="More"
+          >
+            <MoreHorizontal className="h-[18px] w-[18px]" />
+          </button>
+
+          <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button
               className={`${btnCls} overflow-hidden p-0`}
@@ -253,10 +269,15 @@ export function MobileTopActions({
               {lang === "it" ? "Esci" : "Abmelden"}
             </DropdownMenuItem>
           </DropdownMenuContent>
-        </DropdownMenu>
+          </DropdownMenu>
+        </div>
       </div>
 
-      <NotificationsSheet open={notifOpen} onOpenChange={setNotifOpen} />
+      <NotificationsSheet
+        open={notifOpen}
+        onOpenChange={setNotifOpen}
+        activeDeliveryOrders={activeDeliveryOrders}
+      />
       <OverflowSheet
         open={moreOpen}
         onOpenChange={setMoreOpen}
@@ -320,9 +341,11 @@ function OverflowSheet({
 function NotificationsSheet({
   open,
   onOpenChange,
+  activeDeliveryOrders,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  activeDeliveryOrders: OrderWithDetails[];
 }) {
   const { currentUser, currentRole } = useUser();
   const { lang } = useLanguage();
@@ -478,6 +501,13 @@ function NotificationsSheet({
 
   const unread = notifications?.filter((n) => !n.isRead) || [];
   const hasUnread = unread.length > 0;
+  const hasActiveDelivery = activeDeliveryOrders.length > 0;
+  const openLiveDelivery = () => {
+    onOpenChange(false);
+    setLocation(activeDeliveryOrders.length === 1
+      ? `/restaurant/orders/${activeDeliveryOrders[0].id}`
+      : "/restaurant/orders?status=in_delivery");
+  };
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -509,6 +539,34 @@ function NotificationsSheet({
         </SheetHeader>
 
         <div className="flex-1 min-h-0 overflow-y-auto pb-[calc(env(safe-area-inset-bottom,0px)+12px)]">
+          {hasActiveDelivery && (
+            <button
+              type="button"
+              onClick={openLiveDelivery}
+              className="mx-3 mb-2 w-[calc(100%-1.5rem)] rounded-2xl bg-blue-600 px-3 py-3 text-left text-white shadow-sm shadow-blue-950/15 active:scale-[0.98] transition-transform"
+              data-testid="button-mobile-live-delivery"
+            >
+              <span className="flex items-center gap-3">
+                <span className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/15">
+                  <span className="absolute inset-0 rounded-xl border border-white/30 animate-ping" />
+                  <Truck className="relative h-5 w-5 animate-[truck-float_2s_ease-in-out_infinite]" />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm font-semibold">
+                    {lang === "it" ? "Consegna in viaggio" : "Lieferung unterwegs"}
+                  </span>
+                  <span className="block text-xs text-white/80">
+                    {activeDeliveryOrders.length === 1
+                      ? (lang === "it" ? "Apri il tracking live" : "Live-Tracking öffnen")
+                      : (lang === "it"
+                        ? `${activeDeliveryOrders.length} consegne da seguire`
+                        : `${activeDeliveryOrders.length} Lieferungen verfolgen`)}
+                  </span>
+                </span>
+                <ExternalLink className="h-4 w-4 shrink-0 text-white/80" />
+              </span>
+            </button>
+          )}
           {hasUnread ? (
             <div className="py-1">
               {unread.map((n) => {

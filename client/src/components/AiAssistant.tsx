@@ -379,7 +379,7 @@ export function AiAssistant() {
         <>
           {/* The welcome pill and icon enter together; the icon remains after
               the pill exits so help is always one tap away. */}
-          <div className="fixed bottom-[calc(var(--mobile-cta-offset)+12px)] left-3 z-[56] flex flex-col-reverse items-start gap-2 md:bottom-6 md:left-auto md:right-6 md:flex-row md:items-center md:gap-3">
+          <div className="hidden fixed bottom-[calc(var(--mobile-cta-offset)+12px)] left-3 z-[56] flex-col-reverse items-start gap-2 md:flex md:bottom-6 md:left-auto md:right-6 md:flex-row md:items-center md:gap-3">
             {nudgeVisible && (
               <div
                 className={`flex max-w-[calc(100vw-7rem)] items-center gap-2 rounded-full bg-[#161921] px-3 py-2.5 text-sm font-medium text-white shadow-lg shadow-black/20 md:max-w-[calc(100vw-6rem)] md:px-4 ${

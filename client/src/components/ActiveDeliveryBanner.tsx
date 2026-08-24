@@ -51,7 +51,7 @@ export function ActiveDeliveryBanner({ orders, lang }: ActiveDeliveryBannerProps
 
   return (
     <div
-      className="fixed bottom-[calc(var(--mobile-cta-offset)+12px)] right-3 z-[54] flex flex-col items-end gap-2 md:bottom-24 md:right-6"
+      className="hidden fixed bottom-[calc(var(--mobile-cta-offset)+12px)] right-3 z-[54] flex-col items-end gap-2 md:flex md:bottom-24 md:right-6"
       data-testid="active-delivery-launcher"
     >
       {expanded && multiple && (
