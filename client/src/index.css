@@ -324,6 +324,24 @@ input[type="date"].date-empty:not(.dark *)::-webkit-datetime-edit-year-field {
   color: rgb(0 0 0 / .48);
 }
 
+@keyframes landing-marquee-left {
+  from { transform: translate3d(0, 0, 0); }
+  to { transform: translate3d(-50%, 0, 0); }
+}
+
+@keyframes landing-marquee-right {
+  from { transform: translate3d(-50%, 0, 0); }
+  to { transform: translate3d(0, 0, 0); }
+}
+
+.landing-marquee-track {
+  animation: landing-marquee-left var(--landing-marquee-duration, 36s) linear infinite;
+}
+
+.landing-marquee-track-reverse {
+  animation-name: landing-marquee-right;
+}
+
 /* Leave a little more breathing room below the floating public header. The
    main landing page has its own hero rhythm and is intentionally excluded. */
 .gc-public > section:first-of-type {

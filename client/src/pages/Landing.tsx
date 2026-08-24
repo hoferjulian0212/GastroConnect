@@ -2,7 +2,7 @@
 // To roll back this file to the state before the landing-page polish:
 //   git checkout 4f40c9f4a0a4ae80a1229769db07b16ed4a41d9a -- client/src/pages/Landing.tsx
 import { useLocation } from "wouter";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { motion, useScroll, useTransform, useReducedMotion } from "framer-motion";
 import { useUser } from "@/context/UserContext";
 import { Button } from "@/components/ui/button";
@@ -777,31 +777,36 @@ const publicLanguageOptions: Array<{ code: Lang; flag: string; name: string }> =
   { code: "en", flag: "🇬🇧", name: "English" },
 ];
 
-/** Two rows of text that drift in opposite directions as the page is scrolled. */
+/** Two rows of text that loop continuously in opposite directions. */
 function ScrollMarquee({
   items,
   speed = 0.12,
-  initialOffset = 0,
+  direction = "left",
 }: {
   items: string[];
   speed?: number;
-  initialOffset?: number;
+  direction?: "left" | "right";
 }) {
-  const { scrollY } = useScroll();
-  const x = useTransform(scrollY, (v) => -v * speed - initialOffset);
-  const all = [...items, ...items, ...items, ...items];
+  const duration = `${Math.max(24, Math.round(4.8 / speed))}s`;
   return (
     <div className="overflow-hidden">
       <motion.div
-        style={{ x }}
-        className="flex items-center whitespace-nowrap will-change-transform"
+        style={{ "--landing-marquee-duration": duration } as CSSProperties}
+        className={`landing-marquee-track flex w-max items-center whitespace-nowrap will-change-transform ${
+          direction === "right" ? "landing-marquee-track-reverse" : ""
+        }`}
       >
-        {all.map((item, i) => (
-          <span key={i} className="shrink-0 inline-flex items-center">
-            <span className="text-[clamp(1.4rem,2.8vw,2.4rem)] font-semibold tracking-tight text-foreground/[0.065]">
-              {item}
-            </span>
-          </span>
+        {[0, 1].map((group) => (
+          <div key={group} className="flex shrink-0 items-center gap-10 pr-10 md:gap-16 md:pr-16">
+            {items.map((item) => (
+              <span
+                key={`${group}-${item}`}
+                className="text-[clamp(1.4rem,2.8vw,2.4rem)] font-semibold tracking-[0.12em] text-foreground/[0.065]"
+              >
+                {item}
+              </span>
+            ))}
+          </div>
         ))}
       </motion.div>
     </div>
@@ -1411,7 +1416,7 @@ export default function Landing() {
                 "LAGERHALTUNG", "CHAT", "DOKUMENTE", "AKTIONEN",
               ]}
               speed={0.085}
-              initialOffset={560}
+              direction="right"
             />
           </div>
         </div>
