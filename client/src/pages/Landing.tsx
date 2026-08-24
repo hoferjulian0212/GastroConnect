@@ -777,6 +777,10 @@ function OrderingProcessCanvas({
 
     const tryPlay = () => {
       if (document.hidden) return;
+      if (!video.paused && !video.ended) {
+        renderFrames();
+        return;
+      }
       video.muted = true;
       video.defaultMuted = true;
       video.setAttribute("muted", "");
@@ -810,7 +814,9 @@ function OrderingProcessCanvas({
     video.addEventListener("play", renderFrames);
     window.addEventListener("scroll", onScroll, { passive: true });
     window.addEventListener("pointerdown", onUserGesture, { passive: true });
+    window.addEventListener("pointermove", onUserGesture, { passive: true });
     window.addEventListener("touchstart", onUserGesture, { passive: true });
+    window.addEventListener("touchmove", onUserGesture, { passive: true });
     document.addEventListener("visibilitychange", onVisibilityChange);
     video.load();
     renderFrames();
@@ -823,7 +829,9 @@ function OrderingProcessCanvas({
       video.removeEventListener("play", renderFrames);
       window.removeEventListener("scroll", onScroll);
       window.removeEventListener("pointerdown", onUserGesture);
+      window.removeEventListener("pointermove", onUserGesture);
       window.removeEventListener("touchstart", onUserGesture);
+      window.removeEventListener("touchmove", onUserGesture);
       document.removeEventListener("visibilitychange", onVisibilityChange);
       if (retryTimer !== null) window.clearTimeout(retryTimer);
       if (animationFrame !== null) window.cancelAnimationFrame(animationFrame);
