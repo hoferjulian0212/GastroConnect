@@ -1,0 +1,2034 @@
+GastroConnect – Infrastructure Failure, Resilience, Recovery & Disaster-Scenario Master Specification
+
+OBJECTIVE
+
+Audit and harden the entire GastroConnect application against failures that are:
+
+* inside our control
+* outside our control
+* caused by users
+* caused by browsers/devices
+* caused by the internet/network
+* caused by hosting infrastructure
+* caused by databases
+* caused by external APIs
+* caused by deployments
+* caused by software bugs
+* caused by corrupted or incomplete data
+
+The objective is NOT to pretend that failures can always be prevented.
+
+The objective is:
+
+1. Detect failures.
+2. Fail safely.
+3. Never silently corrupt business data.
+4. Never create duplicate business transactions.
+5. Never lose committed data unnecessarily.
+6. Never assume that a failed response means a failed transaction.
+7. Recover automatically where possible.
+8. Retry only when retrying is safe.
+9. Degrade gracefully where possible.
+10. Restore service after failures.
+11. Make recovery observable.
+12. Make disaster recovery possible.
+13. Preserve historical business records.
+
+IMPORTANT:
+
+Do NOT blindly rewrite the application.
+
+First inspect the existing GastroConnect architecture, including:
+
+* frontend
+* backend
+* database
+* authentication
+* APIs
+* hosting
+* deployment
+* storage
+* file uploads
+* external services
+* environment variables
+* logging
+* monitoring
+* caching
+* queues/background jobs
+* notifications
+* maps
+* ETA
+* email
+* integrations
+
+Then identify what is already implemented and what is missing.
+
+⸻
+
+1. FUNDAMENTAL FAILURE PRINCIPLE
+
+Never assume:
+
+“If the browser received an error, the operation did not happen.”
+
+This is FALSE.
+
+Example:
+
+User clicks "Place Order"
+        ↓
+Server receives request
+        ↓
+Order is successfully committed
+        ↓
+Server sends response
+        ↓
+Internet connection dies
+        ↓
+Browser shows error
+
+The order DOES exist.
+
+Therefore every important mutation must be designed around uncertain network outcomes.
+
+This is especially important for:
+
+* order creation
+* order status changes
+* product creation
+* price changes
+* invitations
+* document uploads
+* payments if later implemented
+* other irreversible actions
+
+⸻
+
+2. FAILURE CATEGORIES
+
+Create a resilience strategy for at least these categories:
+
+A. Client failures
+
+* browser crash
+* tab crash
+* browser closed
+* device shutdown
+* battery dies
+* computer freezes
+* mobile device loses power
+* browser refresh
+* browser back
+* browser opens old cached version
+* local storage corruption
+* cookies/session lost
+
+B. Network failures
+
+* no internet
+* intermittent internet
+* slow internet
+* packet loss
+* DNS failure
+* timeout
+* connection reset
+* connection drops during request
+* connection drops after server processing
+* connection returns after several minutes
+* network switches from Wi-Fi to mobile
+* network switches between networks
+* captive portal
+* proxy problems
+
+C. Application failures
+
+* frontend crash
+* backend crash
+* uncaught exception
+* memory exhaustion
+* CPU exhaustion
+* process restart
+* container restart
+* deployment crash
+* dependency crash
+* application deadlock
+* application overload
+
+D. Database failures
+
+* database unavailable
+* database timeout
+* connection pool exhausted
+* transaction failure
+* deadlock
+* constraint violation
+* corrupted data
+* migration failure
+* database storage full
+* database performance degradation
+* database restart
+
+E. Hosting failures
+
+* hosting service outage
+* region outage
+* deployment platform outage
+* container unavailable
+* DNS issue
+* SSL/TLS issue
+* routing issue
+* resource limit
+* account/service suspension
+* infrastructure restart
+
+F. External service failures
+
+* map API unavailable
+* routing/ETA API unavailable
+* email service unavailable
+* storage service unavailable
+* payment provider unavailable
+* future ERP/PMS integration unavailable
+* future authentication provider unavailable
+* rate limit
+* malformed external response
+* external service timeout
+
+G. Human/software failures
+
+* bad deployment
+* bad configuration
+* wrong environment variable
+* accidental deletion
+* wrong database migration
+* wrong code
+* incorrect permissions
+* incorrect production configuration
+* developer accidentally modifies production data
+
+⸻
+
+3. CRITICAL RULE: DATA INTEGRITY
+
+The most important requirement:
+
+NEVER leave business data in an undefined partial state.
+
+For example:
+
+Creating an order must NOT result in:
+
+Order exists
+BUT
+Order items missing
+
+or:
+
+Order exists
+BUT
+Total missing
+
+or:
+
+Order says Accepted
+BUT
+required acceptance data was never stored
+
+Use database transactions where appropriate.
+
+A critical operation should behave as:
+
+SUCCESS
+OR
+SAFE FAILURE
+
+not:
+
+PARTIAL SUCCESS
+
+unless partial state is explicitly part of the business model.
+
+⸻
+
+4. USER INTERNET FAILURE
+
+Scenario
+
+User loses internet before submitting.
+
+Expected:
+
+* application detects offline state where possible
+* user is informed
+* no mutation is assumed to have occurred
+* unsaved form information should not unnecessarily disappear
+
+⸻
+
+5. INTERNET LOST DURING REQUEST
+
+Scenario
+
+User clicks:
+
+Place Order
+
+Connection disappears while request is processing.
+
+Expected:
+
+DO NOT automatically assume failure.
+
+The system must determine whether the request:
+
+* was never received
+* is still processing
+* succeeded
+* failed
+
+If possible, use an idempotency key / request ID.
+
+Example:
+
+Request ID = ABC123
+
+Server receives ABC123 and creates order.
+
+If client retries ABC123:
+
+Server recognizes ABC123 and returns the existing result.
+
+Result:
+
+ONE order.
+
+Never two.
+
+⸻
+
+6. INTERNET LOST AFTER SUCCESS
+
+Scenario
+
+Server creates order successfully.
+
+Response is lost.
+
+Expected:
+
+* order remains created
+* retry does not create duplicate
+* application can query authoritative server state
+* user can recover the order state
+
+UI should not simply say:
+
+Order definitely failed.
+
+Prefer:
+
+We could not confirm the result. Checking order status…
+
+where appropriate.
+
+⸻
+
+7. DOUBLE CLICK
+
+Every important mutation must protect against accidental double clicks.
+
+Test:
+
+* double-click
+* triple-click
+* enter key repeated
+* impatient user clicks multiple times
+* browser retry
+
+Critical mutations must be idempotent where appropriate.
+
+⸻
+
+8. REQUEST TIMEOUT
+
+Server takes too long.
+
+Client times out.
+
+DO NOT assume server stopped processing.
+
+Before retrying a non-idempotent operation:
+
+* check operation status
+* use idempotency key
+* or safely determine whether it was committed
+
+⸻
+
+9. REQUEST RETRY
+
+Do not blindly retry every request.
+
+Safe:
+
+GET
+
+is generally retryable.
+
+Potentially dangerous:
+
+CREATE ORDER
+
+must be idempotent before automatic retry.
+
+Implement retry policies based on operation type.
+
+⸻
+
+10. BROWSER REFRESH DURING MUTATION
+
+Test:
+
+* refresh during order submission
+* refresh during status update
+* refresh during product creation
+* refresh during price update
+* refresh during invitation
+* refresh during upload
+
+After reload:
+
+* retrieve authoritative server state
+* do not blindly repeat mutation
+* do not show fake success
+
+⸻
+
+11. BROWSER CRASH
+
+If browser crashes immediately after order submission:
+
+When user returns:
+
+* order should still exist if committed
+* order should not duplicate
+* UI should retrieve server state
+
+⸻
+
+12. DEVICE SHUTDOWN
+
+Same principle.
+
+A committed server transaction must survive:
+
+* laptop shutdown
+* battery failure
+* browser termination
+
+⸻
+
+13. STALE FRONTEND STATE
+
+The browser may contain old data.
+
+Example:
+
+Restaurant sees:
+
+Product = €10
+
+Supplier changed it to:
+
+€12
+
+before checkout.
+
+Server must remain authoritative.
+
+Never trust stale client data for:
+
+* price
+* availability
+* permissions
+* delivery eligibility
+* order state
+
+⸻
+
+14. MULTIPLE TABS
+
+User opens GastroConnect twice.
+
+Tab A:
+
+changes product.
+
+Tab B:
+
+still has old product.
+
+Tab B submits changes.
+
+Implement appropriate concurrency/stale-data protection.
+
+Do not silently overwrite newer data when that would be unsafe.
+
+⸻
+
+15. TWO USERS SIMULTANEOUSLY MODIFY SAME DATA
+
+Examples:
+
+Supplier employee A changes price.
+
+Supplier employee B changes price.
+
+Restaurant checks out simultaneously.
+
+The backend must resolve the situation deterministically.
+
+Never allow corrupted values.
+
+⸻
+
+16. DATABASE TEMPORARILY UNAVAILABLE
+
+If database is unavailable:
+
+* do not create fake data
+* do not create local replacement business data
+* do not silently continue with inconsistent state
+* reject unsafe mutations
+* return controlled temporary error
+* log the failure
+* alert monitoring if appropriate
+
+When database returns:
+
+Application should resume normally.
+
+⸻
+
+17. DATABASE CONNECTION TIMEOUT
+
+If database query times out:
+
+* do not assume query did not execute
+* especially for mutations
+* use transactions/idempotency where necessary
+* avoid duplicate retries
+
+⸻
+
+18. DATABASE DEADLOCK
+
+If supported by database architecture:
+
+* detect deadlock
+* safely retry transaction where appropriate
+* limit retry count
+* log repeated deadlocks
+* never duplicate business transactions
+
+⸻
+
+19. DATABASE STORAGE FULL
+
+Expected behavior:
+
+* detect write failures
+* fail safely
+* alert operators
+* do not corrupt existing records
+* prioritize data preservation
+* prevent endless retry loops
+
+⸻
+
+20. DATABASE MIGRATION FAILURE
+
+Before production migrations:
+
+* backup
+* validate migration
+* use safe migration process
+* avoid destructive changes without explicit migration strategy
+
+If migration fails:
+
+* application should not enter an undefined schema state
+* rollback where possible
+* restore from backup if necessary
+
+⸻
+
+21. DATABASE CORRUPTION
+
+Have a documented recovery strategy.
+
+Requirements:
+
+* automated backups
+* independent backup storage where practical
+* retention policy
+* restore procedure
+* periodic restore testing
+
+Do NOT consider “we have backups” sufficient.
+
+A backup is only useful if it can actually be restored.
+
+⸻
+
+22. ACCIDENTAL DATA DELETION
+
+Example:
+
+Admin accidentally deletes a supplier/product/document.
+
+System should use appropriate:
+
+* soft delete
+* archive
+* audit history
+* backup recovery
+
+for business-critical data.
+
+⸻
+
+23. SERVER CRASH
+
+If application server crashes:
+
+* process/container should restart where hosting supports it
+* persistent data must remain safe
+* no in-memory-only business state should be required for correctness
+* unfinished operations must resolve safely
+
+Do not depend on server memory for permanent business data.
+
+⸻
+
+24. SERVER RESTART DURING ORDER
+
+Scenario:
+
+Order transaction begins.
+
+Server crashes.
+
+Expected:
+
+Database transaction either:
+
+* commits completely
+
+OR:
+
+* rolls back safely
+
+No half-order.
+
+⸻
+
+25. SERVER RESTART AFTER ORDER COMMIT
+
+Order committed.
+
+Server crashes before response.
+
+Expected:
+
+Order remains.
+
+Client recovery must not duplicate it.
+
+⸻
+
+26. HOSTING PLATFORM OUTAGE
+
+Example:
+
+Replit infrastructure becomes unavailable.
+
+Expected:
+
+GastroConnect may become temporarily unavailable.
+
+Do NOT pretend this can be solved by application code.
+
+Instead implement:
+
+* persistent external data
+* backups independent of application runtime where possible
+* monitoring
+* outage detection
+* documented recovery
+* redeployment capability
+* ability to move application to another environment if business-critical
+
+Architecture should avoid unnecessary lock-in.
+
+⸻
+
+27. COMPLETE HOSTING PROVIDER OUTAGE
+
+Scenario:
+
+The hosting provider itself is unavailable.
+
+Define:
+
+MVP recovery strategy
+
+* source code stored in Git
+* database backed up independently
+* environment configuration documented securely
+* deployment instructions documented
+* ability to redeploy to another provider
+
+Future production strategy
+
+Consider:
+
+* redundant hosting
+* separate regions
+* independent backup provider
+* failover infrastructure
+
+Do not implement expensive multi-provider architecture unless justified by actual business requirements.
+
+⸻
+
+28. REGION OUTAGE
+
+If hosting supports multiple regions:
+
+Define:
+
+* primary region
+* backup region
+* failover process
+* data replication
+* DNS/load-balancer strategy
+
+If not currently implemented:
+
+Document as future architecture.
+
+Do not falsely claim automatic failover exists.
+
+⸻
+
+29. DNS FAILURE
+
+If DNS fails:
+
+Users may be unable to reach GastroConnect.
+
+Application code cannot solve a global DNS failure.
+
+Mitigation:
+
+* reliable DNS provider
+* monitoring
+* documented DNS configuration
+* low enough TTL for controlled migration where appropriate
+* backup domain strategy if justified
+
+⸻
+
+30. SSL/TLS CERTIFICATE FAILURE
+
+If certificate expires:
+
+Application may become unreachable.
+
+Implement:
+
+* automatic certificate renewal where supported
+* monitoring/alerts before expiration
+* staging validation
+
+⸻
+
+31. DEPLOYMENT FAILURE
+
+Every production deployment must be treated as potentially dangerous.
+
+Scenario:
+
+New version deployed.
+
+Application crashes.
+
+Expected:
+
+* health check detects failure
+* deployment should not silently remain broken
+* rollback to last known-good version where supported
+
+⸻
+
+32. BAD CODE DEPLOYMENT
+
+Example:
+
+New release breaks order creation.
+
+Requirements:
+
+* versioned deployments
+* Git history
+* automated tests
+* staging environment
+* production rollback
+
+Never delete the last known-good version.
+
+⸻
+
+33. DATABASE MIGRATION + APPLICATION VERSION MISMATCH
+
+Scenario:
+
+Application v2 expects schema v2.
+
+Database still schema v1.
+
+Do not deploy incompatible versions blindly.
+
+Use compatible migration strategy.
+
+⸻
+
+34. ROLLBACK SAFETY
+
+Important:
+
+Rolling back application code does NOT automatically mean database schema can also be rolled back.
+
+Analyze every migration for rollback compatibility.
+
+Never assume:
+
+Code rollback = database rollback
+
+⸻
+
+35. EXTERNAL MAP API DOWN
+
+If maps are unavailable:
+
+* application should continue where map functionality is not critical
+* supplier discovery should not necessarily fail
+* order creation should not depend on map API unless absolutely necessary
+* show unavailable/fallback state
+
+⸻
+
+36. ETA API DOWN
+
+If ETA cannot be calculated:
+
+Use defined fallback:
+
+* ETA unavailable
+* previously calculated ETA where explicitly appropriate
+* manual estimate
+* supplier delivery information
+
+Do not invent a fake ETA.
+
+⸻
+
+37. EMAIL SERVICE DOWN
+
+Example:
+
+Order created.
+
+Email provider fails.
+
+Expected:
+
+ORDER MUST STILL EXIST.
+
+Email failure must not roll back the order unless email is explicitly a required transaction dependency.
+
+Instead:
+
+* record notification failure
+* retry safely
+* alert if persistent
+* show notification status where useful
+
+⸻
+
+38. EMAIL DUPLICATION
+
+Retrying email must not create uncontrolled duplicate business notifications.
+
+Where practical, use:
+
+* event ID
+* notification ID
+* idempotency
+* delivery tracking
+
+⸻
+
+39. EXTERNAL API RATE LIMIT
+
+If external service returns rate limit:
+
+* respect rate limit
+* retry with backoff where appropriate
+* do not create request storm
+* degrade gracefully
+
+⸻
+
+40. EXTERNAL API MALFORMED RESPONSE
+
+Never trust external response.
+
+Validate:
+
+* schema
+* required fields
+* data types
+* ranges
+
+If invalid:
+
+* log
+* reject safely
+* use fallback
+* do not write corrupt data
+
+⸻
+
+41. EXTERNAL API PARTIAL FAILURE
+
+Example:
+
+Map API returns supplier location but not ETA.
+
+Do not treat entire response as valid.
+
+Handle each component independently where possible.
+
+⸻
+
+42. EXTERNAL SERVICE TIMEOUT
+
+Never allow external API to block GastroConnect indefinitely.
+
+Use:
+
+* timeout
+* controlled failure
+* retry policy
+* fallback
+
+⸻
+
+43. EXTERNAL SERVICE RETURNS 500
+
+Do not crash application.
+
+Use:
+
+* retry where safe
+* fallback
+* user-friendly message
+* logging
+
+⸻
+
+44. PAYMENT PROVIDER – FUTURE
+
+If payments are added later:
+
+Never assume:
+
+payment request failed = payment failed.
+
+Possible state:
+
+Payment provider charged customer
+BUT
+GastroConnect did not receive response
+
+Therefore payment processing must use:
+
+* payment IDs
+* idempotency
+* provider-side verification
+* webhooks
+* reconciliation
+* explicit payment states
+
+Do not implement simplistic “button clicked = paid” logic.
+
+⸻
+
+45. FUTURE PMS / ERP INTEGRATIONS
+
+If GastroConnect later integrates with:
+
+* hotel PMS
+* ERP
+* accounting
+* logistics
+* warehouse systems
+
+Treat integrations as unreliable external dependencies.
+
+If external system is down:
+
+* queue/safely retry where appropriate
+* do not duplicate records
+* maintain synchronization IDs
+* track synchronization status
+* allow reconciliation
+
+⸻
+
+46. BACKGROUND JOB FAILURE
+
+If GastroConnect uses background jobs:
+
+Example:
+
+Order created → notification job.
+
+If worker crashes:
+
+* job must remain recoverable
+* retry
+* avoid duplicate processing
+* record failed state after retry limit
+* alert when appropriate
+
+Do not lose important events because a worker process died.
+
+⸻
+
+47. QUEUE DUPLICATION
+
+If a message is processed twice:
+
+Business operation must remain safe.
+
+Use:
+
+* unique event IDs
+* idempotent consumers
+* processing state
+
+⸻
+
+48. QUEUE MESSAGE LOST
+
+For critical events:
+
+Do not rely on in-memory queues.
+
+Use persistent queues/event storage where appropriate.
+
+⸻
+
+49. CACHE FAILURE
+
+Cache must NEVER be the source of truth for critical business data.
+
+If cache disappears:
+
+Application should retrieve data from authoritative database.
+
+⸻
+
+50. STALE CACHE
+
+After:
+
+* price change
+* order status change
+* product deactivation
+* delivery zone change
+
+ensure stale cached information cannot cause incorrect business decisions.
+
+Server must validate critical state against authoritative data.
+
+⸻
+
+51. LOCAL STORAGE FAILURE
+
+If browser local storage is used:
+
+* assume it can be deleted
+* assume it can be corrupted
+* never store the only copy of critical business data there
+* never treat local cart state as authoritative for final order creation
+
+⸻
+
+52. OFFLINE MODE
+
+Do NOT implement full offline ordering unless explicitly designed.
+
+If the application is offline:
+
+It may allow:
+
+* browsing cached non-critical information
+
+but MUST NOT falsely claim:
+
+Order successfully submitted
+
+without server confirmation.
+
+If offline mutations are eventually supported:
+
+They require a proper offline queue and synchronization strategy.
+
+⸻
+
+53. CLOCK / TIME PROBLEMS
+
+Client device time may be wrong.
+
+Do not trust client timestamps for critical server events.
+
+Server should determine:
+
+* order creation time
+* status transition time
+* invitation expiration
+* audit timestamps
+
+⸻
+
+54. TIMEZONE / DST
+
+Use consistent timezone handling.
+
+Test:
+
+* CET/CEST
+* daylight-saving transitions
+* midnight
+* date boundaries
+* expiration times
+
+Do not allow client timezone differences to corrupt business state.
+
+⸻
+
+55. RESOURCE EXHAUSTION
+
+Test/monitor:
+
+* CPU
+* memory
+* database connections
+* storage
+* API request volume
+* file storage
+* request duration
+
+If resources approach limits:
+
+* monitor
+* alert
+* throttle where appropriate
+* degrade non-critical functions
+* prevent total system collapse where possible
+
+⸻
+
+56. DATABASE CONNECTION POOL EXHAUSTION
+
+If all database connections are occupied:
+
+* requests should fail/recover gracefully
+* do not endlessly create more connections
+* log and monitor
+* release connections correctly
+
+⸻
+
+57. INFINITE RETRY LOOP
+
+Never implement:
+
+FAIL → retry → fail → retry → fail → retry forever
+
+Use:
+
+* retry limit
+* exponential backoff
+* dead-letter/failure state where appropriate
+* manual recovery for persistent failures
+
+⸻
+
+58. RETRY STORM
+
+If an external service goes down, hundreds of requests must not immediately retry every second.
+
+Use backoff/jitter.
+
+⸻
+
+59. MONITORING FAILURE
+
+If monitoring itself fails:
+
+Do not assume system is healthy simply because no alert arrived.
+
+Use independent monitoring where practical.
+
+⸻
+
+60. HEALTH CHECKS
+
+Create health checks appropriate to the architecture.
+
+Distinguish:
+
+Liveness
+
+Is the application process alive?
+
+Readiness
+
+Can it actually serve requests?
+
+For example:
+
+Application process alive but database unavailable:
+
+Liveness = OK
+Readiness = NOT READY
+
+Do not report a completely healthy application if critical dependencies are unavailable.
+
+⸻
+
+61. LOGGING
+
+Logs should help reconstruct failures.
+
+Log appropriate technical information:
+
+* timestamp
+* request ID
+* operation
+* user/org context where safe
+* error
+* duration
+* external dependency
+* transaction ID
+
+DO NOT log:
+
+* passwords
+* authentication tokens
+* secrets
+* unnecessary personal data
+* sensitive credentials
+
+⸻
+
+62. CORRELATION / REQUEST IDs
+
+Important requests should have a unique request/correlation ID.
+
+Example:
+
+REQ-8F32A
+
+If order creation fails:
+
+Logs can connect:
+
+* browser request
+* backend request
+* database operation
+* external API calls
+
+⸻
+
+63. ORDER ID / IDEMPOTENCY ID
+
+Critical business operations should have durable identifiers.
+
+Example:
+
+Order ID: GC-2026-0010482
+Request ID: REQ-ABC123
+Idempotency Key: IDEMP-XYZ789
+
+Do not rely on timestamps alone.
+
+⸻
+
+64. DATA BACKUPS
+
+Implement/document:
+
+* automatic database backups
+* backup frequency
+* retention
+* independent storage where appropriate
+* encryption
+* access control
+* restore procedure
+
+Do not store backups only on the same infrastructure that could fail.
+
+⸻
+
+65. BACKUP RESTORE TEST
+
+Periodically verify:
+
+1. Obtain backup.
+2. Restore to isolated environment.
+3. Start application against restored database.
+4. Verify users.
+5. Verify products.
+6. Verify orders.
+7. Verify historical data.
+8. Verify relationships.
+
+A backup that has never been restored is unverified.
+
+⸻
+
+66. RECOVERY POINT OBJECTIVE
+
+Define how much data loss is acceptable.
+
+Example:
+
+If backups occur every 6 hours:
+
+Worst-case data loss could approach 6 hours.
+
+For production, determine an appropriate RPO based on business requirements.
+
+⸻
+
+67. RECOVERY TIME OBJECTIVE
+
+Define:
+
+How quickly must GastroConnect return to service?
+
+For MVP this might be:
+
+* several hours
+
+For mature production:
+
+* much shorter
+
+Do not promise a number without infrastructure capable of meeting it.
+
+⸻
+
+68. DISASTER RECOVERY
+
+Document:
+
+Scenario
+
+Primary infrastructure completely unavailable.
+
+Recovery
+
+1. Detect outage.
+2. Verify outage.
+3. Determine whether automatic recovery works.
+4. If not, activate recovery procedure.
+5. Restore application.
+6. Restore database.
+7. Restore environment configuration.
+8. Verify integrity.
+9. Verify authentication.
+10. Verify orders.
+11. Verify permissions.
+12. Re-enable users.
+
+⸻
+
+69. SECRET / ENVIRONMENT VARIABLE LOSS
+
+Production may depend on:
+
+* database credentials
+* API keys
+* authentication secrets
+* email credentials
+* storage credentials
+
+These must NOT exist only inside one developer machine.
+
+Use secure secret management appropriate to the hosting architecture.
+
+Document which variables are required without exposing their values.
+
+⸻
+
+70. API KEY EXPIRATION
+
+External API key expires.
+
+Expected:
+
+* service detects authentication failure
+* non-critical functionality degrades
+* alert
+* key can be rotated
+* no application-wide crash
+
+⸻
+
+71. API KEY LEAK
+
+If a secret is accidentally exposed:
+
+* revoke/rotate it
+* audit usage
+* replace secret
+* do not merely delete it from frontend code
+
+Never commit secrets to Git.
+
+⸻
+
+72. GIT / SOURCE CODE RECOVERY
+
+Production must be reproducible from version-controlled source.
+
+Do not let the only working copy exist inside Replit.
+
+Maintain:
+
+* Git repository
+* deployment configuration
+* database migration files
+* environment variable documentation
+* setup documentation
+
+⸻
+
+73. REPLIT ACCESS LOSS
+
+Scenario:
+
+The original developer loses access to Replit.
+
+GastroConnect must still be recoverable.
+
+Therefore:
+
+* source code must exist outside Replit
+* database must be independently recoverable
+* deployment configuration must be documented
+* credentials must be controlled by the company, not one person
+
+⸻
+
+74. COMPLETE REPLIT ACCOUNT LOSS
+
+Scenario:
+
+The Replit project/account becomes inaccessible.
+
+Recovery should be possible from:
+
+* Git repository
+* database backup
+* infrastructure configuration
+* environment configuration
+* deployment documentation
+
+Test that recovery process.
+
+⸻
+
+75. VERSION CONTROL FAILURE
+
+Never rely on:
+
+“It works in the current Replit project.”
+
+A known-good version must be identifiable.
+
+Use:
+
+* commits
+* tags/releases
+* production version identifier
+
+⸻
+
+76. PRODUCTION VS STAGING
+
+Maintain separate environments where practical:
+
+Development
+     ↓
+Staging
+     ↓
+Production
+
+Never use production as the primary testing environment.
+
+⸻
+
+77. TEST FAILURE MUST BLOCK DEPLOYMENT
+
+For critical functionality, automated tests should prevent deployment when appropriate.
+
+At minimum test:
+
+* authentication
+* authorization
+* tenant isolation
+* order creation
+* order duplication
+* pricing
+* order state transitions
+* database integrity
+
+⸻
+
+78. CANARY / SAFE DEPLOYMENT
+
+As the application becomes more critical:
+
+Consider deploying new versions gradually.
+
+Do not introduce complex infrastructure before necessary.
+
+⸻
+
+79. INCIDENT RESPONSE
+
+Create a documented process:
+
+INCIDENT DETECTED
+
+↓
+
+Determine:
+
+* Is data safe?
+* Is application available?
+* Is database available?
+* Is external dependency failing?
+* Is this a deployment problem?
+* Is this a security issue?
+
+↓
+
+Contain
+
+↓
+
+Recover
+
+↓
+
+Verify
+
+↓
+
+Communicate
+
+↓
+
+Investigate root cause
+
+↓
+
+Prevent recurrence
+
+⸻
+
+80. DATA CORRUPTION RESPONSE
+
+If incorrect data is discovered:
+
+DO NOT immediately overwrite more data.
+
+First:
+
+1. Stop affected operation if necessary.
+2. Identify scope.
+3. Preserve evidence/logs.
+4. Determine source.
+5. Restore affected records carefully.
+6. Verify relationships.
+7. Re-enable operations.
+
+⸻
+
+81. SECURITY INCIDENT
+
+If unauthorized access is suspected:
+
+* revoke affected sessions/tokens
+* rotate compromised credentials
+* investigate logs
+* determine affected organizations/data
+* patch vulnerability
+* verify isolation
+* restore from backup only if necessary
+
+Do not casually delete logs.
+
+⸻
+
+82. PARTIAL HOSTING FAILURE
+
+Example:
+
+Frontend works.
+
+Backend fails.
+
+Expected:
+
+Frontend must show meaningful service-unavailable state.
+
+Do not display stale “success” information as if it were live.
+
+⸻
+
+83. BACKEND WORKS / DATABASE FAILS
+
+Expected:
+
+* read/write behavior defined
+* no fake successful writes
+* controlled error
+* monitoring alert
+* recovery after database returns
+
+⸻
+
+84. DATABASE WORKS / EXTERNAL API FAILS
+
+Expected:
+
+Core GastroConnect data operations continue where possible.
+
+Example:
+
+Order can exist even if ETA API is down.
+
+⸻
+
+85. EMAIL WORKS / DATABASE FAILS
+
+Never send a business confirmation email for an order that was never committed.
+
+Business state must be authoritative.
+
+⸻
+
+86. DATABASE COMMIT / EMAIL FAILS
+
+Order exists.
+
+Email doesn’t.
+
+Expected:
+
+Order remains valid.
+
+Notification can retry independently.
+
+⸻
+
+87. DATABASE COMMIT / FRONTEND FAILS
+
+Order exists.
+
+Frontend crashes.
+
+When user returns:
+
+Order is visible.
+
+No duplicate.
+
+⸻
+
+88. SERVER COMMIT / CLIENT TIMEOUT
+
+Treat as:
+
+Unknown result until verified.
+
+Never:
+
+Definitely failed.
+
+⸻
+
+89. EXTERNAL API SUCCESS / GASTROCONNECT TIMEOUT
+
+If an external action may have occurred:
+
+Never blindly repeat it.
+
+Use external transaction/reference ID if available.
+
+This is especially important for future payments/integrations.
+
+⸻
+
+90. FULL SYSTEM RECOVERY TEST
+
+Perform a disaster simulation.
+
+Example:
+
+1. Application unavailable.
+2. Database unavailable.
+3. Restore database.
+4. Restore application.
+5. Configure secrets.
+6. Start application.
+7. Run health checks.
+8. Test login.
+9. Test tenant isolation.
+10. Test products.
+11. Test pricing.
+12. Test order creation.
+13. Test order status.
+14. Verify historical orders.
+15. Verify documents.
+16. Verify external integrations.
+
+Document the result.
+
+⸻
+
+91. GOLDEN FAILURE TESTS
+
+Create automated/manual tests for at least:
+
+ORDER
+
+* internet lost before request
+* internet lost during request
+* internet lost after commit
+* request timeout
+* duplicate click
+* duplicate retry
+* browser crash
+* server crash
+* database failure
+* stale price
+* stale product
+* simultaneous order update
+
+PRODUCT
+
+* server failure while creating
+* database failure
+* duplicate submission
+* concurrent edit
+* product deactivated during checkout
+
+PRICE
+
+* price changes during checkout
+* invalid price
+* database failure
+* concurrent price changes
+
+DELIVERY
+
+* ETA API failure
+* map API failure
+* ZIP changed during checkout
+* external API timeout
+
+AUTH
+
+* session expires during operation
+* user disabled during operation
+* role changed during operation
+* organization disabled during operation
+
+INFRASTRUCTURE
+
+* backend restart
+* database restart
+* deployment failure
+* rollback
+* hosting outage
+* backup restoration
+* external service outage
+
+⸻
+
+92. FAILURE STATE DESIGN
+
+For every major operation define:
+
+PENDING
+SUCCESS
+FAILED
+UNKNOWN
+
+Where appropriate.
+
+Especially when the client cannot determine whether the server completed an operation.
+
+Do not force everything into simply:
+
+SUCCESS / FAILED
+
+when network uncertainty exists.
+
+⸻
+
+93. NEVER INVENT SUCCESS
+
+The frontend must never show:
+
+“Order successfully placed”
+
+unless there is sufficient confirmation that the authoritative backend accepted it.
+
+Likewise:
+
+Do not show:
+
+“Order failed”
+
+when the result is actually unknown.
+
+⸻
+
+94. NEVER INVENT DATA
+
+If ETA cannot be calculated:
+
+Do not invent one.
+
+If price cannot be confirmed:
+
+Do not invent one.
+
+If order status cannot be retrieved:
+
+Do not assume a status.
+
+If database is unavailable:
+
+Do not fabricate cached success.
+
+⸻
+
+95. GRACEFUL DEGRADATION
+
+Classify features into:
+
+CRITICAL
+
+Examples:
+
+* authentication
+* order creation
+* order state
+* pricing
+* database
+
+If unavailable:
+
+Safely stop the affected operation.
+
+NON-CRITICAL
+
+Examples:
+
+* map visualization
+* ETA
+* optional notification
+* analytics
+
+If unavailable:
+
+Allow core functionality to continue where safe.
+
+⸻
+
+96. SINGLE SOURCE OF TRUTH
+
+For every critical business value define the authoritative source.
+
+Examples:
+
+Order state:
+
+Database
+
+Price at checkout:
+
+Server/database
+
+User permission:
+
+Server/database/auth system
+
+Historical order price:
+
+Persisted order snapshot
+
+ETA:
+
+External service / defined fallback
+
+Never allow random frontend state to become authoritative.
+
+⸻
+
+97. FINAL ARCHITECTURAL REQUIREMENT
+
+Do not build a fake “offline fallback” that creates business data locally and later guesses how to synchronize it.
+
+If true offline functionality is desired later, implement it as a deliberate architecture with:
+
+* local queue
+* synchronization
+* conflict resolution
+* idempotency
+* server reconciliation
+
+Until then:
+
+Offline = read-only/degraded experience + clearly communicated inability to commit critical operations.
+
+⸻
+
+98. REQUIRED FINAL AUDIT
+
+After implementing the resilience work, produce a report:
+
+A. Existing resilience mechanisms
+
+B. Missing resilience mechanisms
+
+C. Critical vulnerabilities
+
+D. Implemented fixes
+
+E. Automated tests added
+
+F. Manual failure tests required
+
+G. Backup/recovery status
+
+H. Deployment/rollback status
+
+I. External dependency failure handling
+
+J. Remaining risks
+
+⸻
+
+99. IMPORTANT: DO NOT CLAIM TESTS THAT WERE NOT RUN
+
+If you inspected code but did not actually execute a failure test:
+
+Mark:
+
+NOT TESTED
+
+If a scenario cannot safely be simulated automatically:
+
+Mark:
+
+MANUAL TEST REQUIRED
+
+If infrastructure behavior depends on Replit capabilities that are not currently available:
+
+Mark:
+
+INFRASTRUCTURE-DEPENDENT
+
+Do not fabricate test results.
+
+⸻
+
+100. FINAL PRINCIPLE
+
+The goal is NOT:
+
+“Make GastroConnect impossible to fail.”
+
+That is impossible.
+
+The goal is:
+
+When something fails, GastroConnect must fail predictably, safely, visibly, recoverably, and without corrupting business data.
+
+For every critical operation, ask:
+
+1. What if the user loses internet?
+
+2. What if the request reaches the server but the response doesn’t?
+
+3. What if the server crashes?
+
+4. What if the database crashes?
+
+5. What if the database is slow?
+
+6. What if the external API crashes?
+
+7. What if the user retries?
+
+8. What if two users do it simultaneously?
+
+9. What if the browser crashes?
+
+10. What if the application deployment is broken?
+
+11. What if the hosting provider goes down?
+
+12. What if the entire hosting environment is lost?
+
+13. What if data is accidentally deleted?
+
+14. What if a backup is needed?
+
+15. What if the backup itself is unusable?
+
+16. What if credentials are lost?
+
+17. What if an external provider charges/commits something but GastroConnect doesn’t receive the response?
+
+18. What if we don’t know whether an operation succeeded?
+
+For each case, define:
+
+DETECT → STOP/CONTINUE → SAFE STATE → RETRY/FALLBACK → RECOVER → VERIFY → LOG → ALERT
+
+That should be the resilience philosophy of GastroConnect.
