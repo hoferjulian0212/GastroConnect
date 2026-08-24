@@ -18,6 +18,11 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import {
+  Sheet,
+  SheetContent,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import Logo from "@/components/Logo";
 import {
   detectPublicLanguage,
@@ -60,6 +65,7 @@ import {
   ArrowUpRight,
   Utensils,
   Store,
+  Menu,
   CheckCircle2,
   Mail,
   UserPlus,
@@ -162,7 +168,7 @@ const translations = {
     guideStep3Desc: "Nach der Anmeldung stehen alle Funktionen sofort bereit.",
     guideCta: "Anmelden",
     guideNotice: "Der Zugang wird vom Administrator Ihres Unternehmens eingerichtet.",
-    guideMobileCopy: "Sie möchten GastroConnect kennenlernen? Buchen Sie eine Demo und sehen Sie, wie Ihr Betrieb einfacher bestellt.",
+    guideMobileCta: "Jetzt Registrierung anfragen",
 
     pillarsHeadline: "Für wen GastroConnect gebaut ist",
     pillarsSub:
@@ -367,7 +373,7 @@ const translations = {
     guideStep3Desc: "Dopo l'accesso tutte le funzioni sono disponibili immediatamente.",
     guideCta: "Accedi",
     guideNotice: "L'accesso viene creato dall'amministratore della tua azienda.",
-    guideMobileCopy: "Vuoi conoscere GastroConnect? Prenota una demo e scopri come semplificare i tuoi ordini.",
+    guideMobileCta: "Richiedi la registrazione",
 
     pillarsHeadline: "Per chi è pensato GastroConnect",
     pillarsSub:
@@ -512,7 +518,7 @@ const translations = {
     guideStep3Desc: "Once signed in, all features are available immediately.",
     guideCta: "Sign in",
     guideNotice: "Access is set up by your company's administrator.",
-    guideMobileCopy: "Want to see GastroConnect in action? Book a demo and discover a simpler way to manage orders.",
+    guideMobileCta: "Request registration",
 
     pillarsHeadline: "Who GastroConnect is built for",
     pillarsSub:
@@ -678,8 +684,8 @@ function RegistrationGuide({
       transition={{ duration: 0.5, delay: 0.05 }}
       data-testid="registration-guide"
     >
-      <div className="rounded-3xl border border-border bg-card/60 backdrop-blur-sm shadow-sm px-5 py-6 md:px-8 md:py-7">
-        <p className="text-xs font-semibold uppercase tracking-wider text-primary mb-5" data-testid="text-guide-eyebrow">
+      <div className="px-0 md:rounded-3xl md:border md:border-border md:bg-card/60 md:px-8 md:py-7 md:shadow-sm md:backdrop-blur-sm">
+        <p className="mb-5 hidden text-xs font-semibold uppercase tracking-wider text-primary md:block" data-testid="text-guide-eyebrow">
           {t.guideEyebrow}
         </p>
 
@@ -723,59 +729,18 @@ function RegistrationGuide({
           </p>
         </div>
 
-        {/* On mobile, make the access action feel like an invitation instead
-            of a dense three-step information card. */}
-        <div className="relative mt-1 overflow-hidden rounded-[1.5rem] border border-border/70 bg-muted/25 p-4 md:hidden">
-          <motion.div
-            aria-hidden="true"
-            className="pointer-events-none absolute -right-12 -top-16 h-36 w-36 rounded-full bg-primary/10 blur-2xl"
-            animate={reduceMotion ? undefined : { x: [-8, 8, -8], y: [4, -8, 4], scale: [1, 1.12, 1] }}
-            transition={{ duration: 7, repeat: Infinity, ease: "easeInOut" }}
-          />
-          <div className="relative">
-            <div className="mb-4 flex items-center justify-between">
-              <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-primary">
-                {t.guideEyebrow}
-              </span>
-              <span className="text-[10px] font-medium tracking-[0.14em] text-muted-foreground/70">
-                01 — 03
-              </span>
-            </div>
-            <div className="mb-5 flex items-center gap-2" aria-hidden="true">
-              {steps.map((step, i) => {
-                const Icon = step.icon;
-                return (
-                  <motion.div
-                    key={`mobile-guide-step-${step.title}`}
-                    className="flex min-w-0 flex-1 items-center gap-2"
-                    initial={reduceMotion ? { opacity: 1 } : { opacity: 0, x: -8 }}
-                    whileInView={{ opacity: 1, x: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ duration: 0.35, delay: reduceMotion ? 0 : i * 0.12 }}
-                  >
-                    <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${i === 2 ? "bg-foreground text-background" : "bg-background text-primary shadow-sm"}`}>
-                      <Icon className="h-3.5 w-3.5" />
-                    </span>
-                    {i < steps.length - 1 && <span className="h-px min-w-2 flex-1 bg-border" />}
-                  </motion.div>
-                );
-              })}
-            </div>
-            <div className="flex items-end justify-between gap-4">
-              <p className="max-w-[15rem] text-xs leading-relaxed text-muted-foreground">
-                {t.guideMobileCopy}
-              </p>
-              <Button
-                size="lg"
-                className="h-10 shrink-0 gap-1.5 rounded-full bg-black px-4 text-sm font-medium text-white shadow-none hover:bg-black/85 dark:bg-white dark:text-black dark:hover:bg-white/90"
-                onClick={() => onStart("restaurant")}
-                data-testid="button-guide-mobile-cta"
-              >
-                {t.guideCta}
-                <ArrowUpRight className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
+        {/* Mobile keeps this area intentionally minimal: one clear path into
+            the new-user registration flow. */}
+        <div className="flex justify-center md:hidden">
+          <Button
+            size="lg"
+            className="h-11 gap-1.5 rounded-full bg-black px-5 text-sm font-medium text-white shadow-none hover:bg-black/85 dark:bg-white dark:text-black dark:hover:bg-white/90"
+            onClick={() => onStart("restaurant")}
+            data-testid="button-guide-mobile-cta"
+          >
+            {t.guideMobileCta}
+            <ArrowUpRight className="h-4 w-4" />
+          </Button>
         </div>
       </div>
     </motion.div>
@@ -836,6 +801,7 @@ export default function Landing() {
   const [, setLocation] = useLocation();
   const { currentUser, currentRole } = useUser();
   const [scrolled, setScrolled] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [lang, setLang] = useState<Lang>("de");
   const [mobileShotRole, setMobileShotRole] = useState<"restaurant" | "supplier">("restaurant");
   const [mobileShotIndex, setMobileShotIndex] = useState(0);
@@ -927,7 +893,7 @@ export default function Landing() {
     <div className="landing-page min-h-screen bg-white dark:bg-background text-foreground">
       {/* HEADER — floating pill */}
        <header className="fixed top-0 left-0 right-0 z-50 flex justify-center pt-8 px-4 pointer-events-none">
-           <div className={`landing-header-inner pointer-events-auto w-full max-w-6xl flex items-center gap-1.5 px-4 py-2.5 md:gap-3 md:px-7 md:py-3.5 rounded-full border transition-all duration-300 ${
+          <div className={`landing-header-inner pointer-events-auto w-full max-w-6xl flex items-center justify-between gap-1.5 px-4 py-2.5 md:gap-3 md:px-7 md:py-3.5 rounded-full border transition-all duration-300 ${
           scrolled
             ? "bg-white/92 dark:bg-background/92 backdrop-blur-md border-black/[0.06] dark:border-white/10 shadow-lg shadow-black/[0.07]"
             : "bg-white/75 dark:bg-background/75 backdrop-blur-sm border-black/[0.04] dark:border-white/[0.08] shadow-sm"
@@ -944,12 +910,13 @@ export default function Landing() {
               className="flex items-center"
               data-testid="link-brand"
             >
-               <span className="md:hidden">
-                 <Logo size="nav" variant="dark" thick showText={false} className="[&_img]:drop-shadow-[0_0_0.6px_rgba(0,0,0,0.55)] dark:[&_img]:drop-shadow-[0_0_0.6px_rgba(255,255,255,0.45)]" data-testid="logo-landing-nav-mobile" />
-               </span>
-               <span className="hidden md:inline-flex">
-                 <Logo size="nav" variant="dark" thick className="[&_img]:drop-shadow-[0_0_0.6px_rgba(0,0,0,0.55)] dark:[&_img]:drop-shadow-[0_0_0.6px_rgba(255,255,255,0.45)]" data-testid="logo-landing-nav" />
-               </span>
+               <Logo
+                 size="nav"
+                 variant="dark"
+                 thick
+                 className="[&_img]:drop-shadow-[0_0_0.6px_rgba(0,0,0,0.55)] dark:[&_img]:drop-shadow-[0_0_0.6px_rgba(255,255,255,0.45)]"
+                 data-testid="logo-landing-nav"
+               />
             </a>
           </div>
 
@@ -968,8 +935,10 @@ export default function Landing() {
           </div>
 
            {/* Right: language + one prominent auth action */}
-          <div className="flex items-center gap-2 shrink-0 ml-auto lg:ml-0">
-             <PublicLanguageSwitcher lang={lang} onChange={changeLang} compact />
+           <div className="flex items-center gap-2 shrink-0 ml-auto lg:ml-0">
+             <div className="hidden lg:block">
+               <PublicLanguageSwitcher lang={lang} onChange={changeLang} />
+             </div>
             <Button
                variant="default"
                className="hidden md:inline-flex h-10 rounded-full bg-black px-5 text-sm font-medium text-white shadow-none hover:bg-black/85 dark:bg-white dark:text-black dark:hover:bg-white/90"
@@ -980,18 +949,82 @@ export default function Landing() {
                <ArrowUpRight className="ml-1 h-4 w-4" />
             </Button>
 
-            {/* Mobile entry point — intentionally opens registration directly,
-                rather than expanding a secondary navigation drawer. */}
-            <button
-              type="button"
-              className="lg:hidden inline-flex h-9 items-center gap-1.5 rounded-full border border-black bg-black px-3 text-xs font-semibold text-white shadow-sm shadow-black/10 transition-colors hover:bg-black/85 dark:border-black dark:bg-black dark:text-white"
-              aria-label={t.navMenu}
-              onClick={() => setLocation("/register")}
-              data-testid="button-mobile-menu"
-            >
-              <span>{t.navMenu}</span>
-              <ArrowUpRight className="h-3.5 w-3.5" />
-            </button>
+            {/* Mobile navigation — the language selector and all actions live
+                inside this view so the tab bar stays visually quiet. */}
+            <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
+              <SheetTrigger asChild>
+                <button
+                  type="button"
+                  className="lg:hidden inline-flex h-9 w-10 items-center justify-center rounded-full border border-black/10 bg-black/[0.04] text-foreground transition-colors hover:bg-black/[0.08] dark:border-white/10 dark:bg-white/[0.06]"
+                  aria-label={t.navMenu}
+                  data-testid="button-mobile-menu"
+                >
+                  <Menu className="h-5 w-5" />
+                </button>
+              </SheetTrigger>
+              <SheetContent
+                side="bottom"
+                className="h-[min(92vh,760px)] rounded-t-[2rem] border-border bg-background p-0"
+              >
+                <div className="flex h-full flex-col">
+                  <div className="flex items-center justify-between border-b border-border px-5 py-5">
+                    <Logo size="nav" variant="dark" thick data-testid="logo-landing-mobile-menu" />
+                    <span className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                      {t.navMenu}
+                    </span>
+                  </div>
+                  <nav className="flex-1 overflow-y-auto px-5 py-5" aria-label={t.navMenu}>
+                    <div className="space-y-1">
+                      {anchors.map((item) => (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() => {
+                            setMobileNavOpen(false);
+                            window.setTimeout(() => smoothScrollTo(item.id), 80);
+                          }}
+                          className="flex min-h-14 w-full items-center justify-between border-b border-border/70 px-1 text-left text-xl font-medium tracking-tight text-foreground transition-colors hover:text-muted-foreground"
+                          data-testid={`nav-mobile-${item.id}`}
+                        >
+                          {item.label}
+                          <ArrowUpRight className="h-5 w-5 text-muted-foreground" />
+                        </button>
+                      ))}
+                    </div>
+                  </nav>
+                  <div className="space-y-3 border-t border-border px-5 py-5">
+                    <Button
+                      className="h-12 w-full rounded-full bg-black text-white shadow-none hover:bg-black/85 dark:bg-white dark:text-black dark:hover:bg-white/90"
+                      onClick={() => {
+                        setMobileNavOpen(false);
+                        setLocation("/register");
+                      }}
+                      data-testid="link-register-mobile"
+                    >
+                      {t.navStart}
+                      <ArrowUpRight className="ml-1 h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="h-12 w-full rounded-full border-border bg-transparent"
+                      onClick={() => {
+                        setMobileNavOpen(false);
+                        handleLogin();
+                      }}
+                      data-testid="link-login-mobile"
+                    >
+                      {t.navLogin}
+                    </Button>
+                    <div className="flex items-center justify-between border-t border-border pt-4">
+                      <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                        Sprache / Language
+                      </span>
+                      <PublicLanguageSwitcher lang={lang} onChange={changeLang} compact />
+                    </div>
+                  </div>
+                </div>
+              </SheetContent>
+            </Sheet>
           </div>
         </div>
       </header>
