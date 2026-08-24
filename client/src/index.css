@@ -896,13 +896,21 @@ html, body, #root {
   }
 }
 
-/* Dark mode: the near-black (#161921) hero/header panels blend into the dark
-   page background. Lift them to a distinct elevated surface so they read as a
-   separate panel. Buttons are excluded so the FAB keeps its own hover/active
-   states. Placed outside @layer so it reliably overrides the Tailwind
-   arbitrary `bg-[#161921]` utility. */
+/* Keep the shared dark brand surfaces truly black so login, app heroes and
+   menus match the black-and-white visual system. Text and icons remain white
+   through their own utility classes. Placed outside @layer so it reliably
+   overrides the Tailwind arbitrary color utilities. */
 html.dark [class*="bg-[#161921]"]:not(button) {
-  background-color: hsl(224 14% 17%);
+  background-color: #000000;
+}
+
+html [class*="bg-[#161921]"],
+html [class*="bg-[#1e2130]"] {
+  background-color: #000000 !important;
+}
+
+html [class*="text-[#161921]"] {
+  color: #000000 !important;
 }
 
 /**
