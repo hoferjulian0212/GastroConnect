@@ -831,16 +831,20 @@ export default function Landing() {
   }, [mobileShotRole]);
 
   // Start the ordering recording as soon as its phone frame enters the viewport.
-  // Muted inline video is autoplay-safe, but the explicit observer also covers
-  // browsers that defer autoplay while the element is below the fold.
+  // Set the media properties imperatively as well as through JSX because some
+  // browsers only honor muted inline autoplay after the element is mounted.
   useEffect(() => {
     const video = lifestyleVideoRef.current;
     if (!video || reduceMotion) return;
 
+    video.muted = true;
+    video.defaultMuted = true;
+    video.playsInline = true;
+
     const tryPlay = () => {
       if (document.hidden) return;
       void video.play().catch(() => {
-        // A browser may still defer playback until the next visibility change.
+        // canplay/visibilitychange will retry after the browser finishes loading.
       });
     };
 
@@ -852,18 +856,26 @@ export default function Landing() {
           video.pause();
         }
       },
-      { threshold: 0.15 },
+      { rootMargin: "200px 0px", threshold: [0, 0.01] },
     );
 
     observer.observe(video);
+    video.addEventListener("loadedmetadata", tryPlay);
+    video.addEventListener("loadeddata", tryPlay);
     video.addEventListener("canplay", tryPlay);
-    if (video.readyState >= HTMLMediaElement.HAVE_FUTURE_DATA) {
-      tryPlay();
-    }
+    const onVisibilityChange = () => {
+      if (document.hidden) video.pause();
+      else tryPlay();
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    tryPlay();
 
     return () => {
       observer.disconnect();
+      video.removeEventListener("loadedmetadata", tryPlay);
+      video.removeEventListener("loadeddata", tryPlay);
       video.removeEventListener("canplay", tryPlay);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
       video.pause();
     };
   }, [reduceMotion]);
@@ -1166,6 +1178,9 @@ export default function Landing() {
                         muted
                         loop
                         playsInline
+                        controls={false}
+                        disablePictureInPicture
+                        controlsList="nodownload noplaybackrate nofullscreen noremoteplayback"
                         preload="metadata"
                         ref={lifestyleVideoRef}
                         aria-label={t.mobileAltRestaurant}
