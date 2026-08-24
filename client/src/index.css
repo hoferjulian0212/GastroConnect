@@ -324,6 +324,18 @@ input[type="date"].date-empty:not(.dark *)::-webkit-datetime-edit-year-field {
   color: rgb(0 0 0 / .48);
 }
 
+/* Leave a little more breathing room below the floating public header. The
+   main landing page has its own hero rhythm and is intentionally excluded. */
+.gc-public > section:first-of-type {
+  padding-top: 9rem;
+}
+
+@media (min-width: 768px) {
+  .gc-public > section:first-of-type {
+    padding-top: 11rem;
+  }
+}
+
 
 /* Landing art direction. Keep these variables and effects page-scoped so the
    product UI remains untouched. */
