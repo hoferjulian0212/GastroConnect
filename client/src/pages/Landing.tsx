@@ -749,8 +749,8 @@ function OrderingProcessCanvas({
 }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
-  const hasRenderedFrameRef = useRef(false);
-  const [hasRenderedFrame, setHasRenderedFrame] = useState(false);
+  const isVideoActiveRef = useRef(false);
+  const [isVideoActive, setIsVideoActive] = useState(false);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -761,9 +761,18 @@ function OrderingProcessCanvas({
     let animationFrame: number | null = null;
     let retryTimer: number | null = null;
     let lastRenderedTime = -1;
+    let progressStartedAt: number | null = null;
+    let lastProgressAt = 0;
+
+    const setVideoActive = (active: boolean) => {
+      if (isVideoActiveRef.current === active) return;
+      isVideoActiveRef.current = active;
+      setIsVideoActive(active);
+    };
 
     const drawFrame = () => {
       animationFrame = null;
+      const now = performance.now();
 
       if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA && video.videoWidth > 0) {
         if (canvas.width !== video.videoWidth || canvas.height !== video.videoHeight) {
@@ -772,12 +781,21 @@ function OrderingProcessCanvas({
         }
         if (video.currentTime !== lastRenderedTime) {
           context.drawImage(video, 0, 0, canvas.width, canvas.height);
+          if (progressStartedAt === null) progressStartedAt = now;
+          lastProgressAt = now;
           lastRenderedTime = video.currentTime;
-          if (!hasRenderedFrameRef.current) {
-            hasRenderedFrameRef.current = true;
-            setHasRenderedFrame(true);
+          if (!video.paused && now - progressStartedAt >= 400) {
+            setVideoActive(true);
           }
         }
+      }
+
+      if (
+        isVideoActiveRef.current &&
+        (video.paused || lastProgressAt === 0 || now - lastProgressAt > 650)
+      ) {
+        progressStartedAt = null;
+        setVideoActive(false);
       }
 
       animationFrame = window.requestAnimationFrame(drawFrame);
@@ -814,6 +832,14 @@ function OrderingProcessCanvas({
 
     const onScroll = () => tryPlay();
     const onUserGesture = () => tryPlay();
+    const markInactive = () => {
+      progressStartedAt = null;
+      setVideoActive(false);
+    };
+    const onPlaying = () => {
+      progressStartedAt = performance.now();
+      renderFrames();
+    };
     const observer = "IntersectionObserver" in window
       ? new IntersectionObserver(
           ([entry]) => {
@@ -834,6 +860,11 @@ function OrderingProcessCanvas({
     video.addEventListener("loadeddata", renderFrames);
     video.addEventListener("canplay", tryPlay);
     video.addEventListener("play", renderFrames);
+    video.addEventListener("playing", onPlaying);
+    video.addEventListener("pause", markInactive);
+    video.addEventListener("waiting", markInactive);
+    video.addEventListener("stalled", markInactive);
+    video.addEventListener("emptied", markInactive);
     window.addEventListener("scroll", onScroll, { passive: true });
     window.addEventListener("pointerdown", onUserGesture, { passive: true });
     window.addEventListener("pointermove", onUserGesture, { passive: true });
@@ -851,6 +882,11 @@ function OrderingProcessCanvas({
       video.removeEventListener("loadeddata", renderFrames);
       video.removeEventListener("canplay", tryPlay);
       video.removeEventListener("play", renderFrames);
+      video.removeEventListener("playing", onPlaying);
+      video.removeEventListener("pause", markInactive);
+      video.removeEventListener("waiting", markInactive);
+      video.removeEventListener("stalled", markInactive);
+      video.removeEventListener("emptied", markInactive);
       window.removeEventListener("scroll", onScroll);
       window.removeEventListener("pointerdown", onUserGesture);
       window.removeEventListener("pointermove", onUserGesture);
@@ -870,7 +906,7 @@ function OrderingProcessCanvas({
         alt=""
         aria-hidden="true"
         className={`pointer-events-none absolute inset-0 z-10 h-full w-full object-cover object-top transition-opacity duration-150 ${
-          reduceMotion || !hasRenderedFrame ? "opacity-100" : "opacity-0"
+          reduceMotion || !isVideoActive ? "opacity-100" : "opacity-0"
         }`}
       />
       <canvas
@@ -878,7 +914,7 @@ function OrderingProcessCanvas({
         aria-label={label}
         data-testid={testId}
         className={`absolute inset-0 z-20 h-full w-full object-cover object-top transition-opacity duration-150 ${
-          reduceMotion || !hasRenderedFrame ? "opacity-0" : "opacity-100"
+          reduceMotion || !isVideoActive ? "opacity-0" : "opacity-100"
         }`}
         style={{
           backgroundImage: `url(${poster})`,
