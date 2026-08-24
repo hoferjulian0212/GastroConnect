@@ -1270,7 +1270,7 @@ export default function Landing() {
       {/* PILLARS — Für wen */}
       <section
         id="fuer-wen"
-        className="scroll-mt-20 px-4 md:px-8 py-12 md:py-32"
+        className="scroll-mt-20 px-4 pb-12 pt-4 md:px-8 md:py-32"
       >
         <div className="mx-auto max-w-6xl">
           <div className="mx-auto max-w-2xl text-center mb-12 md:mb-16">
@@ -1295,7 +1295,7 @@ export default function Landing() {
               const slideDistance = firstSlide.offsetWidth + 16;
               setPillarSlideIndex(Math.min(1, Math.max(0, Math.round(event.currentTarget.scrollLeft / slideDistance))));
             }}
-            className="flex w-full snap-x snap-mandatory gap-4 overflow-x-auto overscroll-x-contain scroll-smooth scroll-px-4 touch-pan-x pb-3 scrollbar-hide md:grid md:grid-cols-2 md:gap-6 md:overflow-visible md:pb-0"
+            className="flex w-full snap-x snap-mandatory gap-4 overflow-x-auto overscroll-x-contain scroll-smooth scroll-px-4 touch-pan-x bg-white pb-3 scrollbar-hide md:grid md:grid-cols-2 md:gap-6 md:overflow-visible md:bg-transparent md:pb-0"
             aria-label={t.eyebrowPillars}
           >
             {[
@@ -1323,7 +1323,7 @@ export default function Landing() {
               <MotionReveal
                 key={p.testid}
                 delay={pIdx * 120}
-                className="w-full min-w-full shrink-0 snap-start md:min-w-0 md:shrink"
+                className="w-full min-w-full shrink-0 snap-center md:min-w-0 md:shrink"
               >
               <div
                 data-pillar-slide={pIdx}
@@ -1360,6 +1360,7 @@ export default function Landing() {
               </div>
               </MotionReveal>
             ))}
+            <div className="w-1/2 min-w-[50%] shrink-0 md:hidden" aria-hidden="true" />
           </div>
           <div className="mt-4 flex flex-col items-center gap-2 md:hidden">
             <div className="flex items-center gap-2" aria-label={t.pillarsSwipe}>
