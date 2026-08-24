@@ -332,7 +332,7 @@ input[type="date"].date-empty:not(.dark *)::-webkit-datetime-edit-year-field {
 
 @media (min-width: 768px) {
   .gc-public > section:first-of-type {
-    padding-top: 11rem;
+    padding-top: 13rem;
   }
 }
 
