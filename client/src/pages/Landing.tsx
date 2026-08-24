@@ -34,10 +34,22 @@ import shotChefPhone from "@assets/iStock-1277816551_1781732715128.jpg";
 import shotOfficePhone from "@assets/sk_art-corporate-training-10046033_1920_1781806207063.jpg";
 import shotOrderingProcess from "@assets/landing-ordering-process-clean.mp4";
 import shotOrderingProcessPoster from "@assets/landing-ordering-process-clean-poster.jpg";
-import shotOrderingProcessAutoplayFallback from "@assets/landing-ordering-process-autoplay-fallback.webp";
+import shotOrderingProcessChunk00 from "@assets/landing-ordering-process-chunk-00.webp";
+import shotOrderingProcessChunk01 from "@assets/landing-ordering-process-chunk-01.webp";
+import shotOrderingProcessChunk02 from "@assets/landing-ordering-process-chunk-02.webp";
+import shotOrderingProcessChunk03 from "@assets/landing-ordering-process-chunk-03.webp";
+import shotOrderingProcessChunk04 from "@assets/landing-ordering-process-chunk-04.webp";
+import shotOrderingProcessChunk05 from "@assets/landing-ordering-process-chunk-05.webp";
+import shotOrderingProcessChunk06 from "@assets/landing-ordering-process-chunk-06.webp";
+import shotOrderingProcessChunk07 from "@assets/landing-ordering-process-chunk-07.webp";
+import shotOrderingProcessChunk08 from "@assets/landing-ordering-process-chunk-08.webp";
 import shotBusinessProcess from "@assets/landing-business-process-clean.mp4";
 import shotBusinessProcessPoster from "@assets/landing-business-process-clean-poster.jpg";
-import shotBusinessProcessAutoplayFallback from "@assets/landing-business-process-autoplay-fallback.webp";
+import shotBusinessProcessChunk00 from "@assets/landing-business-process-chunk-00.webp";
+import shotBusinessProcessChunk01 from "@assets/landing-business-process-chunk-01.webp";
+import shotBusinessProcessChunk02 from "@assets/landing-business-process-chunk-02.webp";
+import shotBusinessProcessChunk03 from "@assets/landing-business-process-chunk-03.webp";
+import shotBusinessProcessChunk04 from "@assets/landing-business-process-chunk-04.webp";
 import shotMobileHome from "@assets/landing-mobile-home.png";
 import shotMobileProducts from "@assets/landing-mobile-products.png";
 import shotMobileInbox from "@assets/landing-mobile-inbox.png";
@@ -75,6 +87,31 @@ import {
   CheckCircle2,
   UserPlus,
 } from "lucide-react";
+
+type AnimatedFallbackSegment = {
+  src: string;
+  durationMs: number;
+};
+
+const orderingProcessFallbackSegments: AnimatedFallbackSegment[] = [
+  { src: shotOrderingProcessChunk00, durationMs: 4000 },
+  { src: shotOrderingProcessChunk01, durationMs: 4000 },
+  { src: shotOrderingProcessChunk02, durationMs: 4000 },
+  { src: shotOrderingProcessChunk03, durationMs: 4000 },
+  { src: shotOrderingProcessChunk04, durationMs: 4000 },
+  { src: shotOrderingProcessChunk05, durationMs: 4000 },
+  { src: shotOrderingProcessChunk06, durationMs: 4000 },
+  { src: shotOrderingProcessChunk07, durationMs: 4000 },
+  { src: shotOrderingProcessChunk08, durationMs: 3233 },
+];
+
+const businessProcessFallbackSegments: AnimatedFallbackSegment[] = [
+  { src: shotBusinessProcessChunk00, durationMs: 4000 },
+  { src: shotBusinessProcessChunk01, durationMs: 4000 },
+  { src: shotBusinessProcessChunk02, durationMs: 4000 },
+  { src: shotBusinessProcessChunk03, durationMs: 4000 },
+  { src: shotBusinessProcessChunk04, durationMs: 3067 },
+];
 
 const animationStrings = {
   de: {
@@ -732,17 +769,61 @@ function RegistrationGuide({
   );
 }
 
+function SequencedAnimatedFallback({
+  segments,
+  poster,
+  reduceMotion,
+  active,
+}: {
+  segments: readonly AnimatedFallbackSegment[];
+  poster: string;
+  reduceMotion: boolean | null;
+  active: boolean;
+}) {
+  const [segmentIndex, setSegmentIndex] = useState(0);
+
+  useEffect(() => {
+    if (reduceMotion || !active || segments.length === 0) return;
+
+    const nextIndex = (segmentIndex + 1) % segments.length;
+    const nextImage = new Image();
+    nextImage.src = segments[nextIndex].src;
+
+    const timeout = window.setTimeout(() => {
+      setSegmentIndex(nextIndex);
+    }, segments[segmentIndex].durationMs);
+
+    return () => window.clearTimeout(timeout);
+  }, [active, reduceMotion, segmentIndex, segments]);
+
+  const source = reduceMotion
+    ? poster
+    : segments[segmentIndex]?.src ?? poster;
+
+  return (
+    <img
+      key={`${active ? "active" : "hidden"}-${segmentIndex}`}
+      src={source}
+      alt=""
+      aria-hidden="true"
+      className={`pointer-events-none absolute inset-0 z-10 h-full w-full object-cover object-top transition-opacity duration-150 ${
+        active ? "opacity-100" : "opacity-0"
+      }`}
+    />
+  );
+}
+
 function OrderingProcessCanvas({
   src,
   poster,
-  fallback,
+  fallbackSegments,
   label,
   reduceMotion,
   testId,
 }: {
   src: string;
   poster: string;
-  fallback: string;
+  fallbackSegments: readonly AnimatedFallbackSegment[];
   label: string;
   reduceMotion: boolean | null;
   testId?: string;
@@ -901,13 +982,11 @@ function OrderingProcessCanvas({
 
   return (
     <>
-      <img
-        src={reduceMotion ? poster : fallback}
-        alt=""
-        aria-hidden="true"
-        className={`pointer-events-none absolute inset-0 z-10 h-full w-full object-cover object-top transition-opacity duration-150 ${
-          reduceMotion || !isVideoActive ? "opacity-100" : "opacity-0"
-        }`}
+      <SequencedAnimatedFallback
+        segments={fallbackSegments}
+        poster={poster}
+        reduceMotion={reduceMotion}
+        active={Boolean(reduceMotion) || !isVideoActive}
       />
       <canvas
         ref={canvasRef}
@@ -1336,7 +1415,7 @@ export default function Landing() {
                       <OrderingProcessCanvas
                         src={shotOrderingProcess}
                         poster={shotOrderingProcessPoster}
-                        fallback={shotOrderingProcessAutoplayFallback}
+                        fallbackSegments={orderingProcessFallbackSegments}
                         label={t.mobileAltRestaurant}
                         reduceMotion={reduceMotion}
                         testId="img-lifestyle-phone"
@@ -1429,7 +1508,7 @@ export default function Landing() {
                       <OrderingProcessCanvas
                         src={shotBusinessProcess}
                         poster={shotBusinessProcessPoster}
-                        fallback={shotBusinessProcessAutoplayFallback}
+                        fallbackSegments={businessProcessFallbackSegments}
                         label={t.mobileAltSupplier}
                         reduceMotion={reduceMotion}
                         testId="img-lifestyle-supplier-phone"
