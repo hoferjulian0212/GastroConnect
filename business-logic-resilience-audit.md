@@ -330,7 +330,9 @@ These cannot be truthfully completed from the development workspace alone:
    non-production environment.
 3. Run production-like concurrent checkout and delivery load/race tests.
 4. Verify backups, restore drills, deployment rollback, external monitoring,
-   alert routing, and operational ownership.
+   alert routing, and operational ownership using the production drill record
+   in `production-acceptance-report.md`; record immutable backup IDs, restore
+   RPO/RTO, order/outbox integrity checks, deployment IDs, and readiness bodies.
 
 ### Ambiguous business rules requiring manual decision
 

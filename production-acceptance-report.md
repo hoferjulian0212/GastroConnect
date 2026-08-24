@@ -13,7 +13,7 @@ provider delivery, or deployment rollback.
 
 | Area | Status | Evidence |
 | --- | --- | --- |
-| Restaurant order creation and order-state protections | **Verified by automated tests** | `node --import tsx --test server/*.test.ts` — 185 passed |
+| Restaurant order creation and order-state protections | **Verified by automated tests** | `node --import tsx --test server/*.test.ts` — 188 passed |
 | Supplier confirmation and role boundaries | **Verified by automated tests** | Authz suite covers supplier confirmation, restaurant rejection, and cross-organization rejection |
 | Complaint creation and duplicate prevention | **Verified by automated tests** | First complaint succeeds; repeated complaint returns `409 complaint_already_exists` |
 | Driver/order lifecycle guards | **Verified by automated tests** | Driver lifecycle, warehouse routing, and order transition tests pass |
@@ -83,11 +83,65 @@ production database, object-storage, and deployment controls.
 | --- | --- | --- | --- |
 | Development checkout migration preflight | 2026-08-24T10:56:16Z | Passed | No duplicate checkout artifacts found; read-only preflight completed. |
 | Development checkout migration catalog verification | 2026-08-24T10:56:16Z | Passed | Required checkout schema and indexes are present. This is migration readiness, not a restore. |
-| Development liveness, readiness, and metrics checks | 2026-08-24T11:01:21Z | Passed | All returned JSON HTTP 200. Metrics reported no pending/recent-terminal retry records and a non-exhausted pool. |
+| Development liveness, readiness, and metrics checks | 2026-08-24T11:07:30Z | Passed | All returned HTTP 200 with `application/json`; live returned `{"status":"ok"}`, ready returned database `ok`, and metrics reported no pending/recent-terminal retry records and a non-exhausted pool. |
 | Published health-route inspection | 2026-08-24T10:56:57Z | **Failed** | `/health/live`, `/health/ready`, and `/health/metrics` each returned HTTP 200 with `text/html` SPA content instead of the expected JSON health response. External monitoring must not be enabled against this deployment until the corrected server release is published and rechecked. |
 | PostgreSQL backup and isolated restore | Not executed | **Not proven** | RPO: not measured. RTO: not measured. Post-restore readiness: not measured. Requires an operations owner, production backup inventory, and an isolated restore target. |
 | Object-storage backup and isolated restore | Not executed | **Not proven** | RPO: not measured. RTO: not measured. Object count/checksum and signed-download validation: not measured. Requires an operations owner and isolated restore bucket. |
 | Canary deployment and rollback | Not executed | **Blocked** | Canary start/end, rollback start/end, and post-rollback readiness: not measured. The current published route mismatch must be fixed before this drill. |
+
+### Operator-owned production drill record
+
+This section is intentionally blank until an operator with production backup,
+object-storage, and deployment access performs the drill. Do not replace
+`Not recorded` with an estimate. Attach provider exports, deployment event
+links, command output, and timestamps in UTC to this report.
+
+#### Backup inventory and isolated restore
+
+| System | Backup identifier / immutable version | Completed (UTC) | Retention | Accountable owner | Restore target | Restore start (UTC) | Restore end (UTC) | RPO | RTO |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| PostgreSQL | Not recorded | Not recorded | Not recorded | Not recorded | Not recorded | Not recorded | Not recorded | Not measured | Not measured |
+| Object storage | Not recorded | Not recorded | Not recorded | Not recorded | Not recorded | Not recorded | Not recorded | Not measured | Not measured |
+
+Record the PostgreSQL row count for the order, order-items, order-status-history,
+checkout-idempotency, and `order_notification_retries` tables before and after
+restore. For object storage, record object count, total bytes, and checksums
+for a representative order document and complaint document, then perform a
+read-only download from the isolated target. Record the restored application's
+`/health/ready` status and JSON body; a successful database connection alone
+does not prove application readiness.
+
+#### Canary and rollback
+
+| Event | Release / deployment ID | Start (UTC) | End (UTC) | Readiness HTTP/body | Error-rate evidence | Owner |
+| --- | --- | --- | --- | --- | --- | --- |
+| Canary deployment | Not recorded | Not recorded | Not recorded | Not recorded | Not recorded | Not recorded |
+| Rollback to known-good | Not recorded | Not recorded | Not recorded | Not recorded | Not recorded | Not recorded |
+
+The canary record must include migration preflight output and the observed
+five-minute API error rate. The rollback record must include post-rollback
+`/health/live`, `/health/ready`, and `/health/metrics` status, content type,
+and JSON bodies, plus measured recovery time. Any `200` response containing
+SPA HTML fails the health-contract check.
+
+#### Read-only business-integrity check
+
+Capture these values immediately before the canary and after rollback from the
+same production database snapshot/window:
+
+| Check | Before canary | After rollback | Result / evidence |
+| --- | --- | --- | --- |
+| Order count and checksum of immutable order IDs | Not recorded | Not recorded | Not recorded |
+| Order-item count and quantity/value checksum | Not recorded | Not recorded | Not recorded |
+| Status-history count and latest-event checksum | Not recorded | Not recorded | Not recorded |
+| Checkout idempotency records and key/fingerprint checksum | Not recorded | Not recorded | Not recorded |
+| Notification-outbox count, pending count, and terminal-failure count | Not recorded | Not recorded | Not recorded |
+| Read-only order detail and checkout-history smoke check | Not recorded | Not recorded | Not recorded |
+
+The smoke check must use a known existing order and must not create, cancel,
+reprice, or otherwise mutate business data. Matching counts/checksums and
+preserved outbox history are required; a code rollback must never be
+implemented as a destructive data rollback.
 
 ### Required operator drill evidence before sign-off
 
