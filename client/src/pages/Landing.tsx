@@ -32,8 +32,8 @@ import {
 } from "@/pages/About";
 import shotChefPhone from "@assets/iStock-1277816551_1781732715128.jpg";
 import shotOfficePhone from "@assets/sk_art-corporate-training-10046033_1920_1781806207063.jpg";
-import shotOrderingProcess from "@assets/landing-ordering-process.mp4";
-import shotOrderingProcessPoster from "@assets/landing-ordering-process-poster.jpg";
+import shotOrderingProcess from "@assets/landing-ordering-process-clean.mp4";
+import shotOrderingProcessPoster from "@assets/landing-ordering-process-clean-poster.jpg";
 import shotMobileHome from "@assets/landing-mobile-home.png";
 import shotMobileProducts from "@assets/landing-mobile-products.png";
 import shotMobileInbox from "@assets/landing-mobile-inbox.png";
@@ -797,6 +797,7 @@ export default function Landing() {
   const [mobileShotIndex, setMobileShotIndex] = useState(0);
   const [pillarSlideIndex, setPillarSlideIndex] = useState(0);
   const pillarsCarouselRef = useRef<HTMLDivElement | null>(null);
+  const lifestyleVideoRef = useRef<HTMLVideoElement | null>(null);
   const reduceMotion = useReducedMotion();
   const [isDesktop, setIsDesktop] = useState(() =>
     typeof window !== "undefined" &&
@@ -828,6 +829,44 @@ export default function Landing() {
   useEffect(() => {
     setMobileShotIndex(0);
   }, [mobileShotRole]);
+
+  // Start the ordering recording as soon as its phone frame enters the viewport.
+  // Muted inline video is autoplay-safe, but the explicit observer also covers
+  // browsers that defer autoplay while the element is below the fold.
+  useEffect(() => {
+    const video = lifestyleVideoRef.current;
+    if (!video || reduceMotion) return;
+
+    const tryPlay = () => {
+      if (document.hidden) return;
+      void video.play().catch(() => {
+        // A browser may still defer playback until the next visibility change.
+      });
+    };
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          tryPlay();
+        } else {
+          video.pause();
+        }
+      },
+      { threshold: 0.15 },
+    );
+
+    observer.observe(video);
+    video.addEventListener("canplay", tryPlay);
+    if (video.readyState >= HTMLMediaElement.HAVE_FUTURE_DATA) {
+      tryPlay();
+    }
+
+    return () => {
+      observer.disconnect();
+      video.removeEventListener("canplay", tryPlay);
+      video.pause();
+    };
+  }, [reduceMotion]);
 
   // B4 — Phone-frame parallax in mobile section (desktop-only motion)
   const phoneFrameRef = useRef<HTMLDivElement | null>(null);
@@ -1128,6 +1167,7 @@ export default function Landing() {
                         loop
                         playsInline
                         preload="metadata"
+                        ref={lifestyleVideoRef}
                         aria-label={t.mobileAltRestaurant}
                         className="absolute inset-0 w-full h-full object-cover object-top"
                         data-testid="video-lifestyle-phone"
