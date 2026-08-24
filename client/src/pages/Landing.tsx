@@ -748,20 +748,22 @@ function OrderingProcessCanvas({
     const context = canvas?.getContext("2d");
     if (!video || !canvas || !context || reduceMotion) return;
 
-    let isNearViewport = false;
     let animationFrame: number | null = null;
     let retryTimer: number | null = null;
+    let lastRenderedTime = -1;
 
     const drawFrame = () => {
       animationFrame = null;
-      if (!isNearViewport) return;
 
       if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA && video.videoWidth > 0) {
         if (canvas.width !== video.videoWidth || canvas.height !== video.videoHeight) {
           canvas.width = video.videoWidth;
           canvas.height = video.videoHeight;
         }
-        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+        if (video.currentTime !== lastRenderedTime) {
+          context.drawImage(video, 0, 0, canvas.width, canvas.height);
+          lastRenderedTime = video.currentTime;
+        }
       }
 
       animationFrame = window.requestAnimationFrame(drawFrame);
@@ -778,9 +780,9 @@ function OrderingProcessCanvas({
       video.muted = true;
       video.defaultMuted = true;
       void video.play().then(renderFrames).catch(() => {
-        // Retry while visible in case the browser is still decoding or waking
-        // the media element after a scroll.
-        if (isNearViewport && retryTimer === null) {
+        // Retry in case the browser is still decoding or waking the media
+        // element after the page scrolls into place.
+        if (retryTimer === null) {
           retryTimer = window.setTimeout(() => {
             retryTimer = null;
             tryPlay();
@@ -789,44 +791,11 @@ function OrderingProcessCanvas({
       });
     };
 
-    const setNearViewport = (nearViewport: boolean) => {
-      isNearViewport = nearViewport;
-      if (nearViewport) {
-        renderFrames();
-        tryPlay();
-      } else {
-        video.pause();
-        if (retryTimer !== null) {
-          window.clearTimeout(retryTimer);
-          retryTimer = null;
-        }
-        if (animationFrame !== null) {
-          window.cancelAnimationFrame(animationFrame);
-          animationFrame = null;
-        }
-      }
-    };
-
-    const observer = "IntersectionObserver" in window
-      ? new IntersectionObserver(
-          ([entry]) => setNearViewport(entry.isIntersecting),
-          { rootMargin: "180px 0px", threshold: 0.01 },
-        )
-      : null;
-
-    observer?.observe(canvas);
-    if (!observer) setNearViewport(true);
-
-    const onScroll = () => {
-      const bounds = canvas.getBoundingClientRect();
-      if (bounds.bottom > 0 && bounds.top < window.innerHeight) {
-        setNearViewport(true);
-      }
-    };
+    const onScroll = () => tryPlay();
     const onVisibilityChange = () => {
       if (document.hidden) {
         video.pause();
-      } else if (isNearViewport) {
+      } else {
         tryPlay();
       }
     };
@@ -837,10 +806,10 @@ function OrderingProcessCanvas({
     window.addEventListener("scroll", onScroll, { passive: true });
     document.addEventListener("visibilitychange", onVisibilityChange);
     video.load();
+    renderFrames();
     tryPlay();
 
     return () => {
-      observer?.disconnect();
       video.removeEventListener("loadedmetadata", renderFrames);
       video.removeEventListener("loadeddata", renderFrames);
       video.removeEventListener("play", renderFrames);
