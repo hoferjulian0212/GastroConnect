@@ -91,7 +91,7 @@ const footerT = {
     features: "Funktionen", howItWorks: "So funktioniert es", faq: "FAQ",
     about: "Über uns", contact: "Kontakt",
     impressum: "Impressum", datenschutz: "Datenschutz", agb: "AGB",
-    copyright: "Alle Rechte vorbehalten.", cta: "Jetzt starten →",
+    copyright: "Alle Rechte vorbehalten.", cta: "Jetzt starten",
   },
   it: {
     tagline: "La piattaforma digitale per la collaborazione tra gastronomia e commercio.",
@@ -99,7 +99,7 @@ const footerT = {
     features: "Funzionalità", howItWorks: "Come funziona", faq: "FAQ",
     about: "Chi siamo", contact: "Contatti",
     impressum: "Note legali", datenschutz: "Privacy", agb: "Termini",
-    copyright: "Tutti i diritti riservati.", cta: "Inizia ora →",
+    copyright: "Tutti i diritti riservati.", cta: "Inizia ora",
   },
   en: {
     tagline: "The digital platform for collaboration between hospitality and trade.",
@@ -107,7 +107,7 @@ const footerT = {
     features: "Features", howItWorks: "How it works", faq: "FAQ",
     about: "About", contact: "Contact",
     impressum: "Imprint", datenschutz: "Privacy", agb: "Terms",
-    copyright: "All rights reserved.", cta: "Get started →",
+    copyright: "All rights reserved.", cta: "Get started",
   },
 } as const;
 
@@ -283,7 +283,7 @@ export function PublicFooter({ lang }: { lang: PublicLang }) {
         </div>
 
         <div>
-          <p className="gc-kicker mb-4">{t.product}</p>
+            <p className="gc-kicker mb-4 !font-extrabold !text-black">{t.product}</p>
           <ul className="grid gap-2.5 text-sm">
             {(
               [
@@ -300,7 +300,7 @@ export function PublicFooter({ lang }: { lang: PublicLang }) {
         </div>
 
         <div>
-          <p className="gc-kicker mb-4">{t.company}</p>
+            <p className="gc-kicker mb-4 !font-extrabold !text-black">{t.company}</p>
           <ul className="grid gap-2.5 text-sm">
             {(
               [
@@ -316,7 +316,7 @@ export function PublicFooter({ lang }: { lang: PublicLang }) {
         </div>
 
         <div>
-          <p className="gc-kicker mb-4">{t.legal}</p>
+            <p className="gc-kicker mb-4 !font-extrabold !text-black">{t.legal}</p>
           <ul className="grid gap-2.5 text-sm">
             {(
               [
@@ -335,7 +335,13 @@ export function PublicFooter({ lang }: { lang: PublicLang }) {
 
       <div className="mx-auto max-w-5xl mt-10 pt-6 border-t border-black/[0.06] flex items-center justify-between gap-4">
         <p className="text-xs text-black/35">© {new Date().getFullYear()} GastroConnect. {t.copyright}</p>
-        <Link href="/register" className="text-xs text-black/40 hover:text-black transition-colors">{t.cta}</Link>
+        <Link
+          href="/register"
+          className="inline-flex items-center gap-1.5 rounded-full bg-black px-4 py-2 text-xs font-medium text-white transition-colors hover:bg-black/85"
+        >
+          {t.cta}
+          <ArrowUpRight className="h-3.5 w-3.5" />
+        </Link>
       </div>
     </footer>
   );
