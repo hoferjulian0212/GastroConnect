@@ -14,7 +14,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Send, MessageSquare, Search, Check, CheckCheck, Plus, ShoppingCart, ShoppingBag, X, Package, Phone, ClipboardList, Eye, AlertCircle, AlertTriangle, ArrowLeft, Settings, Clock, Loader2, CheckCircle, XCircle, FileText, Download, Paperclip, Pencil, Truck, Trash2, CalendarDays, Zap, PackagePlus, Tag, Calendar, Reply, User as UserIcon, ChevronDown, ChevronUp, CircleAlert, RefreshCw, Mic, Pin, PinOff } from "lucide-react";
+import { Send, MessageSquare, Search, Check, CheckCheck, Plus, ShoppingCart, ShoppingBag, X, Package, Phone, ClipboardList, Eye, AlertCircle, AlertTriangle, Settings, Clock, Loader2, CheckCircle, XCircle, FileText, Download, Paperclip, Pencil, Truck, Trash2, CalendarDays, Zap, PackagePlus, Tag, Calendar, Reply, User as UserIcon, ChevronDown, ChevronUp, CircleAlert, RefreshCw, Mic, Pin, PinOff } from "lucide-react";
 import { QuickReplyChips } from "@/components/chat/QuickReplyChips";
 import SwipeToReply from "@/components/SwipeToReply";
 import { getMessageReplyPreview } from "@/lib/messageReplyPreview";
@@ -45,6 +45,7 @@ import { ProductImage } from "@/components/ProductImage";
 import { WhatsappInboxCard } from "@/components/WhatsappInboxCard";
 import { HeroPortal } from "@/context/HeroContext";
 import { checkoutFingerprint, clearPendingCheckoutKey, getPendingCheckoutKey } from "@/lib/checkoutIdempotency";
+import { MobileBackButton } from "@/components/mobile/MobileBackButton";
 
 type ActionMode = "none" | "order" | "complaint";
 
@@ -1192,6 +1193,13 @@ export default function RestaurantInbox() {
         <div className="flex flex-1 min-h-0 min-w-0">
           <div className={`w-full md:w-72 lg:w-80 border-r border-border flex flex-col min-h-0 shrink-0 ${selectedConversation ? 'hidden md:flex' : 'flex'}`}>
             <CardHeader className="pb-2 p-3 shrink-0">
+              <div className="mb-2 md:hidden">
+                <MobileBackButton
+                  label={lang === "de" ? "Zurück" : "Indietro"}
+                  onClick={() => setLocation("/restaurant")}
+                  testId="button-back-from-inbox"
+                />
+              </div>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -1361,15 +1369,12 @@ export default function RestaurantInbox() {
                 <div className="border-b border-border px-3 pb-3.5 pt-[calc(env(safe-area-inset-top,0px)+0.875rem)] md:px-4 md:py-4 bg-background">
                   <div className="flex items-center justify-between gap-2 min-h-[44px]">
                     <div className="flex items-center gap-2.5 md:gap-3">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="md:hidden h-9 w-9 shrink-0"
+                      <MobileBackButton
+                        iconOnly
                         onClick={handleBackToList}
                         data-testid="button-back-to-list"
-                      >
-                        <ArrowLeft className="h-4 w-4" />
-                      </Button>
+                        label={lang === "de" ? "Zurück zur Nachrichtenliste" : "Torna all'elenco dei messaggi"}
+                      />
                       <Avatar className="h-10 w-10 md:h-10 md:w-10 shrink-0">
                         <AvatarImage src={selectedConv.otherUser.profileImageUrl || undefined} alt={selectedConv.otherUser.name} />
                         <AvatarFallback className="bg-secondary/20 text-secondary">
@@ -2976,15 +2981,12 @@ export default function RestaurantInbox() {
               <div className="flex-1 flex flex-col h-full min-h-[calc(100dvh-200px)]">
                 {selectedConversation && (
                   <div className="md:hidden border-b border-border px-3 py-3 shrink-0">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-9 w-9"
+                    <MobileBackButton
+                      iconOnly
                       onClick={handleBackToList}
                       data-testid="button-back-to-list-empty"
-                    >
-                      <ArrowLeft className="h-4 w-4" />
-                    </Button>
+                      label={lang === "de" ? "Zurück zur Nachrichtenliste" : "Torna all'elenco dei messaggi"}
+                    />
                   </div>
                 )}
                 <div className="flex-1 flex items-center justify-center">
