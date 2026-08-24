@@ -32,8 +32,9 @@ import {
 } from "@/pages/About";
 import shotChefPhone from "@assets/iStock-1277816551_1781732715128.jpg";
 import shotOfficePhone from "@assets/sk_art-corporate-training-10046033_1920_1781806207063.jpg";
+import shotOrderingProcess from "@assets/landing-ordering-process.mp4";
+import shotOrderingProcessPoster from "@assets/landing-ordering-process-poster.jpg";
 import shotMobileHome from "@assets/landing-mobile-home.png";
-import shotLifestyleProducts from "@assets/IMG_4917_1781733804883.PNG";
 import shotMobileProducts from "@assets/landing-mobile-products.png";
 import shotMobileInbox from "@assets/landing-mobile-inbox.png";
 import shotMobileSupplierHome from "@assets/landing-mobile-supplier-home.png";
@@ -1119,12 +1120,17 @@ export default function Landing() {
                 <div className="absolute left-3 sm:left-6 md:left-8 top-1/2 -translate-y-1/2">
                   <div className="rounded-[2.25rem] md:rounded-[2.75rem] border border-border bg-card p-2.5 md:p-3 shadow-2xl shadow-black/50">
                     <div className="relative rounded-[1.75rem] md:rounded-[2.25rem] overflow-hidden border border-border w-[150px] sm:w-[185px] md:w-[230px] aspect-[9/19] bg-card">
-                      <img
-                        src={shotLifestyleProducts}
-                        alt={t.mobileAltRestaurant}
+                      <video
+                        src={shotOrderingProcess}
+                        poster={shotOrderingProcessPoster}
+                        autoPlay={!reduceMotion}
+                        muted
+                        loop
+                        playsInline
+                        preload="metadata"
+                        aria-label={t.mobileAltRestaurant}
                         className="absolute inset-0 w-full h-full object-cover object-top"
-                        loading="lazy"
-                        data-testid="img-lifestyle-phone"
+                        data-testid="video-lifestyle-phone"
                       />
                     </div>
                   </div>
