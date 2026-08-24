@@ -12,7 +12,6 @@ import { MobileSection, MobileSectionLink, MobileListCard, MobileEmptyState, Mob
 import MobileDashboardViewSelector from "@/components/MobileDashboardViewSelector";
 import type { OrderWithDetails, ConversationWithUser, OrderTemplateWithItems } from "@shared/schema";
 import { getOrderStatus } from "@/lib/translations";
-import { ActiveDeliveryBanner } from "@/components/ActiveDeliveryBanner";
 
 interface Props {
   currentUser: any;
@@ -225,11 +224,6 @@ export default function RestaurantHomeMobile({
             {leadLine}
           </button>
         </div>
-
-        <ActiveDeliveryBanner
-          orders={activeDeliveryOrders}
-          lang={lang}
-        />
 
         {currentUser?.id && (
           <div className="flex justify-end px-2 mt-3" data-testid="mobile-dashboard-views-row">

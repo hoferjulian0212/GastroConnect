@@ -379,10 +379,10 @@ export function AiAssistant() {
         <>
           {/* The welcome pill and icon enter together; the icon remains after
               the pill exits so help is always one tap away. */}
-          <div className="fixed bottom-[calc(var(--mobile-cta-offset)+16px)] right-4 z-[56] flex items-center gap-2 md:bottom-6 md:right-6 md:gap-3">
+          <div className="fixed bottom-[calc(var(--mobile-cta-offset)+12px)] left-3 z-[56] flex flex-col-reverse items-start gap-2 md:bottom-6 md:left-auto md:right-6 md:flex-row md:items-center md:gap-3">
             {nudgeVisible && (
               <div
-                className={`flex max-w-[calc(100vw-6rem)] items-center gap-2 rounded-full bg-[#161921] px-3 py-2.5 text-sm font-medium text-white shadow-lg shadow-black/20 md:px-4 ${
+                className={`flex max-w-[calc(100vw-7rem)] items-center gap-2 rounded-full bg-[#161921] px-3 py-2.5 text-sm font-medium text-white shadow-lg shadow-black/20 md:max-w-[calc(100vw-6rem)] md:px-4 ${
                   nudgeExiting ? "animate-ai-launcher-out" : "animate-ai-launcher-in"
                 }`}
                 data-testid="ai-nudge-pill"
@@ -416,11 +416,11 @@ export function AiAssistant() {
                 setOpen(true);
                 setView("chat");
               }}
-              className="flex-shrink-0 inline-flex h-14 w-14 animate-ai-launcher-in items-center justify-center rounded-full bg-[#161921] text-white shadow-lg shadow-black/20 transition-transform hover:scale-105 active:scale-95 md:h-16 md:w-16"
+              className="flex-shrink-0 inline-flex h-12 w-12 animate-ai-launcher-in items-center justify-center rounded-full bg-[#161921] text-white shadow-lg shadow-black/20 transition-transform hover:scale-105 active:scale-95 md:h-16 md:w-16"
               aria-label={t("KI-Assistent öffnen", "Apri assistente AI")}
               data-testid="button-ai-fab"
             >
-              <SupportChatIcon className="h-7 w-7" />
+              <SupportChatIcon className="h-6 w-6 md:h-7 md:w-7" />
             </button>
           </div>
         </>

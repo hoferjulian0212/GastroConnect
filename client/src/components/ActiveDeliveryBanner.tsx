@@ -51,7 +51,7 @@ export function ActiveDeliveryBanner({ orders, lang }: ActiveDeliveryBannerProps
 
   return (
     <div
-      className="fixed bottom-[5.75rem] right-4 z-[58] flex flex-col items-end gap-2 md:bottom-24 md:right-6"
+      className="fixed bottom-[calc(var(--mobile-cta-offset)+12px)] right-3 z-[54] flex flex-col items-end gap-2 md:bottom-24 md:right-6"
       data-testid="active-delivery-launcher"
     >
       {expanded && multiple && (
@@ -116,12 +116,12 @@ export function ActiveDeliveryBanner({ orders, lang }: ActiveDeliveryBannerProps
           aria-label={multiple
             ? (lang === "de" ? `${orders.length} Bestellungen unterwegs, Auswahl öffnen` : `${orders.length} ordini in viaggio, apri selezione`)
             : orderLabel(first)}
-          className="group relative inline-flex h-14 w-14 items-center justify-center rounded-full bg-blue-700 text-white shadow-lg shadow-blue-700/25 transition-transform hover:scale-105 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 md:h-16 md:w-16"
+          className="group relative inline-flex h-12 w-12 items-center justify-center rounded-full bg-blue-700 text-white shadow-lg shadow-blue-700/25 transition-transform hover:scale-105 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 md:h-16 md:w-16"
           data-testid="active-delivery-launcher-button"
         >
           <span className="absolute inset-0 rounded-full border-2 border-blue-400/80 animate-ping" />
           <span className="absolute inset-1 rounded-full border border-blue-200/40" />
-          <Truck className="relative h-7 w-7 animate-[truck-float_2s_ease-in-out_infinite] md:h-8 md:w-8" />
+          <Truck className="relative h-6 w-6 animate-[truck-float_2s_ease-in-out_infinite] md:h-8 md:w-8" />
           {multiple ? (
             <span className="absolute -right-1 -top-1 flex h-6 min-w-6 items-center justify-center rounded-full border-2 border-blue-700 bg-white px-1 text-[11px] font-bold text-blue-700">
               {orders.length}
