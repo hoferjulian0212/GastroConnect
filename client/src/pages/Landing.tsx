@@ -34,6 +34,8 @@ import shotChefPhone from "@assets/iStock-1277816551_1781732715128.jpg";
 import shotOfficePhone from "@assets/sk_art-corporate-training-10046033_1920_1781806207063.jpg";
 import shotOrderingProcess from "@assets/landing-ordering-process-clean.mp4";
 import shotOrderingProcessPoster from "@assets/landing-ordering-process-clean-poster.jpg";
+import shotBusinessProcess from "@assets/landing-business-process-clean.mp4";
+import shotBusinessProcessPoster from "@assets/landing-business-process-clean-poster.jpg";
 import shotMobileHome from "@assets/landing-mobile-home.png";
 import shotMobileProducts from "@assets/landing-mobile-products.png";
 import shotMobileInbox from "@assets/landing-mobile-inbox.png";
@@ -733,11 +735,13 @@ function OrderingProcessCanvas({
   poster,
   label,
   reduceMotion,
+  testId,
 }: {
   src: string;
   poster: string;
   label: string;
   reduceMotion: boolean | null;
+  testId?: string;
 }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -854,6 +858,7 @@ function OrderingProcessCanvas({
       <canvas
         ref={canvasRef}
         aria-label={label}
+        data-testid={testId}
         className="absolute inset-0 z-10 h-full w-full object-cover object-top"
         style={{
           backgroundImage: `url(${poster})`,
@@ -1275,6 +1280,7 @@ export default function Landing() {
                         poster={shotOrderingProcessPoster}
                         label={t.mobileAltRestaurant}
                         reduceMotion={reduceMotion}
+                        testId="img-lifestyle-phone"
                       />
                     </div>
                   </div>
@@ -1361,12 +1367,12 @@ export default function Landing() {
                 <div className="absolute left-3 sm:left-6 md:left-8 top-1/2 -translate-y-1/2">
                   <div className="rounded-[2.25rem] md:rounded-[2.75rem] border border-border bg-card p-2.5 md:p-3 shadow-2xl shadow-black/50">
                     <div className="relative rounded-[1.75rem] md:rounded-[2.25rem] overflow-hidden border border-border w-[150px] sm:w-[185px] md:w-[230px] aspect-[9/19] bg-card">
-                      <img
-                        src={shotMobileSupplierHome}
-                        alt={t.mobileAltSupplier}
-                        className="absolute inset-0 w-full h-full object-cover object-top"
-                        loading="lazy"
-                        data-testid="img-lifestyle-supplier-phone"
+                      <OrderingProcessCanvas
+                        src={shotBusinessProcess}
+                        poster={shotBusinessProcessPoster}
+                        label={t.mobileAltSupplier}
+                        reduceMotion={reduceMotion}
+                        testId="img-lifestyle-supplier-phone"
                       />
                     </div>
                   </div>
