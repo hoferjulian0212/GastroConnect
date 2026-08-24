@@ -332,7 +332,6 @@ export interface IStorage {
 
   // Platform admins (GastroConnect system owners — separate from org-level roles)
   runAdminMigration(): Promise<void>;
-  assertCheckoutResilienceSchema(): Promise<void>;
   getPlatformAdmin(id: string): Promise<PlatformAdmin | undefined>;
   getPlatformAdminByReplitUserId(replitUserId: string): Promise<PlatformAdmin | undefined>;
   getPlatformAdminByEmail(email: string): Promise<PlatformAdmin | undefined>;
@@ -3379,9 +3378,7 @@ export class DatabaseStorage implements IStorage {
       { templateId: tmpl2.id, productId: p_olivenoel.id, quantity: 2 },
     ]);
 
-    // ============================================================
-    // ===== MASSIVE EXPANSION (demo-v4) ==========================
-    // ============================================================
+    // --- MASSIVE EXPANSION (demo-v4) ---
     const restaurants = [restaurant1, restaurant2, restaurant3, restaurant4, restaurant5];
     const suppliers = [supplier1, supplier2, supplier3, supplier4, supplier5];
 
@@ -3857,9 +3854,7 @@ export class DatabaseStorage implements IStorage {
     }
     if (movRows.length) await db.insert(minimumOrderValues).values(movRows);
 
-    // ============================================================
-    // ===== PIRI'S JAGDHOF — vollständiger Test-Betrieb ==========
-    // ============================================================
+    // --- PIRI'S JAGDHOF — vollständiger Test-Betrieb ---
     const piri = await this.createUser({
       role: "restaurant", name: "Pirmin Hofer", email: "piri@jagdhof.de",
       phone: "+49 8022 887766", companyName: "Piri's Jagdhof",
@@ -4128,9 +4123,7 @@ export class DatabaseStorage implements IStorage {
 
     console.log(`Piri's Jagdhof: ${piriOrderSpecs.length} Bestellungen, ${piriStays.length} Übernachtungstage seeded.`);
 
-    // ============================================================
-    // ===== RATINGS & DOCUMENTS (across all delivered orders) ====
-    // ============================================================
+    // --- RATINGS & DOCUMENTS (across all delivered orders) ---
     const orderNum = (o: any) => o.orderNumber && o.orderNumber.length > 0 ? o.orderNumber : "B-" + o.id.slice(0, 6).toUpperCase();
     const ratingPool = [...generatedOrders.filter(o => o.status === "delivered"), ...piriDeliveredOrders];
 
@@ -5848,45 +5841,6 @@ export class DatabaseStorage implements IStorage {
     if ((closeApplied.rows || []).length === 0) {
       await db.update(errorLogs).set({ status: "closed" }).where(ne(errorLogs.status, "closed"));
       await db.execute(sql`INSERT INTO app_migrations (name) VALUES (${ERROR_LOG_CLOSE_MIGRATION}) ON CONFLICT DO NOTHING`);
-    }
-  }
-
-  async assertCheckoutResilienceSchema(): Promise<void> {
-    const result = await db.execute(sql`
-      SELECT
-        to_regclass('public.order_notification_retries') IS NOT NULL AS outbox_exists,
-        EXISTS (
-          SELECT 1 FROM information_schema.columns
-          WHERE table_name = 'orders' AND column_name = 'idempotency_fingerprint'
-        ) AS fingerprint_exists,
-        EXISTS (
-          SELECT 1 FROM pg_indexes
-          WHERE indexname = 'uniq_orders_restaurant_idempotency_supplier'
-        ) AS idempotency_index_exists,
-        EXISTS (
-          SELECT 1 FROM information_schema.columns
-          WHERE table_name = 'notifications' AND column_name = 'delivery_dedup_key'
-        ) AS notification_dedup_column_exists,
-        EXISTS (
-          SELECT 1 FROM pg_indexes
-          WHERE indexname = 'uniq_checkout_new_order_notification'
-        ) AS notification_dedup_index_exists,
-        EXISTS (
-          SELECT 1 FROM schema_migrations
-          WHERE name = 'checkout-resilience-v1'
-        ) AS checkout_migration_recorded
-    `);
-    const row = result.rows[0] as {
-      outbox_exists?: boolean;
-      fingerprint_exists?: boolean;
-      idempotency_index_exists?: boolean;
-      notification_dedup_column_exists?: boolean;
-      notification_dedup_index_exists?: boolean;
-      checkout_migration_recorded?: boolean;
-    } | undefined;
-    if (!row?.outbox_exists || !row.fingerprint_exists || !row.idempotency_index_exists ||
-      !row.notification_dedup_column_exists || !row.notification_dedup_index_exists || !row.checkout_migration_recorded) {
-      throw new Error("Checkout resilience schema is missing. Run `npm run db:migrate-checkout-resilience` before starting the application.");
     }
   }
 

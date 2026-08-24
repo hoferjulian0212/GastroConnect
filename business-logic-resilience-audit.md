@@ -18,10 +18,6 @@ workspace.
   required `Idempotency-Key`; missing or malformed keys are rejected. The key is persisted with the order and constrained by
   restaurant, key, and supplier. A repeat returns the original order response
   with `Idempotent-Replay: true` instead of creating or reserving stock again.
-- Each checkout also has a required request fingerprint, persisted alongside
-  the key. Reusing a key with a changed basket, supplier, note, or delivery
-  date is rejected with `409 idempotency_key_reused`, never silently replayed
-  as an earlier order.
 - The restaurant cart and direct inbox checkout generate a key per submission.
   Pending keys are persisted locally with a cart/request fingerprint, so a
   browser refresh or lost response safely reuses the original checkout identity;
@@ -70,6 +66,61 @@ workspace.
 - Registration requires both email verification and platform approval.
 - Driver and order transitions enforce their documented forward-only workflow.
 
+### Versioned checkout migration rollout
+
+Checkout schema work is no longer performed by the application boot path. The
+numbered checkout migrations own the checkout idempotency key and request
+fingerprint columns, the supplier-notification outbox, and the order-card and
+checkout-delivery notification uniqueness guards. `npm run db:migrate` runs a
+read-only preflight before applying the reviewed checkout migrations through its
+versioned deployment ledger and verifies the resulting schema and index
+definitions afterward.
+
+The preflight reports duplicate legacy order cards, duplicate new-order
+notifications, duplicate checkout keys, and duplicate outbox rows. It exits
+non-zero and never deletes or selects a “winning” business record. An operator
+must reconcile any reported records under an approved retention/audit plan
+before rerunning the command. The SQL migration repeats the duplicate checks
+inside its transaction so calling the underlying migrator directly is also
+fail-closed.
+
+Production sequence:
+
+1. Take/confirm a database backup and deploy the migration files and migration
+   runner without routing checkout traffic to code that requires the new schema.
+2. Run `npm run db:migrate -- --preflight-only` and stop if it reports any
+   duplicate group. Do not solve the warning by deleting order cards or
+   notifications automatically.
+3. Run `npm run db:migrate`. The migration is tracked in the deployment
+   migration ledger, and the verification step must pass before the application
+   is marked ready. It sets a 5-second lock timeout and a 2-minute statement
+   timeout by default (override with
+   `CHECKOUT_MIGRATION_LOCK_TIMEOUT_MS` and
+   `CHECKOUT_MIGRATION_STATEMENT_TIMEOUT_MS`, both bounded to 1 second–15
+   minutes). The indexes are created inside one transaction, not concurrently:
+   schedule the run during a low-write window because a successful run can
+   briefly wait on or block writes; a timeout aborts and rolls back the whole
+   migration without recording it.
+4. Start/shift application traffic only after verification succeeds. A failed
+   transactional migration can be retried after the underlying issue is
+   resolved; no application boot retry performs schema changes.
+
+Rollback plan:
+
+- If the migration fails, keep the application on the previous compatible
+  release and inspect the database; do not manually delete partially retained
+  business records. The migration transaction rolls back its DDL, and the
+  preflight can be rerun after remediation.
+- If a post-deploy rollback is required, first stop code that writes the new
+  idempotency/outbox fields, preserve any pending outbox rows for audit, and
+  restore from the verified backup or use a reviewed reverse migration. Do not
+  drop the checkout idempotency/fingerprint columns or the outbox table while
+  any deployed writer or retry worker can still reference them.
+- After restoring/reversing to the pre-migration release, validate that
+  release’s own readiness and checkout checks. Do not run this migration
+  runner’s `--verify-only` mode against a deliberately pre-0009 schema: that
+  mode correctly requires the new checkout objects.
+
 ## Automated validation
 
 Executed after this audit:
@@ -77,13 +128,17 @@ Executed after this audit:
 | Check | Result |
 | --- | --- |
 | `npm run check` | passed |
-| `node --import tsx --test server/*.test.ts` | passed: 183 tests |
+| `node --import tsx --test server/*.test.ts` | passed: 182 tests |
 | `npx vitest run` | passed: 18 tests |
+| `npm run db:migrate -- --preflight-only` | passed: no duplicate checkout artifacts found |
+| `npm run db:migrate -- --verify-only` | passed: exact checkout schema/index catalog verified |
+| `npm run db:migrate` | passed: migration applied and then rerun idempotently from the deployment ledger |
 | `/health/live` | manually verified: HTTP 200, `{"status":"ok"}`, request ID header |
 | `/health/ready` | manually verified: HTTP 200, database dependency reported `ok`, request ID header |
 
 Focused resilience tests cover safe request IDs, rejection of malformed
-idempotency keys, required checkout keys, and generic public error messages.
+idempotency keys and fingerprints, key-reuse rejection for changed checkout
+requests, and generic public error messages.
 Existing server tests
 cover authorization, cross-tenant isolation, registration approval, member
 credential sanitization, driver lifecycle, and stock/order behavior.
@@ -113,12 +168,9 @@ they cannot be truthfully marked complete through application code alone:
 
 ## Residual risks and next verification
 
-- Checkout-critical schema is applied through
-  `npm run db:migrate-checkout-resilience`, which records the migration,
-  preflights duplicate order-card history without deleting it, and creates
-  checkout indexes concurrently. Application startup only verifies this
-  migration; it does not modify checkout tables or indexes. Other legacy
-  startup migrations remain outside this checkout-specific scope.
+ - Checkout schema/index changes now use the versioned, preflighted migration
+   process above. Production acceptance still requires an operator to run the
+   migration, verify index presence, and exercise the rollback plan.
 - A checkout key is intentionally scoped to a restaurant and supplier so one
   multi-supplier basket can share one key. A client must not reuse a key for a
   different checkout.

@@ -26,3 +26,4 @@
 - [Clerk Auth Migration](clerk-auth-migration.md) — req.auth collision with @clerk/express; must reset (req as any).auth = undefined after getAuth() in loadAuth; every member needs an accepted invitation record (resolveClerkAuth); demo members need ensureDemoInvitationAccepted() at bootstrap.
 - [Registration approval gate](registration-approval-gate.md) — self-registration email verification and platform approval are separate; pending/denied organizations never receive protected API auth.
 - [Checkout delivery outbox](checkout-delivery-outbox.md) — checkout order, initial status, and supplier-delivery retry must commit together; leases and sink uniqueness prevent duplicate recovery sends.
+- [Checkout deployment migrations](checkout-deployment-migrations.md) — legacy databases lack a reliable Drizzle baseline; checkout schema changes use the dedicated preflighted deployment ledger.

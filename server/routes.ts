@@ -878,7 +878,6 @@ export async function registerRoutes(
   // not locked out by the login email-gate).
   await storage.runEmailVerificationMigration();
   await storage.runAdminMigration();
-  await storage.assertCheckoutResilienceSchema();
   // Driver module tables/enums (delivery assignments, live locations, internal chat)
   await storage.runDriverMigration();
   // Central AI knowledge base (learns from user feedback on assistant answers)
