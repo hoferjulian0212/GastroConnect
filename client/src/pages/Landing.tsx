@@ -34,8 +34,10 @@ import shotChefPhone from "@assets/iStock-1277816551_1781732715128.jpg";
 import shotOfficePhone from "@assets/sk_art-corporate-training-10046033_1920_1781806207063.jpg";
 import shotOrderingProcess from "@assets/landing-ordering-process-clean.mp4";
 import shotOrderingProcessPoster from "@assets/landing-ordering-process-clean-poster.jpg";
+import shotOrderingProcessAutoplayFallback from "@assets/landing-ordering-process-autoplay-fallback.webp";
 import shotBusinessProcess from "@assets/landing-business-process-clean.mp4";
 import shotBusinessProcessPoster from "@assets/landing-business-process-clean-poster.jpg";
+import shotBusinessProcessAutoplayFallback from "@assets/landing-business-process-autoplay-fallback.webp";
 import shotMobileHome from "@assets/landing-mobile-home.png";
 import shotMobileProducts from "@assets/landing-mobile-products.png";
 import shotMobileInbox from "@assets/landing-mobile-inbox.png";
@@ -733,18 +735,22 @@ function RegistrationGuide({
 function OrderingProcessCanvas({
   src,
   poster,
+  fallback,
   label,
   reduceMotion,
   testId,
 }: {
   src: string;
   poster: string;
+  fallback: string;
   label: string;
   reduceMotion: boolean | null;
   testId?: string;
 }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const hasRenderedFrameRef = useRef(false);
+  const [hasRenderedFrame, setHasRenderedFrame] = useState(false);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -767,6 +773,10 @@ function OrderingProcessCanvas({
         if (video.currentTime !== lastRenderedTime) {
           context.drawImage(video, 0, 0, canvas.width, canvas.height);
           lastRenderedTime = video.currentTime;
+          if (!hasRenderedFrameRef.current) {
+            hasRenderedFrameRef.current = true;
+            setHasRenderedFrame(true);
+          }
         }
       }
 
@@ -855,11 +865,21 @@ function OrderingProcessCanvas({
 
   return (
     <>
+      <img
+        src={reduceMotion ? poster : fallback}
+        alt=""
+        aria-hidden="true"
+        className={`pointer-events-none absolute inset-0 z-10 h-full w-full object-cover object-top transition-opacity duration-150 ${
+          reduceMotion || !hasRenderedFrame ? "opacity-100" : "opacity-0"
+        }`}
+      />
       <canvas
         ref={canvasRef}
         aria-label={label}
         data-testid={testId}
-        className="absolute inset-0 z-10 h-full w-full object-cover object-top"
+        className={`absolute inset-0 z-20 h-full w-full object-cover object-top transition-opacity duration-150 ${
+          reduceMotion || !hasRenderedFrame ? "opacity-0" : "opacity-100"
+        }`}
         style={{
           backgroundImage: `url(${poster})`,
           backgroundPosition: "top",
@@ -1280,6 +1300,7 @@ export default function Landing() {
                       <OrderingProcessCanvas
                         src={shotOrderingProcess}
                         poster={shotOrderingProcessPoster}
+                        fallback={shotOrderingProcessAutoplayFallback}
                         label={t.mobileAltRestaurant}
                         reduceMotion={reduceMotion}
                         testId="img-lifestyle-phone"
@@ -1372,6 +1393,7 @@ export default function Landing() {
                       <OrderingProcessCanvas
                         src={shotBusinessProcess}
                         poster={shotBusinessProcessPoster}
+                        fallback={shotBusinessProcessAutoplayFallback}
                         label={t.mobileAltSupplier}
                         reduceMotion={reduceMotion}
                         testId="img-lifestyle-supplier-phone"
