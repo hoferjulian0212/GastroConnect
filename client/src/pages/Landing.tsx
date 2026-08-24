@@ -972,7 +972,7 @@ export default function Landing() {
               </SheetTrigger>
               <SheetContent
                 side="bottom"
-                className="h-[min(92vh,760px)] rounded-t-[2rem] border-border bg-background p-0"
+                 className="h-[min(92vh,760px)] rounded-t-[2rem] border-border bg-background p-0 [&>button]:right-5 [&>button]:top-5 [&>button]:flex [&>button]:h-10 [&>button]:w-10 [&>button]:items-center [&>button]:justify-center [&>button]:rounded-full [&>button]:opacity-70 [&>button_svg]:h-6 [&>button_svg]:w-6"
               >
                 <div className="flex h-full flex-col">
                   <div className="flex items-center justify-between border-b border-border px-5 py-5">
