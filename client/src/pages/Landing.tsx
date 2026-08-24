@@ -1099,7 +1099,7 @@ export default function Landing() {
               </div>
             )}
             <MotionReveal delay={400} y={16} blur={false}>
-               <p className="mt-6 md:mt-8 text-base md:text-xl text-muted-foreground leading-relaxed max-w-2xl mx-auto">
+               <p className="landing-hero-sub-mobile mt-6 md:mt-8 text-base md:text-xl text-muted-foreground leading-relaxed max-w-2xl mx-auto">
                 {t.heroSub}
               </p>
             </MotionReveal>

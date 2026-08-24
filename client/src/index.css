@@ -292,6 +292,26 @@ input[type="date"].date-empty:not(.dark *)::-webkit-datetime-edit-year-field {
   line-height: .95;
 }
 
+@media (max-width: 767px) {
+  .landing-page .landing-hero .landing-hero-sub-mobile {
+    max-width: 21rem;
+    color: rgb(22 23 28 / .78);
+    font-family: "DM Serif Display", Georgia, serif;
+    font-size: 1.38rem;
+    font-weight: 400;
+    letter-spacing: -.018em;
+    line-height: 1.18;
+  }
+
+  .landing-page .landing-hero .landing-hero-sub-mobile::before {
+    content: "";
+    display: block;
+    width: 2rem;
+    margin: 0 auto 1rem;
+    border-top: 2px solid rgb(22 23 28 / .72);
+  }
+}
+
 /* Public editorial pages share the landing page's quiet, typographic rhythm. */
 .gc-public .gc-accent {
   font-family: "DM Serif Display", Georgia, serif;
