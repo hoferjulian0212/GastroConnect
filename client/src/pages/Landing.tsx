@@ -801,7 +801,6 @@ function ScrollMarquee({
             <span className="text-[clamp(1.4rem,2.8vw,2.4rem)] font-semibold tracking-tight text-foreground/[0.065]">
               {item}
             </span>
-            <span className="mx-8 md:mx-12 text-foreground/[0.025] text-xs">◆</span>
           </span>
         ))}
       </motion.div>
