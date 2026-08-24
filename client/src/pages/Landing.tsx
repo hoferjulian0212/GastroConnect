@@ -800,6 +800,14 @@ function OrderingProcessCanvas({
 
     const onScroll = () => tryPlay();
     const onUserGesture = () => tryPlay();
+    const observer = "IntersectionObserver" in window
+      ? new IntersectionObserver(
+          ([entry]) => {
+            if (entry.isIntersecting) tryPlay();
+          },
+          { rootMargin: "180px 0px", threshold: 0.01 },
+        )
+      : null;
     const onVisibilityChange = () => {
       if (document.hidden) {
         video.pause();
@@ -818,11 +826,13 @@ function OrderingProcessCanvas({
     window.addEventListener("touchstart", onUserGesture, { passive: true });
     window.addEventListener("touchmove", onUserGesture, { passive: true });
     document.addEventListener("visibilitychange", onVisibilityChange);
+    observer?.observe(canvas);
     video.load();
     renderFrames();
     tryPlay();
 
     return () => {
+      observer?.disconnect();
       video.removeEventListener("loadedmetadata", renderFrames);
       video.removeEventListener("loadeddata", renderFrames);
       video.removeEventListener("canplay", tryPlay);
