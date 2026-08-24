@@ -1036,7 +1036,7 @@ export default function Landing() {
                               onClick={() => changeLang(option.code)}
                               className={`flex min-h-24 flex-col items-center justify-center gap-2 rounded-2xl border px-2 py-3 text-xs transition-colors ${
                                 active
-                                  ? "border-foreground bg-foreground text-background"
+                                  ? "border-[3px] border-foreground bg-transparent text-foreground"
                                   : "border-border bg-transparent text-muted-foreground hover:bg-muted/60 hover:text-foreground"
                               }`}
                               data-testid={`language-mobile-${option.code}`}
