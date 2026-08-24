@@ -32,24 +32,10 @@ import {
 } from "@/pages/About";
 import shotChefPhone from "@assets/iStock-1277816551_1781732715128.jpg";
 import shotOfficePhone from "@assets/sk_art-corporate-training-10046033_1920_1781806207063.jpg";
-import shotOrderingProcess from "@assets/landing-ordering-process-clean.mp4";
+import shotOrderingProcess from "@assets/landing-ordering-process-webcodecs.mp4";
 import shotOrderingProcessPoster from "@assets/landing-ordering-process-clean-poster.jpg";
-import shotOrderingProcessChunk00 from "@assets/landing-ordering-process-chunk-00.webp";
-import shotOrderingProcessChunk01 from "@assets/landing-ordering-process-chunk-01.webp";
-import shotOrderingProcessChunk02 from "@assets/landing-ordering-process-chunk-02.webp";
-import shotOrderingProcessChunk03 from "@assets/landing-ordering-process-chunk-03.webp";
-import shotOrderingProcessChunk04 from "@assets/landing-ordering-process-chunk-04.webp";
-import shotOrderingProcessChunk05 from "@assets/landing-ordering-process-chunk-05.webp";
-import shotOrderingProcessChunk06 from "@assets/landing-ordering-process-chunk-06.webp";
-import shotOrderingProcessChunk07 from "@assets/landing-ordering-process-chunk-07.webp";
-import shotOrderingProcessChunk08 from "@assets/landing-ordering-process-chunk-08.webp";
-import shotBusinessProcess from "@assets/landing-business-process-clean.mp4";
+import shotBusinessProcess from "@assets/landing-business-process-webcodecs.mp4";
 import shotBusinessProcessPoster from "@assets/landing-business-process-clean-poster.jpg";
-import shotBusinessProcessChunk00 from "@assets/landing-business-process-chunk-00.webp";
-import shotBusinessProcessChunk01 from "@assets/landing-business-process-chunk-01.webp";
-import shotBusinessProcessChunk02 from "@assets/landing-business-process-chunk-02.webp";
-import shotBusinessProcessChunk03 from "@assets/landing-business-process-chunk-03.webp";
-import shotBusinessProcessChunk04 from "@assets/landing-business-process-chunk-04.webp";
 import shotMobileHome from "@assets/landing-mobile-home.png";
 import shotMobileProducts from "@assets/landing-mobile-products.png";
 import shotMobileInbox from "@assets/landing-mobile-inbox.png";
@@ -87,31 +73,6 @@ import {
   CheckCircle2,
   UserPlus,
 } from "lucide-react";
-
-type AnimatedFallbackSegment = {
-  src: string;
-  durationMs: number;
-};
-
-const orderingProcessFallbackSegments: AnimatedFallbackSegment[] = [
-  { src: shotOrderingProcessChunk00, durationMs: 4000 },
-  { src: shotOrderingProcessChunk01, durationMs: 4000 },
-  { src: shotOrderingProcessChunk02, durationMs: 4000 },
-  { src: shotOrderingProcessChunk03, durationMs: 4000 },
-  { src: shotOrderingProcessChunk04, durationMs: 4000 },
-  { src: shotOrderingProcessChunk05, durationMs: 4000 },
-  { src: shotOrderingProcessChunk06, durationMs: 4000 },
-  { src: shotOrderingProcessChunk07, durationMs: 4000 },
-  { src: shotOrderingProcessChunk08, durationMs: 3233 },
-];
-
-const businessProcessFallbackSegments: AnimatedFallbackSegment[] = [
-  { src: shotBusinessProcessChunk00, durationMs: 4000 },
-  { src: shotBusinessProcessChunk01, durationMs: 4000 },
-  { src: shotBusinessProcessChunk02, durationMs: 4000 },
-  { src: shotBusinessProcessChunk03, durationMs: 4000 },
-  { src: shotBusinessProcessChunk04, durationMs: 3067 },
-];
 
 const animationStrings = {
   de: {
@@ -769,252 +730,216 @@ function RegistrationGuide({
   );
 }
 
-function SequencedAnimatedFallback({
-  segments,
-  poster,
-  reduceMotion,
-  active,
-}: {
-  segments: readonly AnimatedFallbackSegment[];
-  poster: string;
-  reduceMotion: boolean | null;
-  active: boolean;
-}) {
-  const [segmentIndex, setSegmentIndex] = useState(0);
+type LandingVideoWorkerMessage =
+  | {
+      type: "state";
+      state: string;
+      duration?: number;
+    }
+  | {
+      type: "frame";
+      bitmap: ImageBitmap;
+      timestamp: number;
+    }
+  | {
+      type: "error";
+      message: string;
+    };
 
-  useEffect(() => {
-    if (reduceMotion || !active || segments.length === 0) return;
-
-    const nextIndex = (segmentIndex + 1) % segments.length;
-    const nextImage = new Image();
-    nextImage.src = segments[nextIndex].src;
-
-    const timeout = window.setTimeout(() => {
-      setSegmentIndex(nextIndex);
-    }, segments[segmentIndex].durationMs);
-
-    return () => window.clearTimeout(timeout);
-  }, [active, reduceMotion, segmentIndex, segments]);
-
-  const source = reduceMotion
-    ? poster
-    : segments[segmentIndex]?.src ?? poster;
-
-  return (
-    <img
-      key={`${active ? "active" : "hidden"}-${segmentIndex}`}
-      src={source}
-      alt=""
-      aria-hidden="true"
-      className={`pointer-events-none absolute inset-0 z-10 h-full w-full object-cover object-top transition-opacity duration-150 ${
-        active ? "opacity-100" : "opacity-0"
-      }`}
-    />
-  );
-}
-
-function OrderingProcessCanvas({
+function WorkerOrderingProcessCanvas({
   src,
   poster,
-  fallbackSegments,
   label,
   reduceMotion,
   testId,
 }: {
   src: string;
   poster: string;
-  fallbackSegments: readonly AnimatedFallbackSegment[];
   label: string;
   reduceMotion: boolean | null;
   testId?: string;
 }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const videoRef = useRef<HTMLVideoElement | null>(null);
-  const isVideoActiveRef = useRef(false);
-  const [isVideoActive, setIsVideoActive] = useState(false);
+  const [hasDecodedFrame, setHasDecodedFrame] = useState(false);
+  const [decodeFailed, setDecodeFailed] = useState(false);
+  const [nativeFallbackPlaying, setNativeFallbackPlaying] =
+    useState(false);
 
   useEffect(() => {
-    const video = videoRef.current;
     const canvas = canvasRef.current;
-    const context = canvas?.getContext("2d");
-    if (!video || !canvas || !context || reduceMotion) return;
+    const context = canvas?.getContext("2d", { alpha: false });
+    if (!canvas || !context || reduceMotion) return;
 
-    let animationFrame: number | null = null;
-    let retryTimer: number | null = null;
-    let lastRenderedTime = -1;
-    let progressStartedAt: number | null = null;
-    let lastProgressAt = 0;
+    canvas.width = 360;
+    canvas.height = 720;
 
-    const setVideoActive = (active: boolean) => {
-      if (isVideoActiveRef.current === active) return;
-      isVideoActiveRef.current = active;
-      setIsVideoActive(active);
+    let worker: Worker | null = null;
+    let isNearViewport = false;
+    let proximityFrame: number | null = null;
+    let revealedFrame = false;
+
+    const stop = () => {
+      worker?.terminate();
+      worker = null;
+      canvas.dataset.decoderState = revealedFrame ? "stopped" : "loading";
     };
 
-    const drawFrame = () => {
-      animationFrame = null;
-      const now = performance.now();
+    const start = () => {
+      if (worker || document.hidden) return;
 
-      if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA && video.videoWidth > 0) {
-        if (canvas.width !== video.videoWidth || canvas.height !== video.videoHeight) {
-          canvas.width = video.videoWidth;
-          canvas.height = video.videoHeight;
-        }
-        if (video.currentTime !== lastRenderedTime) {
-          context.drawImage(video, 0, 0, canvas.width, canvas.height);
-          if (progressStartedAt === null) progressStartedAt = now;
-          lastProgressAt = now;
-          lastRenderedTime = video.currentTime;
-          if (!video.paused && now - progressStartedAt >= 400) {
-            setVideoActive(true);
+      setDecodeFailed(false);
+      setNativeFallbackPlaying(false);
+      canvas.dataset.decoderState = "starting";
+      worker = new Worker(
+        new URL("../workers/landing-video-decoder.worker.ts", import.meta.url),
+        { type: "module" },
+      );
+
+      worker.addEventListener(
+        "message",
+        (event: MessageEvent<LandingVideoWorkerMessage>) => {
+          if (event.data.type === "state") {
+            canvas.dataset.decoderState = event.data.state;
+            if (event.data.duration !== undefined) {
+              canvas.dataset.mediaDuration =
+                event.data.duration.toFixed(3);
+            }
+            return;
           }
-        }
-      }
 
-      if (
-        isVideoActiveRef.current &&
-        (video.paused || lastProgressAt === 0 || now - lastProgressAt > 650)
-      ) {
-        progressStartedAt = null;
-        setVideoActive(false);
-      }
+          if (event.data.type === "error") {
+            canvas.dataset.decoderState = "native-fallback";
+            setDecodeFailed(true);
+            setHasDecodedFrame(false);
+            stop();
+            return;
+          }
 
-      animationFrame = window.requestAnimationFrame(drawFrame);
-    };
+          context.drawImage(
+            event.data.bitmap,
+            0,
+            0,
+            canvas.width,
+            canvas.height,
+          );
+          event.data.bitmap.close();
+          canvas.dataset.mediaTime = event.data.timestamp.toFixed(3);
+          canvas.dataset.decoderState = "active";
 
-    const renderFrames = () => {
-      if (animationFrame === null) {
-        animationFrame = window.requestAnimationFrame(drawFrame);
-      }
-    };
+          if (!revealedFrame) {
+            revealedFrame = true;
+            setHasDecodedFrame(true);
+          }
+        },
+      );
 
-    const tryPlay = () => {
-      if (document.hidden) return;
-      if (!video.paused && !video.ended) {
-        renderFrames();
-        return;
-      }
-      video.muted = true;
-      video.defaultMuted = true;
-      video.setAttribute("muted", "");
-      video.setAttribute("playsinline", "");
-      video.setAttribute("webkit-playsinline", "");
-      void video.play().then(renderFrames).catch(() => {
-        // Retry in case the browser is still decoding or waking the media
-        // element after the page scrolls into place.
-        if (retryTimer === null) {
-          retryTimer = window.setTimeout(() => {
-            retryTimer = null;
-            tryPlay();
-          }, 250);
-        }
+      worker.addEventListener("error", (event) => {
+        canvas.dataset.decoderState = "native-fallback";
+        setDecodeFailed(true);
+        setHasDecodedFrame(false);
+        stop();
+      });
+
+      worker.postMessage({
+        type: "start",
+        src,
+        width: canvas.width,
+        height: canvas.height,
       });
     };
 
-    const onScroll = () => tryPlay();
-    const onUserGesture = () => tryPlay();
-    const markInactive = () => {
-      progressStartedAt = null;
-      setVideoActive(false);
-    };
-    const onPlaying = () => {
-      progressStartedAt = performance.now();
-      renderFrames();
-    };
-    const observer = "IntersectionObserver" in window
-      ? new IntersectionObserver(
-          ([entry]) => {
-            if (entry.isIntersecting) tryPlay();
-          },
-          { rootMargin: "180px 0px", threshold: 0.01 },
-        )
-      : null;
-    const onVisibilityChange = () => {
-      if (document.hidden) {
-        video.pause();
-      } else {
-        tryPlay();
-      }
+    const updateProximity = () => {
+      proximityFrame = null;
+      const rect = canvas.getBoundingClientRect();
+      isNearViewport =
+        rect.bottom >= -700 && rect.top <= window.innerHeight + 700;
+      canvas.dataset.proximity = isNearViewport ? "near" : "far";
+      if (isNearViewport) start();
+      else stop();
     };
 
-    video.addEventListener("loadedmetadata", renderFrames);
-    video.addEventListener("loadeddata", renderFrames);
-    video.addEventListener("canplay", tryPlay);
-    video.addEventListener("play", renderFrames);
-    video.addEventListener("playing", onPlaying);
-    video.addEventListener("pause", markInactive);
-    video.addEventListener("waiting", markInactive);
-    video.addEventListener("stalled", markInactive);
-    video.addEventListener("emptied", markInactive);
-    window.addEventListener("scroll", onScroll, { passive: true });
-    window.addEventListener("pointerdown", onUserGesture, { passive: true });
-    window.addEventListener("pointermove", onUserGesture, { passive: true });
-    window.addEventListener("touchstart", onUserGesture, { passive: true });
-    window.addEventListener("touchmove", onUserGesture, { passive: true });
+    const scheduleProximityUpdate = () => {
+      if (proximityFrame !== null) return;
+      proximityFrame = window.requestAnimationFrame(updateProximity);
+    };
+
+    const onVisibilityChange = () => {
+      if (document.hidden) stop();
+      else updateProximity();
+    };
+
+    window.addEventListener("scroll", scheduleProximityUpdate, {
+      passive: true,
+    });
+    window.addEventListener("resize", scheduleProximityUpdate, {
+      passive: true,
+    });
     document.addEventListener("visibilitychange", onVisibilityChange);
-    observer?.observe(canvas);
-    video.load();
-    renderFrames();
-    tryPlay();
+    updateProximity();
 
     return () => {
-      observer?.disconnect();
-      video.removeEventListener("loadedmetadata", renderFrames);
-      video.removeEventListener("loadeddata", renderFrames);
-      video.removeEventListener("canplay", tryPlay);
-      video.removeEventListener("play", renderFrames);
-      video.removeEventListener("playing", onPlaying);
-      video.removeEventListener("pause", markInactive);
-      video.removeEventListener("waiting", markInactive);
-      video.removeEventListener("stalled", markInactive);
-      video.removeEventListener("emptied", markInactive);
-      window.removeEventListener("scroll", onScroll);
-      window.removeEventListener("pointerdown", onUserGesture);
-      window.removeEventListener("pointermove", onUserGesture);
-      window.removeEventListener("touchstart", onUserGesture);
-      window.removeEventListener("touchmove", onUserGesture);
+      window.removeEventListener("scroll", scheduleProximityUpdate);
+      window.removeEventListener("resize", scheduleProximityUpdate);
       document.removeEventListener("visibilitychange", onVisibilityChange);
-      if (retryTimer !== null) window.clearTimeout(retryTimer);
-      if (animationFrame !== null) window.cancelAnimationFrame(animationFrame);
-      video.pause();
+      if (proximityFrame !== null) {
+        window.cancelAnimationFrame(proximityFrame);
+      }
+      stop();
     };
-  }, [reduceMotion]);
+  }, [reduceMotion, src]);
+
+  const isShowingMotion =
+    !reduceMotion &&
+    (hasDecodedFrame || (decodeFailed && nativeFallbackPlaying));
 
   return (
     <>
-      <SequencedAnimatedFallback
-        segments={fallbackSegments}
-        poster={poster}
-        reduceMotion={reduceMotion}
-        active={Boolean(reduceMotion) || !isVideoActive}
+      <img
+        src={poster}
+        alt=""
+        aria-hidden="true"
+        className={`pointer-events-none absolute inset-0 z-10 h-full w-full object-cover object-top transition-opacity duration-150 ${
+          isShowingMotion ? "opacity-0" : "opacity-100"
+        }`}
       />
+      {decodeFailed && !reduceMotion ? (
+        <video
+          src={src}
+          poster={poster}
+          autoPlay
+          muted
+          loop
+          playsInline
+          preload="auto"
+          controls={false}
+          disablePictureInPicture
+          disableRemotePlayback
+          tabIndex={-1}
+          aria-hidden="true"
+          data-testid={testId ? `${testId}-native-fallback` : undefined}
+          onPlaying={() => setNativeFallbackPlaying(true)}
+          onPause={(event) => {
+            setNativeFallbackPlaying(false);
+            if (!document.hidden) {
+              void event.currentTarget.play().catch(() => undefined);
+            }
+          }}
+          onError={() => setNativeFallbackPlaying(false)}
+          className={`pointer-events-none absolute inset-0 z-20 h-full w-full object-cover object-top transition-opacity duration-150 ${
+            nativeFallbackPlaying ? "opacity-100" : "opacity-0"
+          }`}
+        />
+      ) : null}
       <canvas
         ref={canvasRef}
         aria-label={label}
         data-testid={testId}
-        className={`absolute inset-0 z-20 h-full w-full object-cover object-top transition-opacity duration-150 ${
-          reduceMotion || !isVideoActive ? "opacity-0" : "opacity-100"
+        data-decoder-state={
+          decodeFailed ? "fallback" : hasDecodedFrame ? "active" : "loading"
+        }
+        className={`pointer-events-none absolute inset-0 z-30 h-full w-full object-cover object-top transition-opacity duration-150 ${
+          reduceMotion || !hasDecodedFrame ? "opacity-0" : "opacity-100"
         }`}
-        style={{
-          backgroundImage: `url(${poster})`,
-          backgroundPosition: "top",
-          backgroundSize: "cover",
-        }}
-      />
-      <video
-        ref={videoRef}
-        src={src}
-        muted
-        loop
-        playsInline
-        autoPlay={!reduceMotion}
-        preload={reduceMotion ? "none" : "auto"}
-        aria-hidden="true"
-        tabIndex={-1}
-        className="pointer-events-none absolute inset-0 z-0 h-full w-full object-cover object-top"
-        // Keep the decoder genuinely visible to mobile autoplay heuristics.
-        // The canvas above it still fully covers the native media surface.
-        style={{ opacity: 1 }}
       />
     </>
   );
@@ -1412,10 +1337,9 @@ export default function Landing() {
                 <div className="absolute left-3 sm:left-6 md:left-8 top-1/2 -translate-y-1/2">
                   <div className="rounded-[2.25rem] md:rounded-[2.75rem] border border-border bg-card p-2.5 md:p-3 shadow-2xl shadow-black/50">
                     <div className="relative rounded-[1.75rem] md:rounded-[2.25rem] overflow-hidden border border-border w-[150px] sm:w-[185px] md:w-[230px] aspect-[9/19] bg-card">
-                      <OrderingProcessCanvas
+                      <WorkerOrderingProcessCanvas
                         src={shotOrderingProcess}
                         poster={shotOrderingProcessPoster}
-                        fallbackSegments={orderingProcessFallbackSegments}
                         label={t.mobileAltRestaurant}
                         reduceMotion={reduceMotion}
                         testId="img-lifestyle-phone"
@@ -1505,10 +1429,9 @@ export default function Landing() {
                 <div className="absolute left-3 sm:left-6 md:left-8 top-1/2 -translate-y-1/2">
                   <div className="rounded-[2.25rem] md:rounded-[2.75rem] border border-border bg-card p-2.5 md:p-3 shadow-2xl shadow-black/50">
                     <div className="relative rounded-[1.75rem] md:rounded-[2.25rem] overflow-hidden border border-border w-[150px] sm:w-[185px] md:w-[230px] aspect-[9/19] bg-card">
-                      <OrderingProcessCanvas
+                      <WorkerOrderingProcessCanvas
                         src={shotBusinessProcess}
                         poster={shotBusinessProcessPoster}
-                        fallbackSegments={businessProcessFallbackSegments}
                         label={t.mobileAltSupplier}
                         reduceMotion={reduceMotion}
                         testId="img-lifestyle-supplier-phone"
