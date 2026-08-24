@@ -77,6 +77,7 @@ const timeoutMs = Number.isFinite(configuredTimeoutMs) && configuredTimeoutMs > 
   ? configuredTimeoutMs
   : 10_000;
 let failed = false;
+const results = [];
 
 for (const check of checks) {
   const url = new URL(check.path, baseUrl);
@@ -101,10 +102,23 @@ for (const check of checks) {
     }
     const contractError = check.validate(body);
     if (contractError) throw new Error(contractError);
-    console.log(`PASS ${check.path} (HTTP ${response.status}, ${contentType})`);
+    results.push({ path: check.path, result: "PASS" });
+    console.log(`RELEASE_HEALTH_CHECK endpoint=${check.path} result=PASS http_status=${response.status}`);
   } catch (error) {
     failed = true;
-    console.error(`FAIL ${check.path}: ${error instanceof Error ? error.message : String(error)}`);
+    const reason = error instanceof Error ? error.message : String(error);
+    results.push({ path: check.path, result: "FAIL", reason });
+    console.error(`RELEASE_HEALTH_CHECK_FAILURE endpoint=${check.path} reason=${reason}`);
+    console.error(`FAIL ${check.path}: ${reason}`);
+  }
+}
+
+console.log("RELEASE_HEALTH_SUMMARY");
+for (const result of results) {
+  if (result.result === "PASS") {
+    console.log(`RELEASE_HEALTH_RESULT endpoint=${result.path} result=PASS`);
+  } else {
+    console.log(`RELEASE_HEALTH_RESULT endpoint=${result.path} result=FAIL reason=${result.reason}`);
   }
 }
 

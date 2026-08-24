@@ -121,6 +121,10 @@ describe("published health contract checker", () => {
         const result = await runChecker(server.url);
         assert.notEqual(result.exitCode, 0, result.stdout + result.stderr);
         assert.match(result.stderr, new RegExp(`FAIL ${endpoint.replace("/", "\\/")}:`));
+        assert.match(
+          result.stderr,
+          new RegExp(`RELEASE_HEALTH_CHECK_FAILURE endpoint=${endpoint.replace("/", "\\/")} reason=`),
+        );
       } finally {
         await server.close();
       }
@@ -137,6 +141,23 @@ describe("published health contract checker", () => {
       assert.notEqual(result.exitCode, 0, result.stdout + result.stderr);
       assert.match(result.stderr, /FAIL \/health\/live:/);
       assert.match(result.stderr, /timeout|abort/i);
+    } finally {
+      await server.close();
+    }
+  });
+
+  test("prints a structured result for every passing endpoint", async () => {
+    const server = await startFixtureServer({});
+
+    try {
+      const result = await runChecker(server.url);
+      assert.equal(result.exitCode, 0, result.stdout + result.stderr);
+      for (const endpoint of Object.keys(validResponses)) {
+        assert.match(result.stdout, new RegExp(
+          `RELEASE_HEALTH_RESULT endpoint=${endpoint.replace("/", "\\/")} result=PASS`,
+        ));
+      }
+      assert.match(result.stdout, /RELEASE_HEALTH_SUMMARY/);
     } finally {
       await server.close();
     }
