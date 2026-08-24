@@ -450,6 +450,19 @@ export function registerAdminAuthRoutes(app: Express) {
     }).catch(() => res.json({ impersonating: false }));
   });
 
+  // ── Exit impersonation ────────────────────────────────────────────────────
+  // This static route must be registered before /:memberId below. Otherwise
+  // Express treats "exit" as a member ID and returns already_impersonating.
+  app.post("/api/admin/impersonate/exit", (req, res) => {
+    const prev = req.session.impersonatedMemberId;
+    req.session.impersonatedMemberId = undefined;
+    req.session.save((err) => {
+      if (err) return res.status(500).json({ error: "session_error" });
+      console.log(`[admin] impersonate exit: adminId=${req.session.adminId} prevMember=${prev}`);
+      res.json({ ok: true });
+    });
+  });
+
   // ── Start impersonation ───────────────────────────────────────────────────
   // Invariant: impersonated sessions cannot impersonate further. An admin
   // must exit the current impersonation before starting a new one.
@@ -475,17 +488,6 @@ export function registerAdminAuthRoutes(app: Express) {
       console.error("[admin] impersonate error:", err);
       res.status(500).json({ error: "server_error" });
     }
-  });
-
-  // ── Exit impersonation ────────────────────────────────────────────────────
-  app.post("/api/admin/impersonate/exit", (req, res) => {
-    const prev = req.session.impersonatedMemberId;
-    req.session.impersonatedMemberId = undefined;
-    req.session.save((err) => {
-      if (err) return res.status(500).json({ error: "session_error" });
-      console.log(`[admin] impersonate exit: adminId=${req.session.adminId} prevMember=${prev}`);
-      res.json({ ok: true });
-    });
   });
 
   // ── List all platform admins ──────────────────────────────────────────────
