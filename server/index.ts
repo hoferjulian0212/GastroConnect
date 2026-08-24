@@ -21,6 +21,79 @@ import {
 const app = express();
 const httpServer = createServer(app);
 
+type ApiRequestSample = { at: number; serverError: boolean };
+const apiRequestSamples: ApiRequestSample[] = [];
+const METRICS_WINDOW_MS = 5 * 60 * 1000;
+
+function recordApiRequestSample(serverError: boolean) {
+  const now = Date.now();
+  apiRequestSamples.push({ at: now, serverError });
+  while (apiRequestSamples.length > 0 && apiRequestSamples[0].at < now - METRICS_WINDOW_MS) {
+    apiRequestSamples.shift();
+  }
+}
+
+async function readOperationalMetrics() {
+  const now = Date.now();
+  while (apiRequestSamples.length > 0 && apiRequestSamples[0].at < now - METRICS_WINDOW_MS) {
+    apiRequestSamples.shift();
+  }
+
+  let outbox: {
+    pending: number;
+    terminal: number;
+    oldestPendingAt: string | null;
+  } = { pending: 0, terminal: 0, oldestPendingAt: null };
+  try {
+    const result = await pool.query(`
+      SELECT
+        COUNT(*) FILTER (WHERE completed_at IS NULL AND failed_at IS NULL) AS pending,
+        COUNT(*) FILTER (WHERE failed_at IS NOT NULL) AS terminal,
+        MIN(created_at) FILTER (WHERE completed_at IS NULL AND failed_at IS NULL) AS oldest_pending_at
+      FROM order_notification_retries
+    `);
+    const row = result.rows[0] as Record<string, unknown> | undefined;
+    outbox = {
+      pending: Number(row?.pending ?? 0),
+      terminal: Number(row?.terminal ?? 0),
+      oldestPendingAt: row?.oldest_pending_at instanceof Date
+        ? row.oldest_pending_at.toISOString()
+        : row?.oldest_pending_at ? String(row.oldest_pending_at) : null,
+    };
+  } catch (error: any) {
+    // During a rolling deployment the outbox table may not exist yet. Keep
+    // metrics available, but surface the migration problem explicitly.
+    if (error?.code !== "42P01" && error?.code !== "42703") throw error;
+  }
+
+  const total = apiRequestSamples.length;
+  const serverErrors = apiRequestSamples.filter((sample) => sample.serverError).length;
+  // node-postgres defaults to ten connections; keep this aligned with the
+  // pool configuration in server/db.ts if that default is changed.
+  const poolMax = 10;
+  return {
+    status: "ok",
+    generatedAt: new Date(now).toISOString(),
+    process: { uptimeSeconds: Math.round(process.uptime()) },
+    api: {
+      windowSeconds: METRICS_WINDOW_MS / 1000,
+      requests: total,
+      serverErrors,
+      serverErrorRate: total === 0 ? 0 : Number((serverErrors / total).toFixed(4)),
+    },
+    retryOutbox: outbox,
+    database: {
+      pool: {
+        total: pool.totalCount,
+        idle: pool.idleCount,
+        waiting: pool.waitingCount,
+        max: poolMax,
+        exhausted: pool.waitingCount > 0 || pool.totalCount >= poolMax && pool.idleCount === 0,
+      },
+    },
+  };
+}
+
 declare module "http" {
   interface IncomingMessage {
     rawBody: unknown;
@@ -155,6 +228,22 @@ app.get("/health/ready", async (req, res) => {
   }
 });
 
+// Low-cardinality operational metrics for an external monitor. This endpoint
+// is intentionally independent of Clerk/session middleware and contains no
+// customer data. Configure the monitor to alert on HTTP 503, retryOutbox
+// thresholds, database.pool.exhausted, and api.serverErrorRate.
+app.get("/health/metrics", async (_req, res) => {
+  res.setHeader("Cache-Control", "no-store");
+  try {
+    return res.json(await readOperationalMetrics());
+  } catch (error) {
+    console.error("[health] operational metrics query failed", {
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return res.status(503).json({ status: "degraded", database: { available: false } });
+  }
+});
+
 app.use(
   express.json({
     limit: "1mb",
@@ -211,6 +300,7 @@ app.use((req, res, next) => {
   res.on("finish", () => {
     const duration = Date.now() - start;
     if (path.startsWith("/api")) {
+      recordApiRequestSample(res.statusCode >= 500);
       let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
       if (capturedJsonResponse) {
         // Do not put arbitrary API payloads (which may contain customer data)

@@ -31,7 +31,7 @@ provider delivery, or deployment rollback.
 | Object storage | **Not verified end-to-end** | Requires a real upload/download/failure drill |
 | PMS/ERP | **Partially verified** | Correct-secret PMS webhook returns 200 and ERP adapter/sync tests pass; live provider import and outage recovery were not proven |
 | Backup/restore | **Not verified** | Requires an operator-owned database and object-storage restore drill |
-| Monitoring and alert routing | **Not verified** | Health endpoints exist, but external uptime checks and alert destinations were not exercised |
+| Monitoring and alert routing | **Configured in application; external delivery pending** | `/health/live`, `/health/ready`, and `/health/metrics` are pollable without session state; metrics include five-minute API 5xx rate, retry-outbox backlog/terminal counts, oldest pending age, process uptime, and PostgreSQL pool exhaustion |
 | Deployment rollback | **Not verified** | Requires a deployment canary/rollback drill and attached deployment evidence |
 
 ## Role-path acceptance coverage
@@ -80,9 +80,26 @@ Before production sign-off, attach evidence for:
    restore result, recovery point/time measurements, and named ownership.
 2. **Release engineering:** production migration preflight, canary result,
    rollback result, and post-rollback readiness checks.
-3. **Monitoring:** uptime checks for both health endpoints plus alerts for
-   readiness failure, elevated API errors, retry-outbox backlog/terminal
-   failures, and database exhaustion.
+3. **Monitoring:** create external HTTP checks for the following production
+   URLs (the deployment's public origin, not the development domain):
+   `/health/live`, `/health/ready`, and `/health/metrics`.
+   Configure alert delivery as follows:
+
+   | Check/alert | Trigger | Delivery | Owner |
+   | --- | --- | --- | --- |
+   | Liveness | non-2xx for 2 consecutive checks | external monitor's incident channel | Platform operations |
+   | Readiness | non-2xx for 2 consecutive checks | external monitor's incident channel | Platform operations |
+   | API errors | `api.serverErrorRate >= 0.05` and `api.requests >= 20` in 5 minutes | external monitor's incident channel | Backend on-call |
+   | Retry backlog | `retryOutbox.pending >= 10` for 10 minutes | external monitor's incident channel | Integrations on-call |
+   | Terminal deliveries | `retryOutbox.terminal >= 1` | external monitor's incident channel | Integrations on-call |
+   | Database exhaustion | `database.pool.exhausted == true` for 2 minutes | external monitor's incident channel | Backend on-call |
+
+   External delivery was **not exercised in this workspace** because no
+   monitor account, incident channel, or production URL is provisioned here.
+   The named operational owners above must create the checks, send a test
+   notification, and attach the provider delivery ID/timestamp to this
+   report before production sign-off. The application-side metrics endpoint
+   and alert contract are ready for that handoff.
 4. **QA/device:** restaurant → supplier → driver → restaurant browser journey,
    refresh and stale tabs, duplicate clicks, concurrent actions, and offline
    reconnect on supported desktop and mobile devices.

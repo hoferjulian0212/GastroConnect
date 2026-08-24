@@ -46,6 +46,11 @@ workspace.
   does not answer in time.
 - Unexpected global errors receive a generic client response with the request
   ID. Raw database/provider error text is not sent to the client.
+- `/health/metrics` provides low-cardinality, no-customer-data JSON for an
+  external monitor: five-minute API 5xx rate, retry-outbox pending and
+  terminal counts, oldest pending item, process uptime, and PostgreSQL pool
+  pressure/exhaustion. It returns `503` when the metrics database query cannot
+  be completed.
 - API request logs no longer serialize arbitrary JSON response bodies. This
   avoids copying customer data into normal access logs while retaining method,
   route, status, duration, and request correlation.
@@ -154,11 +159,12 @@ they cannot be truthfully marked complete through application code alone:
    multi-region strategy, and provider incident runbook.
 3. **Deployment safety** — production migration sequencing, canary/rollback
    process, and a verified rollback drill.
-4. **Monitoring and alerting** — run uptime checks against both health
-   endpoints and alert on readiness failures, error-rate increases, queue
-   backlog, terminal checkout-delivery failures, and database resource
-   exhaustion. The app exposes a terminal failure count but does not configure
-   an external alert destination.
+4. **Monitoring and alerting** — configure an external HTTP monitor for
+   `/health/live`, `/health/ready`, and `/health/metrics`. Alert on non-2xx
+   responses, `api.serverErrorRate`, `retryOutbox.pending`,
+   `retryOutbox.terminal`, and `database.pool.exhausted`. The application
+   exposes the signals; the monitor and delivery destination remain
+   deployment-owned.
 5. **External provider failure drills** — force object storage, email, push,
    ERP/PMS, and Clerk failures in a non-production environment and confirm
    business-facing recovery messaging and outbox/retry behavior.
