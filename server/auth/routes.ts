@@ -39,7 +39,8 @@ function logAuthEvent(event: string, req: Request, extra: Record<string, unknown
   console.log(`[auth] ${event}`, JSON.stringify({ ip: clientIp(req), ...extra }));
 }
 
-function getClerkEmail(req: Request): string | undefined {
+export function getClerkEmail(req: Request): string | undefined {
+  if (req.clerkEmail) return req.clerkEmail;
   try {
     const clerkAuth = getAuth(req);
     return (clerkAuth?.sessionClaims?.email as string | undefined)?.toLowerCase();
@@ -62,7 +63,17 @@ export function registerAuthRoutes(app: Express) {
         storage.getMemberByEmail(email.toLowerCase()).then(async (member) => {
           const org = member ? await storage.getUser(member.organizationId) : undefined;
           if (member && org && (org.approvalStatus === "pending" || org.approvalStatus === "denied")) {
-            return res.json({ authenticated: false, registrationStatus: org.approvalStatus, org: { id: org.id, name: org.name, companyName: org.companyName } });
+            return res.json({
+              authenticated: false,
+              registrationStatus: org.approvalStatus,
+              org: {
+                id: org.id,
+                name: org.name,
+                companyName: org.companyName,
+                role: org.role,
+                createdAt: org.createdAt,
+              },
+            });
           }
           return res.json({ authenticated: false });
         }).catch(() => res.json({ authenticated: false }));

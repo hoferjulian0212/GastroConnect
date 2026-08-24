@@ -32,6 +32,8 @@ declare global {
     interface Request {
       auth?: AuthContext;
       platformAdmin?: AdminContext;
+      /** Clerk email captured before its request auth object is replaced. */
+      clerkEmail?: string;
     }
   }
 }
@@ -81,8 +83,9 @@ export async function loadAuth(req: Request, _res: Response, next: NextFunction)
     // then immediately replace it with our AuthContext or undefined so that
     // route handlers can reliably check `if (!req.auth)`.
     const clerkAuth = getAuth(req);
-    (req as any).auth = undefined; // reset Clerk's auth object
     const email = clerkAuth?.sessionClaims?.email as string | undefined;
+    req.clerkEmail = email?.toLowerCase();
+    (req as any).auth = undefined; // reset Clerk's auth object
     if (email) {
       req.auth = await resolveClerkAuth(email) ?? undefined;
     }

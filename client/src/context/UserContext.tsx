@@ -14,6 +14,14 @@ interface MeResponse {
   org?: User;
 }
 
+export interface RegistrationOrganization {
+  id: string;
+  name: string;
+  companyName?: string | null;
+  role?: UserRole;
+  createdAt?: string | Date;
+}
+
 interface UserContextType {
   currentUser: User | null;
   currentRole: UserRole;
@@ -30,7 +38,9 @@ interface UserContextType {
   /** True when Clerk says the user is signed in but /api/auth/me says not authorized. */
   isClerkSignedInButUnauthorized: boolean;
   registrationStatus?: "pending" | "denied";
-  refetchMe: () => void;
+  registrationOrganization?: RegistrationOrganization;
+  isRefreshingMe: boolean;
+  refetchMe: () => Promise<unknown>;
   logout: () => Promise<void>;
 }
 
@@ -79,13 +89,18 @@ export function UserProvider({ children }: { children: ReactNode }) {
   // Gate the /api/auth/me query on Clerk being loaded and the user being
   // signed in. This prevents transient 401s that would arise from the fetch
   // firing before Clerk attaches its session cookie.
-  const { data: me, isLoading: meLoading, isFetchedAfterMount, refetch } = useQuery<MeResponse>({
+  const { data: me, isLoading: meLoading, isFetching: isRefreshingMe, isFetchedAfterMount, refetch } = useQuery<MeResponse>({
     queryKey: ["/api/auth/me"],
     retry: false,
     staleTime: 30000,
     enabled: clerkLoaded && !!isSignedIn,
     // Render instantly from the last-known session on a cold start.
     placeholderData: meSnapshot,
+    refetchInterval: (query) =>
+      (query.state.data as MeResponse | undefined)?.registrationStatus === "pending"
+        ? 5000
+        : false,
+    refetchIntervalInBackground: true,
   });
 
   // Keep the snapshot up to date (only after a real server response).
@@ -136,9 +151,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
   });
   const members = membersData?.members ?? [];
 
-  const refetchMe = useCallback(() => {
-    refetch();
-  }, [refetch]);
+  const refetchMe = useCallback(() => refetch(), [refetch]);
 
   const logout = useCallback(async () => {
     setCurrentUser(null);
@@ -168,6 +181,10 @@ export function UserProvider({ children }: { children: ReactNode }) {
           || (clerkLoaded && !!isSignedIn && meLoading && !me && !hasRestorableSession),
         isClerkSignedInButUnauthorized,
         registrationStatus: me?.registrationStatus,
+        registrationOrganization: me?.registrationStatus
+          ? (me.org as RegistrationOrganization | undefined)
+          : undefined,
+        isRefreshingMe,
         refetchMe,
         logout,
       }}

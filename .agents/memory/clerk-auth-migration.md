@@ -20,6 +20,14 @@ Then set req.auth = AuthContext only when member+org are found.
 
 **How to apply:** Any future change to loadAuth must preserve the `(req as any).auth = undefined` line that immediately follows the getAuth() call.
 
+### Route-level Clerk identity
+
+Routes that need verified Clerk identity after `loadAuth` has built the application context must use the email captured on the request during that initial `getAuth()` read, not call `getAuth()` again.
+
+**Why:** application auth deliberately replaces Clerk's `req.auth` object. A second Clerk lookup after that replacement can lose the verified identity, which breaks the public-registration completion handoff with a false unauthenticated response.
+
+**How to apply:** Capture the normalized email before resetting `req.auth`; use that captured value for routes that legitimately need Clerk identity while no approved application AuthContext exists (such as registration completion and pending-status lookup).
+
 ## Identity bridge
 - sessionClaims.email → lower(members.email) lookup via getMemberByEmail
 - No JIT auto-create; unknown Clerk email → req.auth stays undefined → "Kein Zugang" screen (isClerkSignedInButUnauthorized in UserContext)

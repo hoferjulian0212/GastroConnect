@@ -39,7 +39,7 @@ import { navigate } from "wouter/use-browser-location";
 import { ClerkProvider, SignIn, SignUp, useClerk } from "@clerk/react";
 import { publishableKeyFromHost } from "@clerk/react/internal";
 import { shadcn } from "@clerk/themes";
-import { RegistrationPage, RegistrationCompletePage, PendingApprovalScreen } from "@/pages/Registration";
+import { RegistrationPage, RegistrationCompletePage, RegistrationStatusPage, PendingApprovalScreen } from "@/pages/Registration";
 import {
   FeaturesRoute,
   HowItWorksRoute,
@@ -811,11 +811,20 @@ function AppLayout() {
   if (pathOnly === "/register/complete") {
     return <RegistrationCompletePage />;
   }
+  if (pathOnly === "/registration-status") {
+    return <RegistrationStatusPage />;
+  }
   if (pathOnly.startsWith("/register")) {
     return <RegistrationPage />;
   }
 
   if (pathOnly === "/") {
+    if (!isLoading && isAuthenticated) {
+      return <Redirect to={currentRole === "supplier" ? "/supplier" : "/restaurant"} />;
+    }
+    if (!isLoading && isClerkSignedInButUnauthorized && (registrationStatus === "pending" || registrationStatus === "denied")) {
+      return <PendingApprovalScreen denied={registrationStatus === "denied"} />;
+    }
     return (
       <Suspense fallback={<div className="min-h-screen" />}>
         <Landing />
