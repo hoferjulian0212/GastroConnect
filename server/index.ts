@@ -92,7 +92,7 @@ app.use((req, res, next) => {
 
 const apiLimiter = rateLimit({
   windowMs: 60 * 1000,
-  max: 120,
+  max: Number.parseInt(process.env.API_RATE_LIMIT_MAX ?? "120", 10),
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: "Zu viele Anfragen. Bitte versuchen Sie es später erneut." },
@@ -101,7 +101,7 @@ const apiLimiter = rateLimit({
 
 const writeLimiter = rateLimit({
   windowMs: 60 * 1000,
-  max: 40,
+  max: Number.parseInt(process.env.WRITE_RATE_LIMIT_MAX ?? "40", 10),
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: "Zu viele Anfragen. Bitte versuchen Sie es später erneut." },

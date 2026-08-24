@@ -241,6 +241,11 @@ before(async () => {
         ...process.env,
         PORT: String(TEST_PORT),
         PMS_WEBHOOK_SECRET: PMS_SECRET,
+        // This suite intentionally makes more than 40 authenticated write
+        // requests from one loopback address while covering role boundaries.
+        // Keep production limits unchanged, but avoid rate-limit exhaustion
+        // masking the authorization assertions.
+        WRITE_RATE_LIMIT_MAX: "200",
       },
       stdio: "pipe",
       cwd: process.cwd(),
