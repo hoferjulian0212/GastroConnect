@@ -124,12 +124,15 @@ describe("public registration approval UI", () => {
     await waitFor(() => expect(window.location.pathname).toBe(expectedPath));
   });
 
-  test("an unauthenticated visitor cannot remain on the registration status route", async () => {
+  test("a signed-in account without an application sees a safe outcome instead of a redirect loop", async () => {
     window.history.replaceState({}, "", "/registration-status");
     mockMutableMe({ authenticated: false });
     render(<App />);
 
-    await waitFor(() => expect(window.location.pathname).toBe("/sign-in"));
+    await waitFor(() => expect(screen.getByRole("heading", { name: "Antrag nicht gefunden" })).toBeInTheDocument());
+    expect(window.location.pathname).toBe("/registration-status");
+    fireEvent.click(screen.getByRole("button", { name: "Registrierung fortsetzen" }));
+    await waitFor(() => expect(window.location.pathname).toBe("/register"));
   });
 
   test("normal sign-in always returns through the registration status route", () => {

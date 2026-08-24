@@ -55,6 +55,7 @@ function Shell({ children, step }: { children: ReactNode; step: number }) {
 }
 
 export function RegistrationPage() {
+  const { isLoaded: clerkLoaded, isSignedIn } = useAuth();
   const [form, setForm] = useState<Form>(() => {
     try {
       const saved = JSON.parse(sessionStorage.getItem(KEY) || "{}");
@@ -196,7 +197,7 @@ export function RegistrationPage() {
     setStep((current) => current + 1);
   };
 
-  if (step === 3) return <Shell step={3}><div className="rounded-3xl bg-white p-6 shadow-xl md:p-10"><h1 className="mb-2 text-3xl font-semibold">Konto erstellen</h1><p className="mb-6 text-sm text-black/55">Geben Sie Ihre E-Mail bei Clerk ein und bestätigen Sie den Code. Erst danach wird Ihre Registrierung angelegt.</p><SignUp routing="path" path="/register" signInUrl="/sign-in" forceRedirectUrl="/register/complete" /></div></Shell>;
+  if (step === 3) return <Shell step={3}><div className="rounded-3xl bg-white p-6 shadow-xl md:p-10">{clerkLoaded && isSignedIn ? <><h1 className="mb-2 text-3xl font-semibold">E-Mail bereits bestätigt</h1><p className="mb-6 text-sm text-black/55">Sie sind bereits mit Ihrer E-Mail angemeldet. Wir legen Ihren Antrag jetzt mit den zuvor eingegebenen Unternehmensdaten an.</p><Button type="button" className="w-full sm:w-auto" onClick={() => navigate("/register/complete")}>Registrierung abschließen</Button></> : <><h1 className="mb-2 text-3xl font-semibold">Konto erstellen</h1><p className="mb-6 text-sm text-black/55">Geben Sie Ihre E-Mail bei Clerk ein und bestätigen Sie den Code. Erst danach wird Ihre Registrierung angelegt.</p><SignUp routing="path" path="/register" signInUrl="/sign-in" forceRedirectUrl="/register/complete" /></>}</div></Shell>;
   return <Shell step={step}>
     <div className="rounded-3xl bg-white p-6 shadow-xl md:p-10">
       {step === 1 ? <><p className="mb-2 text-sm font-medium uppercase tracking-widest text-black/45">Willkommen bei GastroConnect</p><h1 className="mb-3 text-3xl font-semibold">Wie möchten Sie GastroConnect nutzen?</h1><p className="mb-2 text-black/55">Wählen Sie Ihren Bereich. Wir passen die Registrierung daran an.</p><p className="mb-8 text-xs text-black/50"><span className="font-bold text-red-600" aria-hidden="true">*</span> Pflichtfeld</p><div className="grid gap-4 md:grid-cols-2" aria-invalid={Boolean(errors.role)}>
@@ -232,14 +233,36 @@ export function RegistrationStatusPage() {
     }
   }, [currentRole, isAuthenticated]);
 
-  const shouldRedirectToSignIn = !isLoading && !isAuthenticated && !registrationStatus;
-  useEffect(() => {
-    if (shouldRedirectToSignIn) navigate("/sign-in");
-  }, [shouldRedirectToSignIn]);
+  if (isLoading) {
+    return <div className="flex min-h-dvh items-center justify-center bg-[#f7f7f4] px-6 text-center text-[#161921]"><div><img src={logo} alt="GastroConnect" className="mx-auto h-12 w-12" /><LoaderCircle className="mx-auto mt-6 h-5 w-5 animate-spin" /><p className="mt-4 text-sm text-black/55">Anmeldestatus wird geprüft…</p></div></div>;
+  }
 
-  if (shouldRedirectToSignIn) return null;
+  if (!isAuthenticated && !registrationStatus) {
+    return <RegistrationStatusUnavailableScreen />;
+  }
 
   return <PendingApprovalScreen denied={registrationStatus === "denied"} />;
+}
+
+function RegistrationStatusUnavailableScreen() {
+  const { signOut } = useClerk();
+
+  return <div className="flex min-h-dvh items-center justify-center bg-[#f7f7f4] px-4 py-7 text-[#161921] sm:px-6">
+    <main className="w-full max-w-lg overflow-hidden rounded-[2rem] border border-black/10 bg-white text-center shadow-2xl shadow-black/10">
+      <div className="bg-[#161921] px-6 py-7 text-white">
+        <img src={logo} alt="GastroConnect" className="mx-auto h-12 w-12 invert" />
+        <h1 className="mt-5 text-3xl font-semibold tracking-tight">Antrag nicht gefunden</h1>
+        <p className="mx-auto mt-3 max-w-sm text-sm leading-relaxed text-white/65">Für diese E-Mail-Adresse ist aktuell kein vollständiger GastroConnect-Antrag hinterlegt.</p>
+      </div>
+      <div className="p-6 sm:p-8">
+        <p className="text-sm leading-relaxed text-black/55">Wenn Sie die Registrierung gerade abgeschlossen haben, melden Sie sich bitte ab und starten Sie die Registrierung erneut. Wir helfen Ihnen gern weiter, falls das Problem bestehen bleibt.</p>
+        <div className="mt-7 flex flex-col justify-center gap-3 sm:flex-row">
+          <Button type="button" onClick={() => navigate("/register")}>Registrierung fortsetzen</Button>
+          <Button type="button" variant="outline" onClick={() => signOut({ redirectUrl: "/" })}>Abmelden &amp; Startseite</Button>
+        </div>
+      </div>
+    </main>
+  </div>;
 }
 
 export function PendingApprovalScreen({ denied = false }: { denied?: boolean }) {
