@@ -1,0 +1,2177 @@
+GastroConnect – Business Logic, Edge Cases & Complete Test Specification
+
+OBJECTIVE
+
+I want you to audit the entire existing GastroConnect application and implement/test robust business logic for all realistic scenarios.
+
+Do NOT assume that the current implementation is correct.
+
+First inspect the complete existing application:
+
+* frontend
+* backend/API
+* database schema
+* authentication
+* authorization
+* user roles
+* order lifecycle
+* products
+* supplier logic
+* restaurant logic
+* price lists
+* delivery zones
+* postal-code logic
+* ETA logic
+* documents/uploads
+* invitations
+* admin functions
+* notifications
+* maps
+* search/filtering
+* error handling
+* state transitions
+* data validation
+* concurrency
+* persistence
+
+Do not rewrite working functionality unnecessarily.
+
+The goal is to make GastroConnect behave like a reliable production SaaS application rather than a prototype.
+
+For every rule below:
+
+1. Check whether the functionality already exists.
+2. If it exists, verify that it behaves correctly.
+3. If it does not exist, implement it using the existing architecture.
+4. Do not duplicate existing functionality.
+5. Do not break existing functionality.
+6. Add tests where appropriate.
+7. Enforce security rules on the SERVER/BACKEND, not only in the frontend.
+8. Never trust IDs, prices, roles, permissions, quantities or other business-critical values supplied by the client.
+9. Never rely only on UI restrictions for security.
+
+⸻
+
+1. CORE PRINCIPLE
+
+Every important user action must have a defined state transition.
+
+For every action determine:
+
+* Who can perform it?
+* Under what conditions?
+* What data is changed?
+* What data must not change?
+* What happens if the action fails?
+* What happens if the user performs it twice?
+* What happens if two users perform it simultaneously?
+* What happens if the user reloads the page?
+* What happens if the network disconnects?
+* What happens if the referenced object was deleted/changed?
+* What happens if the request is manipulated manually?
+* What happens if the user is unauthorized?
+
+No important business operation should depend solely on frontend state.
+
+⸻
+
+2. MULTI-TENANT SECURITY
+
+GastroConnect contains multiple restaurants and suppliers.
+
+Restaurant A must NEVER be able to access Restaurant B’s private data.
+
+Supplier A must NEVER be able to access Supplier B’s private data unless explicitly intended.
+
+Implement and test tenant isolation for:
+
+* orders
+* order items
+* customer data
+* restaurant data
+* supplier data
+* private prices
+* price lists
+* delivery settings
+* documents
+* invoices
+* addresses
+* users
+* invitations
+* internal notes
+* analytics
+* statistics
+* private configuration
+
+Test direct API manipulation.
+
+Example:
+
+Restaurant A must not be able to access Restaurant B simply by changing:
+
+restaurantId
+
+in an API request.
+
+The backend must verify ownership/authorization independently of the frontend.
+
+⸻
+
+3. USER ROLES
+
+Known roles:
+
+* Restaurant Buyer
+* Supplier Seller
+* Admin
+
+Define explicit permissions for every role.
+
+Restaurant Buyer
+
+Should generally be able to:
+
+* manage its own organization information
+* manage authorized users
+* browse suppliers
+* browse products available to the restaurant
+* see applicable prices
+* create orders
+* manage its own carts
+* see its own orders
+* see order status
+* upload permitted documents
+* see permitted supplier information
+* interact with suppliers according to the defined workflow
+
+Must NOT:
+
+* modify supplier products
+* modify supplier prices
+* access another restaurant’s orders
+* access another restaurant’s private price list
+* change its own role to Admin
+* change its own organization to another restaurant
+* access supplier private data
+* access system-wide administration
+
+Supplier Seller
+
+Should generally be able to:
+
+* manage its own company
+* manage its products
+* manage applicable prices
+* manage delivery zones
+* receive relevant orders
+* update permitted order statuses
+* manage permitted documents
+* see its own customers/orders
+
+Must NOT:
+
+* modify another supplier’s products
+* see another supplier’s private customer information
+* modify restaurant data without authorization
+* access Admin functions
+* manipulate another supplier’s orders
+
+Admin
+
+Admin permissions should be explicitly defined.
+
+Do not automatically assume that “Admin” means unrestricted access to every database table.
+
+Every administrative action should be audited where appropriate.
+
+⸻
+
+4. AUTHENTICATION
+
+Test:
+
+* valid login
+* invalid password
+* invalid email
+* nonexistent user
+* empty credentials
+* malformed email
+* expired session
+* logout
+* logout and browser back
+* refresh after login
+* refresh after logout
+* session persistence
+* session expiration
+* unauthorized API request
+* deleted user
+* disabled user
+* user whose organization was deleted/disabled
+* user whose role changed while logged in
+
+If authentication expires while a user is editing something:
+
+* do not silently submit unauthorized changes
+* handle the expired session cleanly
+* preserve user-entered information where reasonably possible
+
+Never expose sensitive authentication information in frontend errors.
+
+⸻
+
+5. USER INVITATIONS
+
+Implement robust invitation behavior.
+
+Cases:
+
+New invitation
+
+Restaurant/Supplier/Admin invites a user.
+
+Expected:
+
+* invitation is generated
+* invitation belongs to correct organization
+* invitation has expiration
+* invitation cannot be reused after acceptance
+* invitation cannot be used by an unauthorized organization
+
+Duplicate invitation
+
+Same email invited twice.
+
+Do not create uncontrolled duplicate active invitations.
+
+Either:
+
+* reuse/update existing invitation
+* or clearly reject duplicate
+
+depending on existing product design.
+
+Expired invitation
+
+Expired invitation must not create access.
+
+Already registered email
+
+Handle correctly.
+
+Do not accidentally transfer the user between organizations.
+
+Invitation accepted twice
+
+Second attempt must fail safely.
+
+Invitation token manipulation
+
+Invalid token must fail.
+
+User changes organization ID manually
+
+Must be rejected server-side.
+
+Invitation after organization is disabled
+
+Must not create new access.
+
+⸻
+
+6. USER / ORGANIZATION DELETION
+
+Never blindly delete data that is referenced by historical transactions.
+
+Before deleting:
+
+* determine dependencies
+* preserve historical orders where required
+* preserve audit information where required
+* prevent broken foreign references
+
+Prefer:
+
+* deactivate/archive
+* soft delete
+
+for business-critical entities where historical records must remain.
+
+Test:
+
+* delete user with orders
+* delete supplier with orders
+* delete restaurant with orders
+* delete product referenced by historical orders
+* delete price list referenced by historical orders
+
+Historical orders must remain understandable.
+
+⸻
+
+7. PRODUCT MANAGEMENT
+
+Supplier creates product.
+
+Validate:
+
+* name
+* SKU/product code if applicable
+* unit
+* category
+* price
+* availability
+* supplier ownership
+
+Reject:
+
+* missing required fields
+* invalid price
+* negative price
+* NaN
+* infinite numbers
+* invalid quantity
+* malformed IDs
+* unauthorized supplier ID
+
+⸻
+
+8. PRODUCT DUPLICATES
+
+Test:
+
+* same product name
+* same SKU
+* same supplier + same SKU
+* same product created twice by double-click
+* same product created simultaneously by two browser sessions
+
+Define uniqueness rules.
+
+Do not rely only on frontend validation.
+
+Database-level constraints should be used where appropriate.
+
+⸻
+
+9. PRODUCT DEACTIVATION
+
+Supplier deactivates product.
+
+Questions to enforce:
+
+* Can restaurants still see it?
+* Can it be added to a new cart?
+* Can an existing cart contain it?
+* Can an existing order containing it remain valid?
+
+Recommended business behavior:
+
+A product becoming unavailable must NOT corrupt historical orders.
+
+Historical order items retain their historical product information.
+
+⸻
+
+10. PRODUCT PRICE CHANGES
+
+This is extremely important.
+
+Example:
+
+Restaurant orders Product A for €10.
+
+Supplier changes Product A to €12.
+
+The existing order must remain €10.
+
+Never calculate historical order totals dynamically from the current product price.
+
+Store the relevant historical values in the order/order-item record.
+
+Test:
+
+1. Add product at €10.
+2. Change product to €12.
+3. Submit order.
+4. Verify correct intended price according to checkout rules.
+5. Verify historical order remains correct.
+6. Reload.
+7. Reopen order.
+8. Verify price did not unexpectedly change.
+
+⸻
+
+11. PRICE LISTS
+
+GastroConnect supports restaurant-specific pricing.
+
+Test:
+
+Supplier standard price = €10.
+
+Restaurant A price = €8.
+
+Restaurant B price = €9.
+
+Restaurant C = standard price.
+
+Verify:
+
+* A sees €8
+* B sees €9
+* C sees €10
+
+Restaurant A must never see Restaurant B’s private price.
+
+Changing Restaurant A’s price must not change Restaurant B’s price.
+
+Deleting a price list must have defined behavior.
+
+Changing the supplier’s standard price must not unexpectedly overwrite restaurant-specific prices.
+
+⸻
+
+12. PRICE PRIORITY
+
+Define one deterministic price resolution hierarchy.
+
+For example:
+
+1. Restaurant-specific price
+2. Supplier standard price
+3. Product unavailable / no price
+
+Do not allow multiple prices to be selected randomly.
+
+If conflicting price records exist:
+
+* detect conflict
+* choose deterministic behavior
+* log/report the problem
+* never silently charge an arbitrary price
+
+⸻
+
+13. PRICE VALIDATION
+
+Reject:
+
+* negative prices
+* invalid decimals
+* NaN
+* Infinity
+* malformed numeric strings
+* absurd values beyond configured business limits
+
+Use decimal-safe monetary handling.
+
+Avoid floating-point arithmetic for financial totals where possible.
+
+Example:
+
+€10.10 + €10.20 must reliably equal €20.30.
+
+⸻
+
+14. CART
+
+Cart belongs to the correct restaurant/user context.
+
+Test:
+
+* add product
+* remove product
+* change quantity
+* empty cart
+* refresh page
+* logout/login
+* supplier changes product
+* product becomes unavailable
+* price changes
+* delivery zone changes
+* product deleted/deactivated
+
+Cart must never contain unauthorized products.
+
+⸻
+
+15. CART QUANTITIES
+
+Test:
+
+* quantity 1
+* quantity 0
+* negative quantity
+* decimal quantity if not allowed
+* extremely large quantity
+* non-numeric quantity
+* rapid quantity changes
+* double-click
+* simultaneous updates
+
+Never trust frontend quantity.
+
+Backend validates it.
+
+If quantity becomes 0:
+
+* either remove item
+* or reject
+
+but never create an invalid order item.
+
+⸻
+
+16. ORDER CREATION
+
+Order creation must be transactional.
+
+A successful order should not end up half-created.
+
+Possible failure:
+
+Restaurant submits order.
+
+Database writes order.
+
+Then order items fail.
+
+This must not leave a broken order unless the system intentionally supports draft/partial states.
+
+Use transactions where appropriate.
+
+⸻
+
+17. DOUBLE ORDER SUBMISSION
+
+Critical.
+
+User clicks:
+
+Place Order
+
+twice.
+
+Or:
+
+* double-click
+* browser retries
+* mobile reconnects
+* network timeout causes user to retry
+
+Result must NOT be two identical orders.
+
+Use idempotency/request protection where appropriate.
+
+Test this explicitly.
+
+⸻
+
+18. ORDER TOTAL
+
+Order total must be deterministic.
+
+Example:
+
+Product A × 2 = €20
+
+Product B × 3 = €15
+
+Total = €35
+
+Test:
+
+* quantity changes
+* price changes
+* product removal
+* rounding
+* discounts if applicable
+* delivery fees if applicable
+* commissions if applicable
+
+The final persisted order total must not depend on current product data after creation.
+
+⸻
+
+19. ORDER SNAPSHOT
+
+At order creation, preserve relevant historical information:
+
+* product name
+* SKU if applicable
+* unit
+* price
+* quantity
+* subtotal
+* applicable customer/supplier context
+* delivery information
+* relevant addresses
+
+Historical orders must remain readable even if the product later changes.
+
+⸻
+
+20. ORDER STATUS MACHINE
+
+Create an explicit allowed status transition system.
+
+Do NOT allow arbitrary status changes.
+
+Example conceptual flow:
+
+Draft
+
+→ Submitted
+
+→ Accepted
+
+→ Preparing
+
+→ Dispatched
+
+→ Delivered
+
+Possible cancellation/rejection states must be explicitly defined.
+
+For every status:
+
+* define who can set it
+* define allowed previous states
+* define allowed next states
+* define whether the transition is reversible
+
+Example:
+
+Delivered → Submitted
+
+must not be possible.
+
+⸻
+
+21. INVALID ORDER TRANSITIONS
+
+Test:
+
+* Delivered → Accepted
+* Delivered → Cancelled
+* Rejected → Accepted
+* Cancelled → Accepted
+* Dispatched → Draft
+* Accepted → Draft
+
+Unless explicitly allowed, reject these transitions server-side.
+
+Frontend hiding a button is insufficient.
+
+⸻
+
+22. SIMULTANEOUS ORDER STATUS CHANGES
+
+Restaurant and supplier perform actions at nearly the same time.
+
+Example:
+
+Supplier accepts order.
+
+Restaurant cancels order at the same time.
+
+The backend must resolve the conflict deterministically.
+
+Never allow:
+
+* corrupted state
+* two contradictory final states
+* duplicated status history
+
+Use transactional/concurrency-safe logic.
+
+⸻
+
+23. ORDER CANCELLATION
+
+Define cancellation rules.
+
+Test cancellation:
+
+* before submission
+* after submission
+* after acceptance
+* after preparation
+* after dispatch
+* after delivery
+
+If cancellation is allowed only until a specific status, enforce that server-side.
+
+Do not merely hide the cancel button.
+
+⸻
+
+24. ORDER REJECTION
+
+Supplier rejects order.
+
+Require reason if product design requires it.
+
+Restaurant sees:
+
+* rejected status
+* rejection reason
+* timestamp
+
+Supplier must not be able to modify another supplier’s rejection.
+
+⸻
+
+25. ORDER HISTORY
+
+Historical orders must survive:
+
+* product deletion
+* product price change
+* supplier product edit
+* restaurant user deletion
+* supplier user deletion
+* organization metadata changes
+
+The order should remain an immutable historical record except for explicitly allowed fields.
+
+⸻
+
+26. ORDER ACCESS
+
+Restaurant sees:
+
+* its own orders
+
+Supplier sees:
+
+* orders belonging to that supplier
+
+Admin sees according to admin permissions.
+
+Test direct URL manipulation:
+
+/orders/OTHER_ORDER_ID
+
+Must return unauthorized/not found.
+
+Do not leak whether a private order exists if security policy requires non-disclosure.
+
+⸻
+
+27. DELIVERY ZONES / POSTAL CODES
+
+GastroConnect uses postal-code-based delivery zones.
+
+Test:
+
+* valid postal code
+* invalid postal code
+* empty postal code
+* lowercase/uppercase irrelevant characters
+* spaces
+* malformed input
+* leading/trailing whitespace
+* unknown postal code
+* supplier serves exact postal code
+* supplier does not serve postal code
+
+Normalize postal codes consistently.
+
+Do not let different formatting accidentally bypass delivery rules.
+
+⸻
+
+28. DELIVERY ZONE CHANGES
+
+Supplier currently serves postal code X.
+
+Restaurant creates order.
+
+Supplier later removes postal code X.
+
+The existing order must NOT suddenly become invalid.
+
+Historical order delivery conditions should remain stable once the order is accepted/created according to business rules.
+
+New orders must use the current delivery configuration.
+
+⸻
+
+29. SUPPLIER DISCOVERY
+
+When restaurant searches for suppliers:
+
+Only suppliers relevant to the restaurant should appear according to:
+
+* delivery zone
+* availability
+* active status
+* product availability
+* applicable business rules
+
+Test:
+
+* supplier serves ZIP
+* supplier does not serve ZIP
+* inactive supplier
+* supplier with no products
+* supplier with no available products
+* malformed restaurant postal code
+
+⸻
+
+30. MAP VIEW
+
+For map supplier filtering:
+
+* only show eligible suppliers
+* changing postal code updates results
+* stale results must not remain visible
+* loading state must be correct
+* no duplicate supplier markers
+* supplier without valid coordinates handled gracefully
+* invalid coordinates must not break map
+* map API failure must not crash application
+* unauthorized/private supplier data must not be exposed
+
+⸻
+
+31. ETA CALCULATION
+
+ETA must be deterministic and based on defined inputs.
+
+Test:
+
+* valid supplier location
+* valid restaurant location
+* missing coordinates
+* invalid coordinates
+* same location
+* very long distance
+* API unavailable
+* API timeout
+* API returns invalid result
+* supplier unavailable
+* restaurant address changed
+
+Never allow an external ETA API failure to crash order creation.
+
+Define fallback behavior.
+
+⸻
+
+32. SUPPLIER STATUS
+
+If suppliers can be active/inactive:
+
+Inactive supplier:
+
+* must not receive new orders
+* should not appear in normal discovery if business rules require
+* historical orders remain visible
+* existing orders continue correctly
+
+⸻
+
+33. RESTAURANT STATUS
+
+Same principle.
+
+If restaurant is disabled:
+
+* users cannot create new orders
+* existing historical orders remain
+* active sessions must lose unauthorized capabilities
+* API must enforce status
+
+⸻
+
+34. DOCUMENT UPLOADS
+
+For uploaded documents:
+
+Test:
+
+* valid file
+* empty file
+* oversized file
+* unsupported format
+* corrupted file
+* duplicate file
+* malicious filename
+* unusual characters
+* unauthorized upload
+* unauthorized download
+* deleting another organization’s document
+
+Do not trust filename or MIME type supplied by the client.
+
+⸻
+
+35. DOCUMENT ACCESS
+
+A Restaurant A document must never be downloadable by Restaurant B by changing the document ID.
+
+Same for supplier documents.
+
+Authorization must happen before returning the file.
+
+⸻
+
+36. FILE DELETION
+
+Deleting a file:
+
+* remove access
+* ensure broken links are handled
+* do not delete another organization’s file
+* define whether historical records retain references
+
+⸻
+
+37. SEARCH
+
+Test:
+
+* exact search
+* partial search
+* uppercase/lowercase
+* accents
+* spaces
+* empty search
+* special characters
+* extremely long search
+* no results
+* many results
+
+Search must not expose unauthorized records.
+
+⸻
+
+38. FILTERS
+
+Every filter combination must work independently and together.
+
+Example:
+
+Supplier + category + availability + price + postal code.
+
+Test:
+
+* one filter
+* multiple filters
+* reset filters
+* changing filter rapidly
+* no results
+* refresh
+* back button
+* URL parameters if applicable
+
+⸻
+
+39. PAGINATION
+
+If pagination exists:
+
+* page 1
+* last page
+* empty page
+* deleting item while on page
+* adding item while on page
+* changing page size
+* invalid page number
+* huge page number
+
+Never expose data from another tenant through pagination.
+
+⸻
+
+40. SORTING
+
+Test:
+
+* price ascending
+* price descending
+* name
+* newest
+* oldest
+* missing values
+* identical values
+
+Sorting must be deterministic.
+
+⸻
+
+41. CONCURRENCY
+
+This is one of the most important sections.
+
+Assume two users can perform actions simultaneously.
+
+Test:
+
+Product
+
+Two users edit same product.
+
+Price
+
+Two users change same price.
+
+Order
+
+Two users change same order.
+
+Quantity
+
+Two browser sessions change same cart.
+
+User
+
+Admin disables user while user is active.
+
+Supplier
+
+Supplier deactivates product while restaurant is checking out.
+
+Delivery
+
+Supplier removes ZIP while restaurant submits order.
+
+The backend must prevent inconsistent states.
+
+⸻
+
+42. NETWORK FAILURES
+
+Every important operation should survive:
+
+* slow network
+* timeout
+* request failure
+* server 500
+* connection lost
+* connection restored
+* user refreshes during request
+
+Critical operations should not accidentally execute twice after retry.
+
+⸻
+
+43. BROWSER REFRESH
+
+Test refresh during:
+
+* checkout
+* order creation
+* product creation
+* product editing
+* price editing
+* document upload
+* invitation
+* status update
+
+No corrupted state.
+
+⸻
+
+44. BACK BUTTON
+
+Test browser back after:
+
+* submitting order
+* changing status
+* deleting product
+* saving price
+* logout
+
+Back navigation must not cause unintended duplicate mutations.
+
+⸻
+
+45. STALE DATA
+
+User opens product.
+
+Supplier changes product.
+
+Restaurant submits old information.
+
+Backend must decide whether:
+
+* old state is still valid
+* conflict must be shown
+* current data must be reloaded
+
+Do not silently overwrite newer data.
+
+⸻
+
+46. DELETIONS
+
+For every deletable entity ask:
+
+What references this object?
+
+Never allow deletion to silently destroy historical integrity.
+
+Entities to audit:
+
+* users
+* organizations
+* suppliers
+* restaurants
+* products
+* categories
+* price lists
+* delivery zones
+* documents
+* orders
+
+⸻
+
+47. SOFT DELETE / ARCHIVE
+
+Where historical records depend on an entity, prefer archive/deactivation rather than destructive deletion.
+
+Example:
+
+Product deleted today.
+
+Order from last month still needs to display:
+
+Tomatoes – 10kg – €25
+
+It must not display:
+
+Unknown Product – €0
+
+⸻
+
+48. NOTIFICATIONS
+
+If notifications exist:
+
+Test:
+
+* successful notification
+* failed notification
+* duplicate notification
+* retry
+* notification after state transition
+* unauthorized recipient
+* notification for wrong restaurant
+* notification for wrong supplier
+
+A notification failure should generally not corrupt the underlying business transaction.
+
+Example:
+
+Order successfully created.
+
+Email fails.
+
+Order should still exist.
+
+⸻
+
+49. EMAIL / EXTERNAL SERVICES
+
+External services may fail.
+
+Test:
+
+* API timeout
+* API returns error
+* API unavailable
+* malformed response
+* rate limit
+* temporary failure
+
+External service failure must not corrupt core GastroConnect data.
+
+⸻
+
+50. COMMISSION
+
+GastroConnect may use commission on orders.
+
+If commission is implemented:
+
+Define explicitly:
+
+* commission percentage
+* commission base
+* rounding
+* who pays commission
+* when commission becomes final
+* what happens on cancellation
+* what happens on rejection
+* what happens on refund
+* historical commission value
+
+Never calculate historical commission from a current global commission setting.
+
+Example:
+
+Order created with 5% commission.
+
+Later commission becomes 6%.
+
+Old order must remain at 5%.
+
+⸻
+
+51. MONEY
+
+All financial calculations must be deterministic.
+
+Test:
+
+* €0
+* €0.01
+* €0.10
+* €10.99
+* large amount
+* decimal quantities if allowed
+* rounding
+* multiple line items
+* commission
+* discounts
+* delivery charges
+
+Avoid floating point errors.
+
+⸻
+
+52. CURRENCY
+
+If currently only EUR is supported:
+
+Enforce EUR consistently.
+
+Do not accidentally allow:
+
+* USD
+* GBP
+* invalid currency codes
+
+without explicit support.
+
+Historical transactions should retain their currency.
+
+⸻
+
+53. ADMIN ACTIONS
+
+Admin functions must be explicit.
+
+Test:
+
+* admin creates user
+* admin disables user
+* admin modifies organization
+* admin views order
+* admin changes product
+* admin changes configuration
+
+Every dangerous action should require authorization.
+
+Consider audit logging for:
+
+* role changes
+* user deletion/deactivation
+* price changes
+* order status overrides
+* organization changes
+* administrative data changes
+
+⸻
+
+54. ROLE ESCALATION
+
+CRITICAL.
+
+A Restaurant Buyer must NEVER be able to send:
+
+role=admin
+
+and become Admin.
+
+Likewise:
+
+* restaurant → supplier
+* supplier → admin
+* user → another organization
+
+must require authorized backend logic.
+
+Never trust role values from the frontend.
+
+⸻
+
+55. ID MANIPULATION
+
+For EVERY endpoint that accepts:
+
+* userId
+* restaurantId
+* supplierId
+* productId
+* orderId
+* priceListId
+* deliveryZoneId
+* documentId
+
+test replacing the ID with another organization’s ID.
+
+Expected:
+
+Unauthorized.
+
+This test should be systematically performed across the entire API.
+
+⸻
+
+56. API INPUT MANIPULATION
+
+Test malicious/invalid values for every API:
+
+* null
+* empty string
+* negative numbers
+* huge numbers
+* booleans instead of strings
+* strings instead of numbers
+* arrays instead of objects
+* objects instead of IDs
+* invalid UUID/ID
+* nonexistent ID
+* duplicate ID
+* unauthorized ID
+
+Backend must validate all input.
+
+⸻
+
+57. FRONTEND/BACKEND CONSISTENCY
+
+Never assume:
+
+“The button is disabled, therefore the action is impossible.”
+
+Every important restriction must also exist server-side.
+
+Examples:
+
+Frontend says:
+
+Cancel button hidden
+
+Backend must STILL reject:
+
+POST /orders/X/cancel
+
+if cancellation is not allowed.
+
+⸻
+
+58. DATABASE INTEGRITY
+
+Use database constraints where appropriate:
+
+* foreign keys
+* unique constraints
+* not-null constraints
+* valid relationships
+* indexes
+* transactions
+
+Do not rely exclusively on application code to maintain basic database integrity.
+
+⸻
+
+59. TRANSACTIONS
+
+Identify all operations that must be atomic.
+
+Examples:
+
+Creating an order
+
+Either:
+
+* complete valid order
+
+or:
+
+* no order created
+
+Accepting order
+
+Order status + required related data should remain consistent.
+
+Creating price list entry
+
+Price data should not be partially saved.
+
+User invitation
+
+Invitation and organization relationship must remain consistent.
+
+⸻
+
+60. DUPLICATE REQUEST PROTECTION
+
+Identify all mutation endpoints where duplicate requests would cause problems.
+
+Examples:
+
+* create order
+* create product
+* create invitation
+* upload document
+* accept order
+* reject order
+* change status
+* create price
+
+Implement idempotency or equivalent protection where necessary.
+
+⸻
+
+61. AUDIT HISTORY
+
+For important state changes, consider recording:
+
+* who
+* what
+* when
+* previous value
+* new value
+
+Especially:
+
+* order status
+* price
+* permissions
+* role
+* organization changes
+* administrative changes
+
+Audit history should itself be protected from unauthorized modification.
+
+⸻
+
+62. ERROR HANDLING
+
+Never show raw database errors to users.
+
+Bad:
+
+Postgres foreign key constraint xyz failed...
+
+Good:
+
+We couldn't complete this action. Please try again.
+
+Developer logs should retain technical details.
+
+User interface should receive safe, useful messages.
+
+⸻
+
+63. LOADING STATES
+
+Every async operation should have a defined state:
+
+* loading
+* success
+* failure
+* retry
+
+Prevent accidental multiple submissions while an operation is processing.
+
+⸻
+
+64. EMPTY STATES
+
+Every list needs a defined empty state.
+
+Examples:
+
+* no products
+* no suppliers
+* no orders
+* no search results
+* no documents
+* no price lists
+* no delivery zones
+
+Empty data must not cause rendering errors.
+
+⸻
+
+65. PARTIAL DATA
+
+Test incomplete records.
+
+Examples:
+
+* supplier without coordinates
+* product without optional category
+* user without optional profile information
+* missing document
+* incomplete address
+
+The UI must not crash.
+
+⸻
+
+66. DEEP LINKS
+
+User opens a direct URL to:
+
+* order
+* product
+* supplier
+* document
+* admin page
+
+while unauthorized.
+
+Must correctly redirect or show access denied.
+
+Do not briefly render private data before authorization finishes.
+
+⸻
+
+67. SESSION / PERMISSION CHANGES
+
+User is logged in.
+
+Admin changes their role or disables their account.
+
+Then user attempts another action.
+
+Backend must use current authorization state.
+
+Do not trust stale frontend role state.
+
+⸻
+
+68. DATA RACE EXAMPLE
+
+Restaurant has Product A in cart at €10.
+
+Supplier disables Product A.
+
+Restaurant clicks checkout.
+
+Backend must decide according to business rules:
+
+* reject product
+* update cart
+* allow existing cart snapshot
+
+But never silently create an invalid order.
+
+⸻
+
+69. PRICE RACE EXAMPLE
+
+Restaurant sees €10.
+
+Supplier changes price to €12.
+
+Restaurant checks out.
+
+Define one clear rule.
+
+Recommended:
+
+At checkout/order creation, server determines the authoritative applicable price.
+
+The client-provided €10 must NEVER be trusted.
+
+⸻
+
+70. DELIVERY RACE EXAMPLE
+
+Restaurant is in ZIP X.
+
+Supplier removes ZIP X.
+
+Restaurant submits order.
+
+Backend checks current delivery eligibility and applies the defined business rule.
+
+Never rely on the restaurant’s frontend having cached the old eligibility.
+
+⸻
+
+71. PRODUCT AVAILABILITY RACE
+
+Restaurant adds product.
+
+Supplier makes product unavailable.
+
+Checkout happens.
+
+Backend revalidates product availability.
+
+⸻
+
+72. USER DEACTIVATION RACE
+
+User is editing an order.
+
+Admin disables user.
+
+User submits change.
+
+Backend checks current permissions.
+
+Request must be rejected if the user no longer has permission.
+
+⸻
+
+73. ORGANIZATION ISOLATION TEST MATRIX
+
+For every major entity test:
+
+Restaurant A → own data = ALLOW
+
+Restaurant A → Restaurant B data = DENY
+
+Supplier A → own data = ALLOW
+
+Supplier A → Supplier B data = DENY
+
+Restaurant A → Supplier A public data = ALLOW according to business rules
+
+Restaurant A → Supplier A private data = DENY
+
+Supplier A → Restaurant A permitted order data = ALLOW
+
+Supplier A → Restaurant B unrelated private data = DENY
+
+⸻
+
+74. SECURITY TESTING
+
+Test:
+
+* unauthorized API calls
+* ID manipulation
+* role manipulation
+* organization manipulation
+* expired sessions
+* deleted users
+* malformed input
+* oversized requests
+* malicious file uploads
+* unauthorized downloads
+* private data leakage
+* client-side-only permission bypass
+
+Do not expose secrets in:
+
+* frontend source
+* API responses
+* logs
+* error messages
+* browser local storage unless explicitly appropriate
+
+⸻
+
+75. PERFORMANCE
+
+Do not optimize prematurely, but test realistic scale.
+
+Test with:
+
+* many products
+* many suppliers
+* many orders
+* many restaurants
+* large search results
+
+Identify:
+
+* N+1 database queries
+* unnecessary API requests
+* loading entire datasets when pagination is appropriate
+* expensive frontend rerenders
+* slow filtering
+
+⸻
+
+76. FAILURE RECOVERY
+
+For every important operation ask:
+
+What happens if it succeeds in the database but the response never reaches the browser?
+
+Example:
+
+Order successfully created.
+
+Browser shows timeout.
+
+User clicks order again.
+
+System must not create duplicate order.
+
+This is one of the most important real-world scenarios.
+
+⸻
+
+77. RETRY LOGIC
+
+Retries must be safe.
+
+A failed request should not automatically create duplicate:
+
+* orders
+* products
+* invitations
+* documents
+* status transitions
+
+⸻
+
+78. REFRESH AFTER MUTATION
+
+After every mutation test:
+
+1. Perform action.
+2. Wait for success.
+3. Refresh browser.
+4. Navigate away.
+5. Return.
+6. Verify persisted state.
+
+Frontend state must not make an operation appear successful when database state is different.
+
+⸻
+
+79. CACHE INVALIDATION
+
+If caching is used:
+
+After:
+
+* price change
+* product deactivation
+* delivery-zone change
+* order status change
+
+cached data must not remain incorrectly stale beyond defined behavior.
+
+⸻
+
+80. TIME / DATE
+
+Define timezone behavior.
+
+GastroConnect is intended for South Tyrol/Italy initially.
+
+Use a consistent timezone strategy.
+
+Test:
+
+* order timestamps
+* status timestamps
+* invitation expiration
+* delivery dates
+* daylight saving time
+* date displayed differently between frontend/backend
+
+Never rely blindly on browser local time for server-side business logic.
+
+⸻
+
+81. ORDER TIMESTAMPS
+
+Preserve:
+
+* createdAt
+* updatedAt
+* status transition timestamps where relevant
+
+Do not allow ordinary users to manipulate these timestamps.
+
+⸻
+
+82. HISTORICAL IMMUTABILITY
+
+Once an order becomes historical, do not allow current master data to rewrite history.
+
+Changing:
+
+* product name
+* price
+* SKU
+* supplier name
+* restaurant name
+
+must not unexpectedly alter historical order facts that need to remain immutable.
+
+⸻
+
+83. ORDER DOCUMENTS
+
+If invoices/delivery documents are attached to orders:
+
+Ensure:
+
+* correct organization access
+* correct order association
+* correct permissions
+* deletion rules
+* historical availability
+
+⸻
+
+84. SEARCH + SECURITY
+
+Search results must be permission-filtered BEFORE returning results.
+
+Do not:
+
+1. retrieve all suppliers
+2. hide unauthorized suppliers in frontend
+
+Instead:
+
+backend/database query should only return authorized records.
+
+⸻
+
+85. ERROR + RETRY UX
+
+For every important failed operation:
+
+Show:
+
+* what happened
+* whether data was saved
+* whether retry is safe
+
+Example:
+
+If order submission times out:
+
+Do NOT simply say:
+
+Order failed.
+
+when the server may have already created it.
+
+Instead verify the transaction state or use idempotency.
+
+⸻
+
+86. BROWSER MULTI-TAB
+
+Test same account in two tabs.
+
+Examples:
+
+Tab A edits product.
+
+Tab B deletes/deactivates product.
+
+Tab A saves.
+
+System must handle stale data safely.
+
+Also test:
+
+* two tabs submitting same order
+* two tabs changing quantity
+* two tabs changing order status
+
+⸻
+
+87. MOBILE / RESPONSIVE
+
+Even though this is a webapp:
+
+Test business operations on smaller screens.
+
+Critical buttons must not be accidentally double-clicked due to UI layout.
+
+Forms must remain usable.
+
+⸻
+
+88. DATA VALIDATION
+
+Every form should validate:
+
+* required fields
+* data type
+* length
+* format
+* range
+* relationships
+
+Frontend validation improves UX.
+
+Backend validation guarantees correctness.
+
+Both should exist.
+
+⸻
+
+89. REGRESSION TESTING
+
+Whenever a feature is changed, automatically retest at minimum:
+
+* authentication
+* authorization
+* tenant isolation
+* products
+* prices
+* carts
+* orders
+* order status
+* delivery zones
+* supplier visibility
+
+Do not consider a feature complete if existing functionality breaks.
+
+⸻
+
+90. END-TO-END GOLDEN PATH
+
+Create a complete test:
+
+Supplier
+
+1. Supplier registers.
+2. Supplier completes profile.
+3. Supplier creates delivery zone.
+4. Supplier creates product.
+5. Supplier sets standard price.
+6. Supplier sets restaurant-specific price.
+
+Restaurant
+
+7. Restaurant registers.
+8. Restaurant enters valid postal code.
+9. Restaurant discovers supplier.
+10. Restaurant sees correct product.
+11. Restaurant sees correct restaurant-specific price.
+12. Restaurant adds product to cart.
+13. Restaurant changes quantity.
+14. Restaurant checks out.
+15. Order is created exactly once.
+16. Supplier sees order.
+17. Supplier accepts order.
+18. Restaurant sees accepted status.
+19. Supplier progresses order through allowed workflow.
+20. Restaurant sees correct status.
+21. Order becomes completed/delivered.
+22. Historical order remains correct.
+
+Then modify:
+
+* product
+* price
+* supplier delivery zone
+* restaurant information
+
+and verify historical order remains correct.
+
+⸻
+
+91. GOLDEN PATH FAILURE TEST
+
+Repeat the full workflow while intentionally introducing failures:
+
+* invalid price
+* invalid ZIP
+* product deactivated
+* duplicate click
+* network timeout
+* expired session
+* unauthorized ID
+* supplier becomes inactive
+* restaurant becomes inactive
+* external API unavailable
+
+Application must fail safely without corrupting data.
+
+⸻
+
+92. TEST DATA ISOLATION
+
+Create at least:
+
+Restaurant A
+
+RA
+
+Restaurant B
+
+RB
+
+Supplier A
+
+SA
+
+Supplier B
+
+SB
+
+Admin
+
+ADMIN
+
+Then deliberately try every combination of cross-account access.
+
+This should become a reusable security test suite.
+
+⸻
+
+93. IMPORTANT TEST PHILOSOPHY
+
+Do NOT only test:
+
+“Does the feature work when used correctly?”
+
+Also test:
+
+“What happens when the user does something stupid?”
+
+“What happens when the user clicks twice?”
+
+“What happens when the network dies?”
+
+“What happens when two users do it at once?”
+
+“What happens when the user changes the ID manually?”
+
+“What happens when the database contains something unexpected?”
+
+“What happens when the related object no longer exists?”
+
+“What happens when the user is no longer authorized?”
+
+“What happens if an external service fails?”
+
+“What happens if the browser reloads at exactly the wrong moment?”
+
+These are the scenarios that separate a prototype from production software.
+
+⸻
+
+94. IMPLEMENTATION REQUIREMENT
+
+Do not merely create a document describing these rules.
+
+Actually inspect the existing GastroConnect codebase and determine:
+
+* which rules already exist
+* which are missing
+* which are implemented incorrectly
+* which are frontend-only
+* which require backend enforcement
+* which require database constraints
+* which require automated tests
+* which require architectural changes
+
+Then implement the highest-priority missing protections.
+
+Do NOT blindly modify everything at once.
+
+⸻
+
+95. PRIORITY
+
+Prioritize in this order:
+
+P0 – MUST NEVER FAIL
+
+* authentication
+* authorization
+* tenant isolation
+* role escalation prevention
+* order duplication prevention
+* financial correctness
+* historical order integrity
+* unauthorized data access
+* database corruption
+* invalid order state transitions
+
+P1 – CRITICAL
+
+* price consistency
+* product availability
+* delivery-zone validation
+* invitation security
+* document access
+* concurrency
+* network failure recovery
+* external API failure handling
+
+P2 – IMPORTANT
+
+* search
+* filters
+* pagination
+* notifications
+* caching
+* UX error states
+* responsive behavior
+
+P3 – OPTIMIZATION
+
+* performance improvements
+* advanced caching
+* UI polish
+* non-critical optimizations
+
+⸻
+
+96. FINAL REQUIREMENT
+
+After auditing and implementing the above:
+
+Generate a structured report containing:
+
+A. Already implemented correctly
+
+B. Missing
+
+C. Incorrect / unsafe
+
+D. Fixed
+
+E. Tests added
+
+F. Tests still requiring manual verification
+
+G. Potential architectural risks
+
+H. Recommended next steps
+
+For every implemented business rule, explain briefly:
+
+* what the rule is
+* where it is enforced
+* how it is tested
+
+Do not claim a scenario is tested if you only inspected the code.
+
+Actually execute automated tests wherever possible.
+
+If something cannot be automatically tested, explicitly mark it as requiring manual testing.
+
+Most importantly:
+
+Do not optimize for making the code look complete. Optimize for making GastroConnect impossible to accidentally corrupt through realistic user behavior.
