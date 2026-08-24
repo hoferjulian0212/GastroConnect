@@ -13,11 +13,6 @@ import { HeadlineCta } from "@/components/landing/HeadlineCta";
 import { PinnedFeatureStory } from "@/components/landing/PinnedFeatureStory";
 import { StatsStrip, SavingsChart } from "@/components/landing/AnimatedStats";
 import {
-  Sheet,
-  SheetContent,
-  SheetTrigger,
-} from "@/components/ui/sheet";
-import {
   Accordion,
   AccordionContent,
   AccordionItem,
@@ -841,7 +836,6 @@ export default function Landing() {
   const [, setLocation] = useLocation();
   const { currentUser, currentRole } = useUser();
   const [scrolled, setScrolled] = useState(false);
-  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [lang, setLang] = useState<Lang>("de");
   const [mobileShotRole, setMobileShotRole] = useState<"restaurant" | "supplier">("restaurant");
   const [mobileShotIndex, setMobileShotIndex] = useState(0);
@@ -986,76 +980,18 @@ export default function Landing() {
                <ArrowUpRight className="ml-1 h-4 w-4" />
             </Button>
 
-            {/* Mobile menu */}
-            <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
-              <SheetTrigger asChild>
-                <button
-                   className="lg:hidden inline-flex h-9 items-center gap-1.5 rounded-full border border-black bg-black px-3 text-xs font-semibold text-white shadow-sm shadow-black/10 transition-colors hover:bg-black/85 dark:border-black dark:bg-black dark:text-white"
-                  aria-label={t.navMenu}
-                  data-testid="button-mobile-menu"
-                >
-                  <span>{t.navMenu}</span>
-                  <ArrowUpRight className="h-3.5 w-3.5" />
-                </button>
-              </SheetTrigger>
-              <SheetContent side="bottom" className="h-auto max-h-[78vh] rounded-t-[2rem] border-border bg-background p-0">
-                <div className="flex max-h-[78vh] flex-col">
-                  <div className="flex items-center justify-between border-b border-border px-5 py-4">
-                    <Logo size="nav" variant="dark" thick data-testid="logo-landing-mobile" />
-                    <span className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                      {t.navMenu}
-                    </span>
-                  </div>
-                  <div className="grid gap-1 px-4 py-4 sm:grid-cols-2">
-                    {anchors.map((item) => (
-                      <button
-                        key={item.id}
-                        onClick={() => {
-                          setMobileNavOpen(false);
-                          setTimeout(() => smoothScrollTo(item.id), 60);
-                        }}
-                        className="flex min-h-12 items-center justify-between rounded-2xl px-4 py-3 text-left text-sm font-medium text-foreground transition-colors hover:bg-muted/60"
-                        data-testid={`nav-mobile-${item.id}`}
-                      >
-                        {item.label}
-                        <ArrowUpRight className="h-4 w-4 text-muted-foreground" />
-                      </button>
-                    ))}
-                  </div>
-                  <div className="grid gap-3 border-t border-border p-4 sm:grid-cols-2">
-                    <div
-                      className="flex min-h-11 items-center justify-center rounded-full border border-border bg-card p-0.5 text-xs font-medium"
-                      data-testid="lang-switcher-mobile"
-                    >
-                      {(["de", "it", "en"] as const).map((code) => (
-                        <button
-                          key={code}
-                          onClick={() => changeLang(code)}
-                          className={`flex-1 px-3 py-1.5 rounded-full uppercase tracking-wide transition-colors ${
-                            lang === code
-                              ? "bg-foreground text-background"
-                              : "text-muted-foreground"
-                          }`}
-                          data-testid={`lang-mobile-${code}`}
-                        >
-                          {code}
-                        </button>
-                      ))}
-                    </div>
-                    <Button
-                      className="h-11 w-full rounded-full bg-black text-white shadow-none hover:bg-black/85 dark:bg-white dark:text-black dark:hover:bg-white/90"
-                      onClick={() => {
-                        setMobileNavOpen(false);
-                        handleLogin();
-                      }}
-                      data-testid="link-login-mobile"
-                    >
-                      {t.navLogin}
-                    </Button>
-                  </div>
-                </div>
-              </SheetContent>
-            </Sheet>
+            {/* Mobile entry point — intentionally opens registration directly,
+                rather than expanding a secondary navigation drawer. */}
+            <button
+              type="button"
+              className="lg:hidden inline-flex h-9 items-center gap-1.5 rounded-full border border-black bg-black px-3 text-xs font-semibold text-white shadow-sm shadow-black/10 transition-colors hover:bg-black/85 dark:border-black dark:bg-black dark:text-white"
+              aria-label={t.navMenu}
+              onClick={() => setLocation("/register")}
+              data-testid="button-mobile-menu"
+            >
+              <span>{t.navMenu}</span>
+              <ArrowUpRight className="h-3.5 w-3.5" />
+            </button>
           </div>
         </div>
       </header>
