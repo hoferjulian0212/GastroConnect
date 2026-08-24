@@ -386,7 +386,15 @@ async function acquireHistoryMarker(artifactPath) {
   const lockPath = `${artifactPath}.lock`;
   const claimPath = `${lockPath}.claim`;
   const staleMs = historyLockStaleMs();
-  const cleanupSummary = await cleanupStaleRecoveryRemnants(lockPath, staleMs);
+  let cleanupSummary;
+  try {
+    cleanupSummary = await cleanupStaleRecoveryRemnants(lockPath, staleMs);
+  } catch (error) {
+    // Keep the alert stable and free of paths, lock tokens, and filesystem
+    // diagnostics. The surrounding command still fails closed with details.
+    console.error("RELEASE_HEALTH_RECOVERY_CLEANUP_FAILURE reason=cleanup_incomplete");
+    throw error;
+  }
   console.log(
     `RELEASE_HEALTH_RECOVERY_CLEANUP removed=${cleanupSummary.removed} retained=${cleanupSummary.retained}`,
   );
@@ -516,6 +524,9 @@ async function acquireHistoryMarker(artifactPath) {
 }
 
 async function cleanupStaleRecoveryRemnants(lockPath, staleMs) {
+  if (process.env.NODE_ENV === "test" && process.env.RELEASE_HEALTH_TEST_FORCE_CLEANUP_FAILURE === "1") {
+    throw new Error("forced cleanup failure");
+  }
   const lockDirectory = dirname(lockPath);
   const reclaimPrefix = `${basename(lockPath)}.claim.reclaim-`;
   let removed = 0;

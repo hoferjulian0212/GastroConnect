@@ -20,3 +20,9 @@ Release-history updates must share a stable kernel-managed advisory lock for the
 **Why:** Path-based lock cleanup has unavoidable handoff races: a concurrent publisher can replace a path between inspection and deletion.
 
 **How to apply:** Publish marker metadata atomically while holding the stable advisory lock. A leftover current-format marker can be recovered after the OS releases the interrupted publisher's lock; malformed or legacy markers fail closed.
+
+Recovery cleanup failures should emit a stable, actionable release event whose fields contain no paths, lock tokens, or other filesystem diagnostics; the command must still fail closed.
+
+**Why:** Operators need a monitorable signal for incomplete abandoned-release cleanup without leaking sensitive recovery details.
+
+**How to apply:** Emit the detail-free cleanup failure event at the cleanup boundary, then propagate the original error so the release operation remains unsuccessful.
