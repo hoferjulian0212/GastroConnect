@@ -688,6 +688,7 @@ describe("published health contract checker", () => {
       });
 
       assert.equal(result.exitCode, 0, result.stdout + result.stderr);
+      assert.match(result.stdout, /RELEASE_HEALTH_RECOVERY_CLEANUP removed=1 retained=1/);
       const remaining = await readdir(resolve(directory, "artifact"));
       assert.ok(!remaining.includes("history.jsonl.lock.claim.reclaim-22222222-2222-4222-8222-222222222222"));
       assert.ok(remaining.includes("history.jsonl.lock.claim.reclaim-33333333-3333-4333-8333-333333333333"));

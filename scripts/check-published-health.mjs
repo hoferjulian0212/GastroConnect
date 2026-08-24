@@ -386,7 +386,10 @@ async function acquireHistoryMarker(artifactPath) {
   const lockPath = `${artifactPath}.lock`;
   const claimPath = `${lockPath}.claim`;
   const staleMs = historyLockStaleMs();
-  await cleanupStaleRecoveryRemnants(lockPath, staleMs);
+  const cleanupSummary = await cleanupStaleRecoveryRemnants(lockPath, staleMs);
+  console.log(
+    `RELEASE_HEALTH_RECOVERY_CLEANUP removed=${cleanupSummary.removed} retained=${cleanupSummary.retained}`,
+  );
   let owner;
   let claimHeld = false;
 
@@ -515,11 +518,13 @@ async function acquireHistoryMarker(artifactPath) {
 async function cleanupStaleRecoveryRemnants(lockPath, staleMs) {
   const lockDirectory = dirname(lockPath);
   const reclaimPrefix = `${basename(lockPath)}.claim.reclaim-`;
+  let removed = 0;
+  let retained = 0;
   let entries;
   try {
     entries = await readdir(lockDirectory, { withFileTypes: true });
   } catch (error) {
-    if (error?.code === "ENOENT") return;
+    if (error?.code === "ENOENT") return { removed, retained };
     throw error;
   }
 
@@ -537,14 +542,19 @@ async function cleanupStaleRecoveryRemnants(lockPath, staleMs) {
       if (error?.code === "ENOENT") continue;
       throw error;
     }
-    if (reclaimStats.mtimeMs > staleBefore) continue;
+    if (reclaimStats.mtimeMs > staleBefore) {
+      retained++;
+      continue;
+    }
 
     try {
       await rm(reclaimPath, { recursive: true, force: true });
+      removed++;
     } catch (error) {
       if (error?.code !== "ENOENT") throw error;
     }
   }
+  return { removed, retained };
 }
 
 function historyLockStaleMs() {
