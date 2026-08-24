@@ -750,6 +750,7 @@ function OrderingProcessCanvas({
 
     let isNearViewport = false;
     let animationFrame: number | null = null;
+    let retryTimer: number | null = null;
 
     const drawFrame = () => {
       animationFrame = null;
@@ -777,7 +778,14 @@ function OrderingProcessCanvas({
       video.muted = true;
       video.defaultMuted = true;
       void video.play().then(renderFrames).catch(() => {
-        // The next scroll or visibility event retries after the browser is ready.
+        // Retry while visible in case the browser is still decoding or waking
+        // the media element after a scroll.
+        if (isNearViewport && retryTimer === null) {
+          retryTimer = window.setTimeout(() => {
+            retryTimer = null;
+            tryPlay();
+          }, 250);
+        }
       });
     };
 
@@ -788,6 +796,10 @@ function OrderingProcessCanvas({
         tryPlay();
       } else {
         video.pause();
+        if (retryTimer !== null) {
+          window.clearTimeout(retryTimer);
+          retryTimer = null;
+        }
         if (animationFrame !== null) {
           window.cancelAnimationFrame(animationFrame);
           animationFrame = null;
@@ -834,6 +846,7 @@ function OrderingProcessCanvas({
       video.removeEventListener("play", renderFrames);
       window.removeEventListener("scroll", onScroll);
       document.removeEventListener("visibilitychange", onVisibilityChange);
+      if (retryTimer !== null) window.clearTimeout(retryTimer);
       if (animationFrame !== null) window.cancelAnimationFrame(animationFrame);
       video.pause();
     };
@@ -844,7 +857,7 @@ function OrderingProcessCanvas({
       <canvas
         ref={canvasRef}
         aria-label={label}
-        className="absolute inset-0 h-full w-full object-cover object-top"
+        className="absolute inset-0 z-10 h-full w-full object-cover object-top"
         style={{
           backgroundImage: `url(${poster})`,
           backgroundPosition: "top",
@@ -861,7 +874,8 @@ function OrderingProcessCanvas({
         preload={reduceMotion ? "none" : "auto"}
         aria-hidden="true"
         tabIndex={-1}
-        className="pointer-events-none absolute left-0 top-0 h-px w-px opacity-0"
+        className="pointer-events-none absolute inset-0 z-0 h-full w-full object-cover object-top"
+        style={{ opacity: 0.001 }}
       />
     </>
   );
