@@ -384,31 +384,58 @@ function errorMessage(error) {
 
 async function acquireHistoryMarker(artifactPath) {
   const lockPath = `${artifactPath}.lock`;
+  const claimPath = `${lockPath}.claim`;
   const staleMs = historyLockStaleMs();
-  try {
-    const existing = parseHistoryMarker(await readFile(lockPath, "utf8"));
-    if (!existing) {
-      throw new Error(
-        `publication lock conflict at ${lockPath}; existing lock ownership cannot be verified`,
-      );
+  let owner;
+  let claimHeld = false;
+
+  // mkdir is atomic on the shared filesystem. This claim must happen before
+  // inspecting the marker; otherwise two remote publishers can both observe
+  // an expired (or absent) marker and then overwrite one another.
+  while (!claimHeld) {
+    try {
+      await mkdir(claimPath);
+      claimHeld = true;
+    } catch (error) {
+      if (error?.code !== "EEXIST") throw error;
+      let claimOwner;
+      try {
+        claimOwner = parseHistoryMarker(await readFile(`${claimPath}/owner`, "utf8"));
+      } catch (readError) {
+        if (readError?.code !== "ENOENT") throw readError;
+      }
+      if (!claimOwner) {
+        throw new Error(
+          `publication lock conflict at ${lockPath}; another publisher is claiming the lock`,
+        );
+      }
+      const claimLeaseUntil = claimOwner
+        ? Date.parse(claimOwner.leaseUntil ?? claimOwner.startedAt)
+        : NaN;
+      if (claimOwner && Number.isFinite(claimLeaseUntil) && claimLeaseUntil > Date.now()) {
+        throw new Error(
+          `publication lock conflict at ${lockPath}; another publisher is claiming the lock`,
+        );
+      }
+      // A process can be terminated between mkdir and writing its owner, or
+      // after its lease expires. Reclaim only the claim directory, then retry
+      // the atomic mkdir rather than writing over an unknown owner's marker.
+      await rm(claimPath, { recursive: true, force: true });
     }
-    const leaseUntil = Date.parse(existing.leaseUntil ?? existing.startedAt);
-    const leaseActive = Number.isFinite(leaseUntil) && leaseUntil > Date.now();
-    const localOwner = existing.hostname === lockHostname();
-    const processAlive = localOwner && isProcessAlive(existing.pid);
-    if (leaseActive || processAlive) {
-      throw new Error(
-        `publication lock conflict at ${lockPath}; existing lock lease is active`,
-      );
-    }
-    // A valid marker with an expired lease belongs to an interrupted
-    // cooperating publisher, including one running on another machine.
-    console.error(`RELEASE_HEALTH_LOCK_RECOVERED path=${lockPath} retained=false`);
-  } catch (error) {
-    if (error?.code !== "ENOENT") throw error;
   }
 
-  const owner = {
+  const releaseClaim = async () => {
+    try {
+      const claimOwner = parseHistoryMarker(await readFile(`${claimPath}/owner`, "utf8"));
+      if (claimOwner?.token === owner?.token) {
+        await rm(claimPath, { recursive: true, force: true });
+      }
+    } catch (error) {
+      if (error?.code !== "ENOENT") throw error;
+    }
+  };
+
+  owner = {
     protocol: HISTORY_LOCK_PROTOCOL,
     token: randomUUID(),
     pid: process.pid,
@@ -416,7 +443,34 @@ async function acquireHistoryMarker(artifactPath) {
     startedAt: new Date().toISOString(),
     leaseUntil: new Date(Date.now() + staleMs).toISOString(),
   };
-  await writeHistoryMarker(lockPath, owner);
+  try {
+    await writeHistoryMarker(`${claimPath}/owner`, owner);
+    try {
+      const existing = parseHistoryMarker(await readFile(lockPath, "utf8"));
+      if (!existing) {
+        throw new Error(
+          `publication lock conflict at ${lockPath}; existing lock ownership cannot be verified`,
+        );
+      }
+      const leaseUntil = Date.parse(existing.leaseUntil ?? existing.startedAt);
+      const leaseActive = Number.isFinite(leaseUntil) && leaseUntil > Date.now();
+      const localOwner = existing.hostname === lockHostname();
+      const processAlive = localOwner && isProcessAlive(existing.pid);
+      if (leaseActive || processAlive) {
+        throw new Error(
+          `publication lock conflict at ${lockPath}; existing lock lease is active`,
+        );
+      }
+      console.error(`RELEASE_HEALTH_LOCK_RECOVERED path=${lockPath} retained=false`);
+    } catch (error) {
+      if (error?.code !== "ENOENT") throw error;
+    }
+    await writeHistoryMarker(lockPath, owner);
+  } catch (error) {
+    await releaseClaim();
+    throw error;
+  }
+
   const heartbeatMs = Math.max(25, Math.floor(staleMs / 3));
   const heartbeat = setInterval(async () => {
     try {
@@ -424,6 +478,7 @@ async function acquireHistoryMarker(artifactPath) {
       if (marker?.token !== owner.token) return;
       owner.leaseUntil = new Date(Date.now() + staleMs).toISOString();
       await writeHistoryMarker(lockPath, owner);
+      await writeHistoryMarker(`${claimPath}/owner`, owner);
     } catch {
       // Do not replace a lock we no longer own while renewing it.
     }
@@ -439,6 +494,7 @@ async function acquireHistoryMarker(artifactPath) {
     } catch (error) {
       if (error?.code !== "ENOENT") throw error;
     }
+    await releaseClaim();
   };
 }
 

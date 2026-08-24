@@ -544,6 +544,64 @@ describe("published health contract checker", () => {
     }
   });
 
+  test("atomically claims an expired remote marker so only one publisher proceeds", async () => {
+    const directory = await mkdtemp(resolve(projectRoot, "published-health-test-"));
+    const artifact = resolve(directory, "artifact", "history.jsonl");
+    const firstHistory = resolve(directory, "workspace-one", "history.jsonl");
+    const secondHistory = resolve(directory, "workspace-two", "history.jsonl");
+    const lockPath = `${artifact}.lock`;
+    const makeRecord = (id: string) => ({
+      checkedAt: "2026-08-24T12:08:00.000Z",
+      deployment: { id },
+      endpoints: [{ path: "/health/live", result: "PASS" }],
+    });
+
+    try {
+      await mkdir(resolve(directory, "artifact"), { recursive: true });
+      await mkdir(resolve(directory, "workspace-one"), { recursive: true });
+      await mkdir(resolve(directory, "workspace-two"), { recursive: true });
+      await writeFile(artifact, "");
+      await writeFile(firstHistory, JSON.stringify(makeRecord("remote-one")) + "\n");
+      await writeFile(secondHistory, JSON.stringify(makeRecord("remote-two")) + "\n");
+      await writeFile(lockPath, JSON.stringify({
+        ...interruptedMarker,
+        leaseUntil: new Date(Date.now() - 1_000).toISOString(),
+      }));
+
+      const [first, second] = await Promise.all([
+        runLockedHistoryCommand("publish", {
+          RELEASE_HEALTH_HISTORY_ARTIFACT: artifact,
+          RELEASE_HEALTH_HISTORY_FILE: firstHistory,
+          RELEASE_HEALTH_LOCK_HOSTNAME: "remote-builder-a",
+          RELEASE_HEALTH_LOCK_STALE_MS: "500",
+          RELEASE_HEALTH_PUBLISH_DELAY_MS: "200",
+        }),
+        runLockedHistoryCommand("publish", {
+          RELEASE_HEALTH_HISTORY_ARTIFACT: artifact,
+          RELEASE_HEALTH_HISTORY_FILE: secondHistory,
+          RELEASE_HEALTH_LOCK_HOSTNAME: "remote-builder-b",
+          RELEASE_HEALTH_LOCK_STALE_MS: "500",
+          RELEASE_HEALTH_PUBLISH_DELAY_MS: "200",
+        }),
+      ]);
+
+      const results = [first, second];
+      assert.equal(results.filter((result) => result.exitCode === 0).length, 1,
+        results.map((result) => result.stdout + result.stderr).join("\n"));
+      assert.equal(results.filter((result) => result.exitCode !== 0).length, 1,
+        results.map((result) => result.stdout + result.stderr).join("\n"));
+      assert.match(
+        results.find((result) => result.exitCode !== 0)?.stderr ?? "",
+        /another publisher is claiming the lock|publication lock conflict/,
+      );
+      const records = (await readFile(artifact, "utf8")).trim().split("\n").map((line) => JSON.parse(line));
+      assert.equal(records.length, 1);
+      assert.match(records[0].deployment.id, /^remote-(one|two)$/);
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+
   test("keeps an active publisher serialized behind the advisory gate", async () => {
     const directory = await mkdtemp(resolve(projectRoot, "published-health-test-"));
     const artifact = resolve(directory, "artifact", "history.jsonl");
