@@ -384,6 +384,7 @@ function errorMessage(error) {
 
 async function acquireHistoryMarker(artifactPath) {
   const lockPath = `${artifactPath}.lock`;
+  const staleMs = historyLockStaleMs();
   try {
     const existing = parseHistoryMarker(await readFile(lockPath, "utf8"));
     if (!existing) {
@@ -391,8 +392,17 @@ async function acquireHistoryMarker(artifactPath) {
         `publication lock conflict at ${lockPath}; existing lock ownership cannot be verified`,
       );
     }
-    // The caller holds the stable advisory gate. A valid marker therefore
-    // belongs to an interrupted cooperating publisher, not a live successor.
+    const leaseUntil = Date.parse(existing.leaseUntil ?? existing.startedAt);
+    const leaseActive = Number.isFinite(leaseUntil) && leaseUntil > Date.now();
+    const localOwner = existing.hostname === lockHostname();
+    const processAlive = localOwner && isProcessAlive(existing.pid);
+    if (leaseActive || processAlive) {
+      throw new Error(
+        `publication lock conflict at ${lockPath}; existing lock lease is active`,
+      );
+    }
+    // A valid marker with an expired lease belongs to an interrupted
+    // cooperating publisher, including one running on another machine.
     console.error(`RELEASE_HEALTH_LOCK_RECOVERED path=${lockPath} retained=false`);
   } catch (error) {
     if (error?.code !== "ENOENT") throw error;
@@ -402,11 +412,25 @@ async function acquireHistoryMarker(artifactPath) {
     protocol: HISTORY_LOCK_PROTOCOL,
     token: randomUUID(),
     pid: process.pid,
-    hostname: hostname(),
+    hostname: lockHostname(),
     startedAt: new Date().toISOString(),
+    leaseUntil: new Date(Date.now() + staleMs).toISOString(),
   };
   await writeHistoryMarker(lockPath, owner);
+  const heartbeatMs = Math.max(25, Math.floor(staleMs / 3));
+  const heartbeat = setInterval(async () => {
+    try {
+      const marker = parseHistoryMarker(await readFile(lockPath, "utf8"));
+      if (marker?.token !== owner.token) return;
+      owner.leaseUntil = new Date(Date.now() + staleMs).toISOString();
+      await writeHistoryMarker(lockPath, owner);
+    } catch {
+      // Do not replace a lock we no longer own while renewing it.
+    }
+  }, heartbeatMs);
+  heartbeat.unref?.();
   return async () => {
+    clearInterval(heartbeat);
     try {
       const marker = parseHistoryMarker(await readFile(lockPath, "utf8"));
       if (marker?.token === owner.token) {
@@ -416,6 +440,24 @@ async function acquireHistoryMarker(artifactPath) {
       if (error?.code !== "ENOENT") throw error;
     }
   };
+}
+
+function historyLockStaleMs() {
+  const configured = Number(process.env.RELEASE_HEALTH_LOCK_STALE_MS ?? 30_000);
+  return Number.isFinite(configured) && configured > 0 ? configured : 30_000;
+}
+
+function lockHostname() {
+  return process.env.RELEASE_HEALTH_LOCK_HOSTNAME ?? hostname();
+}
+
+function isProcessAlive(pid) {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error) {
+    return error?.code === "EPERM";
+  }
 }
 
 async function writeHistoryMarker(lockPath, marker) {

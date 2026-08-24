@@ -6,7 +6,6 @@ import { fileURLToPath } from "node:url";
 import { describe, test } from "node:test";
 import { mkdir, mkdtemp, readFile, rm, utimes, writeFile } from "node:fs/promises";
 import { readFileSync } from "node:fs";
-import { hostname } from "node:os";
 import { dirname, resolve } from "node:path";
 
 const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -91,6 +90,20 @@ async function runChecker(url: string, timeoutMs?: number, historyFile?: string,
 
 async function runHistoryCommand(command: "--restore-history" | "--publish-history", env: Record<string, string>) {
   const child = spawn(process.execPath, [checkerPath, command], {
+    cwd: projectRoot,
+    env: { ...process.env, ...env },
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  const [stdout, stderr] = await Promise.all([streamText(child.stdout), streamText(child.stderr)]);
+  const [exitCode] = await once(child, "close");
+  return { exitCode, stdout, stderr };
+}
+
+async function runLockedHistoryCommand(
+  operation: "restore" | "publish",
+  env: Record<string, string>,
+) {
+  const child = spawn(process.execPath, [checkerPath, "--history-lock-held", operation], {
     cwd: projectRoot,
     env: { ...process.env, ...env },
     stdio: ["ignore", "pipe", "pipe"],
@@ -387,6 +400,88 @@ describe("published health contract checker", () => {
       assert.match(result.stderr, /RELEASE_HEALTH_LOCK_RECOVERED/);
       assert.match(await readFile(artifact, "utf8"), /recovered/);
       await assert.rejects(readFile(lockPath, "utf8"), { code: "ENOENT" });
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+
+  test("keeps a remote publisher alive while its lease is refreshed and recovers an expired remote lease", async () => {
+    const directory = await mkdtemp(resolve(projectRoot, "published-health-test-"));
+    const artifact = resolve(directory, "artifact", "history.jsonl");
+    const firstHistory = resolve(directory, "workspace-one", "history.jsonl");
+    const secondHistory = resolve(directory, "workspace-two", "history.jsonl");
+    const lockPath = `${artifact}.lock`;
+    const makeRecord = (id: string, checkedAt: string) => ({
+      checkedAt,
+      deployment: { id },
+      endpoints: [{ path: "/health/live", result: "PASS" }],
+    });
+
+    try {
+      await mkdir(resolve(directory, "artifact"), { recursive: true });
+      await mkdir(resolve(directory, "workspace-one"), { recursive: true });
+      await mkdir(resolve(directory, "workspace-two"), { recursive: true });
+      await writeFile(artifact, "");
+      await writeFile(firstHistory, JSON.stringify(makeRecord("remote-one", "2026-08-24T12:06:00.000Z")) + "\n");
+      await writeFile(secondHistory, JSON.stringify(makeRecord("remote-two", "2026-08-24T12:07:00.000Z")) + "\n");
+
+      const remotePublisher = spawn(
+        process.execPath,
+        [checkerPath, "--history-lock-held", "publish"],
+        {
+          cwd: projectRoot,
+          env: {
+            ...process.env,
+            RELEASE_HEALTH_HISTORY_ARTIFACT: artifact,
+            RELEASE_HEALTH_HISTORY_FILE: firstHistory,
+            RELEASE_HEALTH_LOCK_HOSTNAME: "remote-builder-a",
+            RELEASE_HEALTH_LOCK_STALE_MS: "120",
+            RELEASE_HEALTH_PUBLISH_DELAY_MS: "500",
+          },
+          stdio: ["ignore", "pipe", "pipe"],
+        },
+      );
+      const remoteExit = once(remotePublisher, "close");
+      const remoteText = Promise.all([streamText(remotePublisher.stdout), streamText(remotePublisher.stderr)]);
+
+      await waitFor(async () => {
+        try {
+          return JSON.parse(await readFile(lockPath, "utf8")).hostname === "remote-builder-a";
+        } catch {
+          return false;
+        }
+      });
+      await new Promise((resolveDelay) => setTimeout(resolveDelay, 250));
+
+      const displaced = await runLockedHistoryCommand("publish", {
+        RELEASE_HEALTH_HISTORY_ARTIFACT: artifact,
+        RELEASE_HEALTH_HISTORY_FILE: secondHistory,
+        RELEASE_HEALTH_LOCK_HOSTNAME: "remote-builder-b",
+        RELEASE_HEALTH_LOCK_STALE_MS: "120",
+      });
+      const [remoteStdout, remoteStderr] = await remoteText;
+      const [remoteExitCode] = await remoteExit;
+      assert.equal(remoteExitCode, 0, remoteStdout + remoteStderr);
+      assert.notEqual(displaced.exitCode, 0, displaced.stdout + displaced.stderr);
+      assert.match(displaced.stderr, /publication lock conflict/);
+
+      const expiredMarker = {
+        ...interruptedMarker,
+        hostname: "remote-builder-that-stopped",
+        leaseUntil: new Date(Date.now() - 1_000).toISOString(),
+      };
+      await writeFile(lockPath, JSON.stringify(expiredMarker));
+      const recovered = await runLockedHistoryCommand("publish", {
+        RELEASE_HEALTH_HISTORY_ARTIFACT: artifact,
+        RELEASE_HEALTH_HISTORY_FILE: secondHistory,
+        RELEASE_HEALTH_LOCK_HOSTNAME: "local-builder",
+        RELEASE_HEALTH_LOCK_STALE_MS: "120",
+      });
+      assert.equal(recovered.exitCode, 0, recovered.stdout + recovered.stderr);
+      assert.match(recovered.stderr, /RELEASE_HEALTH_LOCK_RECOVERED/);
+
+      const records = (await readFile(artifact, "utf8")).trim().split("\n").map((line) => JSON.parse(line));
+      assert.deepEqual(records.map((record) => record.deployment.id).sort(), ["remote-one", "remote-two"].sort());
     } finally {
       await rm(directory, { recursive: true, force: true });
     }
