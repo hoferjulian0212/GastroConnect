@@ -14,3 +14,9 @@ Publication must serialize artifact updates and merge each release's restored sn
 **Why:** Release jobs restore independently and can publish after another job has already added a record.
 
 **How to apply:** Keep the lock scoped around the artifact read/merge/write, use an atomic replacement, and fail clearly when the lock cannot be acquired.
+
+Release-history updates must share a stable kernel-managed advisory lock for the full read/merge/write operation; the on-disk marker is only a complete ownership record, not the concurrency mechanism.
+
+**Why:** Path-based lock cleanup has unavoidable handoff races: a concurrent publisher can replace a path between inspection and deletion.
+
+**How to apply:** Publish marker metadata atomically while holding the stable advisory lock. A leftover current-format marker can be recovered after the OS releases the interrupted publisher's lock; malformed or legacy markers fail closed.

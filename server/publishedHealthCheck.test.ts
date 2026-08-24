@@ -4,8 +4,9 @@ import { once } from "node:events";
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { describe, test } from "node:test";
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, utimes, writeFile } from "node:fs/promises";
 import { readFileSync } from "node:fs";
+import { hostname } from "node:os";
 import { dirname, resolve } from "node:path";
 
 const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -105,6 +106,23 @@ async function streamText(stream: NodeJS.ReadableStream | null) {
   for await (const chunk of stream) text += chunk;
   return text;
 }
+
+async function waitFor(condition: () => Promise<boolean>, timeoutMs = 1_000) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    if (await condition()) return;
+    await new Promise((resolve) => setTimeout(resolve, 10));
+  }
+  throw new Error(`Condition was not met within ${timeoutMs}ms.`);
+}
+
+const interruptedMarker = {
+  protocol: "release-health-flock-v1",
+  token: "11111111-1111-4111-8111-111111111111",
+  pid: 999999,
+  hostname: "interrupted-publisher",
+  startedAt: "2026-08-24T12:00:00.000Z",
+};
 
 describe("published health contract checker", () => {
   const malformedResponses: Record<string, Fixture> = {
@@ -293,6 +311,7 @@ describe("published health contract checker", () => {
     const artifact = resolve(directory, "artifact", "history.jsonl");
     const workspaceOne = resolve(directory, "workspace-one", "history.jsonl");
     const workspaceTwo = resolve(directory, "workspace-two", "history.jsonl");
+    const lockPath = `${artifact}.lock`;
     const priorRecord = {
       checkedAt: "2026-08-23T12:00:00.000Z",
       deployment: { id: "prior" },
@@ -309,6 +328,7 @@ describe("published health contract checker", () => {
       await mkdir(resolve(directory, "workspace-one"), { recursive: true });
       await mkdir(resolve(directory, "workspace-two"), { recursive: true });
       await writeFile(artifact, `${JSON.stringify(priorRecord)}\n`);
+      await writeFile(lockPath, `${JSON.stringify(interruptedMarker)}\n`);
       await writeFile(workspaceOne, `${JSON.stringify(priorRecord)}\n${JSON.stringify(makeRecord("release-one", "2026-08-24T12:01:00.000Z"))}\n`);
       await writeFile(workspaceTwo, `${JSON.stringify(priorRecord)}\n${JSON.stringify(makeRecord("release-two", "2026-08-24T12:02:00.000Z"))}\n`);
 
@@ -326,8 +346,167 @@ describe("published health contract checker", () => {
       ]);
       assert.equal(publishOne.exitCode, 0, publishOne.stdout + publishOne.stderr);
       assert.equal(publishTwo.exitCode, 0, publishTwo.stdout + publishTwo.stderr);
+      assert.match(
+        `${publishOne.stderr}${publishTwo.stderr}`,
+        /RELEASE_HEALTH_LOCK_RECOVERED/,
+      );
       const records = (await readFile(artifact, "utf8")).trim().split("\n").map((line) => JSON.parse(line));
-      assert.deepEqual(records.map((record) => record.deployment.id), ["prior", "release-one", "release-two"]);
+      assert.deepEqual(
+        records.map((record) => record.deployment.id).sort(),
+        ["prior", "release-one", "release-two"].sort(),
+      );
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+
+  test("recovers a lock left by a publisher that no longer exists", async () => {
+    const directory = await mkdtemp(resolve(projectRoot, "published-health-test-"));
+    const artifact = resolve(directory, "artifact", "history.jsonl");
+    const historyFile = resolve(directory, "workspace", "history.jsonl");
+    const lockPath = `${artifact}.lock`;
+
+    try {
+      await mkdir(resolve(directory, "artifact"), { recursive: true });
+      await mkdir(resolve(directory, "workspace"), { recursive: true });
+      await writeFile(artifact, "");
+      await writeFile(historyFile, `${JSON.stringify({
+        checkedAt: "2026-08-24T12:03:00.000Z",
+        deployment: { id: "recovered" },
+        endpoints: [{ path: "/health/live", result: "PASS" }],
+      })}\n`);
+      await writeFile(lockPath, JSON.stringify(interruptedMarker));
+
+      const result = await runHistoryCommand("--publish-history", {
+        RELEASE_HEALTH_HISTORY_ARTIFACT: artifact,
+        RELEASE_HEALTH_HISTORY_FILE: historyFile,
+        RELEASE_HEALTH_LOCK_TIMEOUT_MS: "1000",
+      });
+
+      assert.equal(result.exitCode, 0, result.stdout + result.stderr);
+      assert.match(result.stderr, /RELEASE_HEALTH_LOCK_RECOVERED/);
+      assert.match(await readFile(artifact, "utf8"), /recovered/);
+      await assert.rejects(readFile(lockPath, "utf8"), { code: "ENOENT" });
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+
+  test("never steals an aged PID-only lock with unknown ownership", async () => {
+    const directory = await mkdtemp(resolve(projectRoot, "published-health-test-"));
+    const artifact = resolve(directory, "artifact", "history.jsonl");
+    const historyFile = resolve(directory, "workspace", "history.jsonl");
+    const lockPath = `${artifact}.lock`;
+
+    try {
+      await mkdir(resolve(directory, "artifact"), { recursive: true });
+      await mkdir(resolve(directory, "workspace"), { recursive: true });
+      await writeFile(artifact, "");
+      await writeFile(historyFile, "");
+      await writeFile(lockPath, "999999\n");
+      const old = new Date(Date.now() - 60_000);
+      await utimes(lockPath, old, old);
+
+      const result = await runHistoryCommand("--publish-history", {
+        RELEASE_HEALTH_HISTORY_ARTIFACT: artifact,
+        RELEASE_HEALTH_HISTORY_FILE: historyFile,
+        RELEASE_HEALTH_LOCK_TIMEOUT_MS: "100",
+        RELEASE_HEALTH_LOCK_STALE_MS: "1",
+      });
+
+      assert.notEqual(result.exitCode, 0, result.stdout + result.stderr);
+      assert.match(result.stderr, /publication lock conflict/);
+      assert.equal(await readFile(lockPath, "utf8"), "999999\n");
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+
+  test("fails closed for an empty lock marker", async () => {
+    const directory = await mkdtemp(resolve(projectRoot, "published-health-test-"));
+    const artifact = resolve(directory, "artifact", "history.jsonl");
+    const historyFile = resolve(directory, "workspace", "history.jsonl");
+    const lockPath = `${artifact}.lock`;
+
+    try {
+      await mkdir(resolve(directory, "artifact"), { recursive: true });
+      await mkdir(resolve(directory, "workspace"), { recursive: true });
+      await writeFile(artifact, "");
+      await writeFile(historyFile, "");
+      await writeFile(lockPath, "");
+
+      const result = await runHistoryCommand("--publish-history", {
+        RELEASE_HEALTH_HISTORY_ARTIFACT: artifact,
+        RELEASE_HEALTH_HISTORY_FILE: historyFile,
+        RELEASE_HEALTH_LOCK_TIMEOUT_MS: "100",
+      });
+
+      assert.notEqual(result.exitCode, 0, result.stdout + result.stderr);
+      assert.match(result.stderr, /existing lock ownership cannot be verified/);
+      assert.equal(await readFile(lockPath, "utf8"), "");
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+
+  test("keeps an active publisher serialized behind the advisory gate", async () => {
+    const directory = await mkdtemp(resolve(projectRoot, "published-health-test-"));
+    const artifact = resolve(directory, "artifact", "history.jsonl");
+    const firstWorkspace = resolve(directory, "workspace-one", "history.jsonl");
+    const secondWorkspace = resolve(directory, "workspace-two", "history.jsonl");
+    const lockPath = `${artifact}.lock`;
+
+    try {
+      await mkdir(resolve(directory, "artifact"), { recursive: true });
+      await mkdir(resolve(directory, "workspace-one"), { recursive: true });
+      await mkdir(resolve(directory, "workspace-two"), { recursive: true });
+      await writeFile(artifact, "");
+      await writeFile(firstWorkspace, `${JSON.stringify({
+        checkedAt: "2026-08-24T12:04:00.000Z",
+        deployment: { id: "first" },
+        endpoints: [{ path: "/health/live", result: "PASS" }],
+      })}\n`);
+      await writeFile(secondWorkspace, `${JSON.stringify({
+        checkedAt: "2026-08-24T12:05:00.000Z",
+        deployment: { id: "blocked" },
+        endpoints: [{ path: "/health/live", result: "PASS" }],
+      })}\n`);
+
+      const first = spawn(process.execPath, [checkerPath, "--publish-history"], {
+        cwd: projectRoot,
+        env: {
+          ...process.env,
+          RELEASE_HEALTH_HISTORY_ARTIFACT: artifact,
+          RELEASE_HEALTH_HISTORY_FILE: firstWorkspace,
+          RELEASE_HEALTH_LOCK_TIMEOUT_MS: "1000",
+          RELEASE_HEALTH_PUBLISH_DELAY_MS: "600",
+        },
+        stdio: ["ignore", "pipe", "pipe"],
+      });
+      const firstExit = once(first, "close");
+      const firstText = Promise.all([streamText(first.stdout), streamText(first.stderr)]);
+
+      await waitFor(async () => {
+        try {
+          return JSON.parse(await readFile(lockPath, "utf8")).protocol === "release-health-flock-v1";
+        } catch {
+          return false;
+        }
+      });
+
+      const blocked = await runHistoryCommand("--publish-history", {
+        RELEASE_HEALTH_HISTORY_ARTIFACT: artifact,
+        RELEASE_HEALTH_HISTORY_FILE: secondWorkspace,
+        RELEASE_HEALTH_LOCK_TIMEOUT_MS: "100",
+      });
+
+      const [firstStdout, firstStderr] = await firstText;
+      const [firstExitCode] = await firstExit;
+      assert.equal(firstExitCode, 0, firstStdout + firstStderr);
+      assert.notEqual(blocked.exitCode, 0, blocked.stdout + blocked.stderr);
+      assert.match(blocked.stderr, /publication lock conflict/);
+      assert.match(await readFile(artifact, "utf8"), /first/);
+      assert.doesNotMatch(await readFile(artifact, "utf8"), /blocked/);
     } finally {
       await rm(directory, { recursive: true, force: true });
     }

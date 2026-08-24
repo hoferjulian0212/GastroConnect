@@ -16,9 +16,26 @@
  */
 
 import { appendFile, copyFile, mkdir, open, readFile, rename, rm, writeFile } from "node:fs/promises";
+import { spawn } from "node:child_process";
+import { randomUUID } from "node:crypto";
+import { hostname } from "node:os";
 import { dirname } from "node:path";
 
+const HISTORY_LOCK_PROTOCOL = "release-health-flock-v1";
+const HISTORY_LOCK_TOKEN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const args = process.argv.slice(2);
+const lockedHistoryIndex = args.indexOf("--history-lock-held");
+if (lockedHistoryIndex !== -1) {
+  const operation = args[lockedHistoryIndex + 1];
+  if (!["restore", "publish"].includes(operation)) {
+    console.error("--history-lock-held requires restore or publish.");
+    process.exit(2);
+  }
+  process.exitCode = await retainHistoryLocked(operation);
+  await new Promise((resolve) => setImmediate(resolve));
+  process.exit();
+}
+
 if (args.includes("--restore-history") || args.includes("--publish-history")) {
   const operation = args.includes("--restore-history") ? "restore" : "publish";
   process.exitCode = await retainHistory(operation);
@@ -241,26 +258,20 @@ async function printComparison(historyPath, requestedLimit) {
 }
 
 async function retainHistory(operation) {
-  const artifactPath = process.env.RELEASE_HEALTH_HISTORY_ARTIFACT;
-  const historyFile = process.env.RELEASE_HEALTH_HISTORY_FILE ?? ".release-health/history.jsonl";
-
-  if (!artifactPath) {
-    console.log(
-      `RELEASE_HEALTH_HISTORY_${operation.toUpperCase()} skipped=true ` +
-        "reason=RELEASE_HEALTH_HISTORY_ARTIFACT is not configured",
-    );
-    return 0;
-  }
-
-  if (artifactPath === historyFile) {
-    console.log(`RELEASE_HEALTH_HISTORY_${operation.toUpperCase()} path=${historyFile} retained=true`);
-    return 0;
-  }
-
+  const configuration = historyConfiguration(operation);
+  if (!configuration) return 0;
+  const { artifactPath } = configuration;
   await mkdir(dirname(artifactPath), { recursive: true });
+  return runWithHistoryGate(operation, artifactPath);
+}
+
+async function retainHistoryLocked(operation) {
+  const configuration = historyConfiguration(operation);
+  if (!configuration) return 0;
+  const { artifactPath, historyFile } = configuration;
   let releaseLock;
   try {
-    releaseLock = await acquireHistoryLock(artifactPath);
+    releaseLock = await acquireHistoryMarker(artifactPath);
   } catch (error) {
     console.error(
       `Unable to ${operation} release health history: ${errorMessage(error)}`,
@@ -299,7 +310,7 @@ async function retainHistory(operation) {
     const records = [...artifactContent.split(/\r?\n/), ...localContent.split(/\r?\n/)]
       .filter(Boolean);
     const mergedContent = `${[...new Set(records)].join("\n")}\n`;
-    const temporaryPath = `${artifactPath}.tmp-${process.pid}`;
+    const temporaryPath = `${artifactPath}.tmp-${process.pid}-${randomUUID()}`;
     try {
       await writeFile(temporaryPath, mergedContent, "utf8");
       await rename(temporaryPath, artifactPath);
@@ -318,36 +329,132 @@ async function retainHistory(operation) {
   }
 }
 
-function errorMessage(error) {
-  return error instanceof Error ? error.message : String(error);
+function historyConfiguration(operation) {
+  const artifactPath = process.env.RELEASE_HEALTH_HISTORY_ARTIFACT;
+  const historyFile = process.env.RELEASE_HEALTH_HISTORY_FILE ?? ".release-health/history.jsonl";
+  if (!artifactPath) {
+    console.log(
+      `RELEASE_HEALTH_HISTORY_${operation.toUpperCase()} skipped=true ` +
+        "reason=RELEASE_HEALTH_HISTORY_ARTIFACT is not configured",
+    );
+    return null;
+  }
+  if (artifactPath === historyFile) {
+    console.log(`RELEASE_HEALTH_HISTORY_${operation.toUpperCase()} path=${historyFile} retained=true`);
+    return null;
+  }
+  return { artifactPath, historyFile };
 }
 
-async function acquireHistoryLock(artifactPath) {
-  const lockPath = `${artifactPath}.lock`;
+async function runWithHistoryGate(operation, artifactPath) {
   const configuredTimeout = Number(process.env.RELEASE_HEALTH_LOCK_TIMEOUT_MS ?? 30_000);
   const timeoutMs = Number.isFinite(configuredTimeout) && configuredTimeout >= 0
     ? configuredTimeout
     : 30_000;
-  const startedAt = Date.now();
-  let handle;
-  while (!handle) {
-    try {
-      handle = await open(lockPath, "wx");
-      await handle.writeFile(`${process.pid}\n`);
-    } catch (error) {
-      if (error?.code !== "EEXIST") {
-        throw new Error(`unable to create publication lock ${lockPath}: ${errorMessage(error)}`);
-      }
-      if (Date.now() - startedAt >= timeoutMs) {
-        throw new Error(
-          `publication lock conflict at ${lockPath}; another release may still be publishing (waited ${Date.now() - startedAt}ms)`,
-        );
-      }
-      await new Promise((resolve) => setTimeout(resolve, 25));
-    }
+  const gatePath = `${artifactPath}.lock.guard`;
+  const gate = spawn("/usr/bin/flock", [
+    "-x",
+    "-w",
+    String(timeoutMs / 1_000),
+    "-E",
+    "75",
+    gatePath,
+    process.execPath,
+    process.argv[1],
+    "--history-lock-held",
+    operation,
+  ], { stdio: "inherit" });
+  const exitCode = await new Promise((resolve, reject) => {
+    gate.once("error", reject);
+    gate.once("close", (code) => resolve(code ?? 1));
+  });
+  if (exitCode === 75) {
+    console.error(
+      `Unable to ${operation} release health history: publication lock conflict at ${artifactPath}.lock; ` +
+        `another release may still be publishing (waited ${timeoutMs}ms)`,
+    );
+    return 1;
   }
-  return async () => {
-    await handle.close();
-    await rm(lockPath, { force: true });
+  return exitCode;
+}
+
+function errorMessage(error) {
+  return error instanceof Error ? error.message : String(error);
+}
+
+async function acquireHistoryMarker(artifactPath) {
+  const lockPath = `${artifactPath}.lock`;
+  try {
+    const existing = parseHistoryMarker(await readFile(lockPath, "utf8"));
+    if (!existing) {
+      throw new Error(
+        `publication lock conflict at ${lockPath}; existing lock ownership cannot be verified`,
+      );
+    }
+    // The caller holds the stable advisory gate. A valid marker therefore
+    // belongs to an interrupted cooperating publisher, not a live successor.
+    console.error(`RELEASE_HEALTH_LOCK_RECOVERED path=${lockPath} retained=false`);
+  } catch (error) {
+    if (error?.code !== "ENOENT") throw error;
+  }
+
+  const owner = {
+    protocol: HISTORY_LOCK_PROTOCOL,
+    token: randomUUID(),
+    pid: process.pid,
+    hostname: hostname(),
+    startedAt: new Date().toISOString(),
   };
+  await writeHistoryMarker(lockPath, owner);
+  return async () => {
+    try {
+      const marker = parseHistoryMarker(await readFile(lockPath, "utf8"));
+      if (marker?.token === owner.token) {
+        await rm(lockPath);
+      }
+    } catch (error) {
+      if (error?.code !== "ENOENT") throw error;
+    }
+  };
+}
+
+async function writeHistoryMarker(lockPath, marker) {
+  const temporaryPath = `${lockPath}.tmp-${process.pid}-${randomUUID()}`;
+  const handle = await open(temporaryPath, "wx");
+  try {
+    await handle.writeFile(`${JSON.stringify(marker)}\n`, "utf8");
+    await handle.sync();
+  } finally {
+    await handle.close();
+  }
+  try {
+    await rename(temporaryPath, lockPath);
+  } finally {
+    await rm(temporaryPath, { force: true });
+  }
+}
+
+function parseHistoryMarker(contents) {
+  try {
+    const marker = JSON.parse(contents);
+    if (
+      !marker
+      || typeof marker !== "object"
+      || Array.isArray(marker)
+      || marker.protocol !== HISTORY_LOCK_PROTOCOL
+      || typeof marker.token !== "string"
+      || !HISTORY_LOCK_TOKEN.test(marker.token)
+      || !Number.isInteger(marker.pid)
+      || marker.pid <= 0
+      || typeof marker.hostname !== "string"
+      || !marker.hostname
+      || typeof marker.startedAt !== "string"
+      || Number.isNaN(Date.parse(marker.startedAt))
+    ) {
+      return null;
+    }
+    return marker;
+  } catch {
+    return null;
+  }
 }
