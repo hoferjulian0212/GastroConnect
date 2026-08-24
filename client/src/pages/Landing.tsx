@@ -32,7 +32,7 @@ import {
 } from "@/pages/About";
 import shotChefPhone from "@assets/iStock-1277816551_1781732715128.jpg";
 import shotOfficePhone from "@assets/sk_art-corporate-training-10046033_1920_1781806207063.jpg";
-import shotOrderingProcess from "@assets/landing-ordering-process-clean.mp4";
+import shotOrderingProcessLoop from "@assets/landing-ordering-process-loop.webp";
 import shotOrderingProcessPoster from "@assets/landing-ordering-process-clean-poster.jpg";
 import shotMobileHome from "@assets/landing-mobile-home.png";
 import shotMobileProducts from "@assets/landing-mobile-products.png";
@@ -797,7 +797,6 @@ export default function Landing() {
   const [mobileShotIndex, setMobileShotIndex] = useState(0);
   const [pillarSlideIndex, setPillarSlideIndex] = useState(0);
   const pillarsCarouselRef = useRef<HTMLDivElement | null>(null);
-  const lifestyleVideoRef = useRef<HTMLVideoElement | null>(null);
   const reduceMotion = useReducedMotion();
   const [isDesktop, setIsDesktop] = useState(() =>
     typeof window !== "undefined" &&
@@ -829,56 +828,6 @@ export default function Landing() {
   useEffect(() => {
     setMobileShotIndex(0);
   }, [mobileShotRole]);
-
-  // Start the ordering recording as soon as its phone frame enters the viewport.
-  // Set the media properties imperatively as well as through JSX because some
-  // browsers only honor muted inline autoplay after the element is mounted.
-  useEffect(() => {
-    const video = lifestyleVideoRef.current;
-    if (!video || reduceMotion) return;
-
-    video.muted = true;
-    video.defaultMuted = true;
-    video.playsInline = true;
-
-    const tryPlay = () => {
-      if (document.hidden) return;
-      void video.play().catch(() => {
-        // canplay/visibilitychange will retry after the browser finishes loading.
-      });
-    };
-
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          tryPlay();
-        } else {
-          video.pause();
-        }
-      },
-      { rootMargin: "200px 0px", threshold: [0, 0.01] },
-    );
-
-    observer.observe(video);
-    video.addEventListener("loadedmetadata", tryPlay);
-    video.addEventListener("loadeddata", tryPlay);
-    video.addEventListener("canplay", tryPlay);
-    const onVisibilityChange = () => {
-      if (document.hidden) video.pause();
-      else tryPlay();
-    };
-    document.addEventListener("visibilitychange", onVisibilityChange);
-    tryPlay();
-
-    return () => {
-      observer.disconnect();
-      video.removeEventListener("loadedmetadata", tryPlay);
-      video.removeEventListener("loadeddata", tryPlay);
-      video.removeEventListener("canplay", tryPlay);
-      document.removeEventListener("visibilitychange", onVisibilityChange);
-      video.pause();
-    };
-  }, [reduceMotion]);
 
   // B4 — Phone-frame parallax in mobile section (desktop-only motion)
   const phoneFrameRef = useRef<HTMLDivElement | null>(null);
@@ -1171,21 +1120,12 @@ export default function Landing() {
                 <div className="absolute left-3 sm:left-6 md:left-8 top-1/2 -translate-y-1/2">
                   <div className="rounded-[2.25rem] md:rounded-[2.75rem] border border-border bg-card p-2.5 md:p-3 shadow-2xl shadow-black/50">
                     <div className="relative rounded-[1.75rem] md:rounded-[2.25rem] overflow-hidden border border-border w-[150px] sm:w-[185px] md:w-[230px] aspect-[9/19] bg-card">
-                      <video
-                        src={shotOrderingProcess}
-                        poster={shotOrderingProcessPoster}
-                        autoPlay={!reduceMotion}
-                        muted
-                        loop
-                        playsInline
-                        controls={false}
-                        disablePictureInPicture
-                        controlsList="nodownload noplaybackrate nofullscreen noremoteplayback"
-                        preload="metadata"
-                        ref={lifestyleVideoRef}
-                        aria-label={t.mobileAltRestaurant}
+                      <img
+                        src={reduceMotion ? shotOrderingProcessPoster : shotOrderingProcessLoop}
+                        alt={t.mobileAltRestaurant}
                         className="absolute inset-0 w-full h-full object-cover object-top"
-                        data-testid="video-lifestyle-phone"
+                        loading="eager"
+                        data-testid="img-lifestyle-phone"
                       />
                     </div>
                   </div>
