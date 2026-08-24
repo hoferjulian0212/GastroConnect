@@ -1,15 +1,19 @@
 ---
 name: Schema migration convention
-description: How DB schema changes are applied in this repo (no migration files)
+description: Development schema workflow and the production-safe checkout exception
 ---
 
-Schema changes are applied with `npm run db:push --force` (drizzle-kit push). There are
-NO hand-written migration SQL files / journal that need updating for new tables.
+Ordinary development schema changes use `npm run db:push --force` (drizzle-kit
+push). Checkout-critical changes use the dedicated
+`npm run db:migrate-checkout-resilience` command, which records a versioned
+migration and must run before application startup.
 
-**Why:** The project intentionally uses drizzle-kit push against the dev/prod DB rather
-than a versioned migrations folder. Adding a table means: edit `shared/schema.ts`, run
-`npm run db:push --force`, done.
+**Why:** Runtime DDL and blocking index creation can delay or interrupt live
+checkout. The checkout migration preflights legacy duplicates and uses
+concurrent indexes, while keeping ordinary local development lightweight.
 
-**How to apply:** When a reviewer (e.g. architect) flags a "missing migration" for a new
-table, treat it as a false positive for this repo — verify the table was pushed via
-db:push instead of looking for a migration file. Do NOT introduce a migrations folder.
+**How to apply:** For checkout orders, notification delivery, idempotency, or
+stock-reservation schema, extend and run the dedicated migration rather than
+adding DDL to startup. Do not silently delete duplicate business history to
+make a unique index succeed. For unrelated development schema changes, use the
+existing Drizzle push workflow unless they also affect live checkout.

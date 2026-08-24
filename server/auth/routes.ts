@@ -35,14 +35,25 @@ function logAuthEvent(event: string, req: Request, extra: Record<string, unknown
   console.log(`[auth] ${event}`, JSON.stringify({ ip: clientIp(req), ...extra }));
 }
 
+function getClerkEmail(req: Request): string | undefined {
+  try {
+    const clerkAuth = getAuth(req);
+    return (clerkAuth?.sessionClaims?.email as string | undefined)?.toLowerCase();
+  } catch (error) {
+    // Some route-level tests and non-Clerk health/degraded contexts can invoke
+    // these handlers without clerkMiddleware. Treat that as unauthenticated
+    // instead of turning a session probe into a 500.
+    return undefined;
+  }
+}
+
 export function registerAuthRoutes(app: Express) {
   // ── Current session ───────────────────────────────────────────────────────
   // Auth is now Clerk-based; member + org are resolved by loadAuth middleware
   // from the Clerk session. This endpoint surfaces the result to the client.
   app.get("/api/auth/me", (req, res) => {
     if (!req.auth) {
-      const clerkAuth = getAuth(req);
-      const email = clerkAuth?.sessionClaims?.email as string | undefined;
+      const email = getClerkEmail(req);
       if (email) {
         storage.getMemberByEmail(email.toLowerCase()).then(async (member) => {
           const org = member ? await storage.getUser(member.organizationId) : undefined;
@@ -66,8 +77,7 @@ export function registerAuthRoutes(app: Express) {
   // verified the email with its code-based flow.
   app.post("/api/auth/registration/complete", authLimiter, async (req, res) => {
     try {
-      const clerkAuth = getAuth(req);
-      const email = (clerkAuth?.sessionClaims?.email as string | undefined)?.toLowerCase();
+      const email = getClerkEmail(req);
       if (!email) return res.status(401).json({ error: "unauthenticated" });
       const parsed = z.object({
         role: z.enum(["restaurant", "supplier"]),

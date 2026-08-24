@@ -10,6 +10,8 @@ import rateLimit from "express-rate-limit";
 import { createSessionMiddleware } from "./auth/session";
 import { loadAuth } from "./auth/middleware";
 import { storage } from "./storage";
+import { checkDatabaseReadiness, pool } from "./db";
+import { getRequestId, publicErrorMessage } from "./resilience";
 import {
   CLERK_PROXY_PATH,
   clerkProxyMiddleware,
@@ -25,7 +27,29 @@ declare module "http" {
   }
 }
 
-// Clerk proxy must be mounted BEFORE body parsers (streams raw bytes).
+declare global {
+  namespace Express {
+    interface Request {
+      requestId?: string;
+    }
+  }
+}
+
+app.set("trust proxy", 1);
+
+// Give every request a durable correlation identifier. Clients can include
+// their own ID for retries/troubleshooting, but never control the generated
+// value when it is absent.
+app.use((req, res, next) => {
+  const supplied = req.headers["x-request-id"];
+  const requestId = getRequestId(supplied);
+  req.requestId = requestId;
+  res.setHeader("X-Request-ID", requestId);
+  next();
+});
+
+// Clerk proxy must be mounted BEFORE body parsers (streams raw bytes), but
+// after request correlation so proxied responses are traceable too.
 app.use(CLERK_PROXY_PATH, clerkProxyMiddleware());
 
 app.use(
@@ -36,8 +60,6 @@ app.use(
     frameguard: false,
   })
 );
-
-app.set("trust proxy", 1);
 
 // CORS lockdown for explicit allowlist (keeps existing cross-origin policy).
 const allowedOrigins = (process.env.ALLOWED_ORIGINS ?? "")
@@ -57,7 +79,7 @@ app.use((req, res, next) => {
     );
     res.setHeader(
       "Access-Control-Allow-Headers",
-      "Content-Type, Authorization",
+      "Content-Type, Authorization, Idempotency-Key, Idempotency-Request-Fingerprint, X-Request-ID",
     );
     if (req.method === "OPTIONS") {
       return res.sendStatus(204);
@@ -106,6 +128,32 @@ app.use("/api", (_req, res, next) => {
 // a rolling session cookie on a `Cache-Control: public` response could be
 // stored and replayed by a shared cache.
 registerPublicStatsRoute(app);
+
+// Health endpoints intentionally bypass authentication and session middleware.
+// Liveness answers whether this process is running; readiness checks the
+// authoritative database and returns 503 when critical writes cannot be trusted.
+app.get("/health/live", (_req, res) => {
+  res.setHeader("Cache-Control", "no-store");
+  res.json({ status: "ok" });
+});
+
+app.get("/health/ready", async (req, res) => {
+  res.setHeader("Cache-Control", "no-store");
+  try {
+    await checkDatabaseReadiness();
+    return res.json({ status: "ok", dependencies: { database: "ok" } });
+  } catch (error) {
+    console.error("[health] readiness database check failed", {
+      requestId: req.requestId,
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return res.status(503).json({
+      status: "not_ready",
+      dependencies: { database: "unavailable" },
+      requestId: req.requestId,
+    });
+  }
+});
 
 app.use(
   express.json({
@@ -165,10 +213,13 @@ app.use((req, res, next) => {
     if (path.startsWith("/api")) {
       let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
       if (capturedJsonResponse) {
-        logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
+        // Do not put arbitrary API payloads (which may contain customer data)
+        // into logs. Status, duration and correlation ID are sufficient for
+        // tracing; the error log stores bounded technical details separately.
+        logLine += " :: response=JSON";
       }
 
-      log(logLine);
+      log(`${logLine} :: requestId=${req.requestId}`);
     }
   });
 
@@ -180,9 +231,12 @@ app.use((req, res, next) => {
 
   app.use((err: any, req: Request, res: Response, next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
-    const message = err.message || "Internal Server Error";
+    const message = publicErrorMessage(status);
 
-    console.error("Internal Server Error:", err);
+    console.error("Internal Server Error:", {
+      requestId: req.requestId,
+      error: err,
+    });
 
     storage
       .createErrorLog({
@@ -204,7 +258,7 @@ app.use((req, res, next) => {
       return next(err);
     }
 
-    return res.status(status).json({ message });
+    return res.status(status).json({ error: "request_failed", message, requestId: req.requestId });
   });
 
   if (process.env.NODE_ENV === "production") {
@@ -225,6 +279,35 @@ app.use((req, res, next) => {
       log(`serving on port ${port}`);
     },
   );
+
+  let shuttingDown = false;
+  const shutdown = async (signal: string) => {
+    if (shuttingDown) return;
+    shuttingDown = true;
+    log(`[shutdown] received ${signal}; draining HTTP server`, "system");
+    const shutdownDeadlineMs = 15_000;
+    const deadline = Date.now() + shutdownDeadlineMs;
+    await new Promise<void>((resolve) => {
+      httpServer.close(() => resolve());
+      setTimeout(resolve, Math.max(0, deadline - Date.now())).unref();
+    });
+    const remainingMs = Math.max(0, deadline - Date.now());
+    const poolClosed = await Promise.race([
+      pool.end()
+        .then(() => true)
+        .catch((error) => {
+          console.error("[shutdown] database pool close failed:", error);
+          return true;
+        }),
+      new Promise<boolean>((resolve) => setTimeout(() => resolve(false), remainingMs)),
+    ]);
+    if (!poolClosed) {
+      console.error(`[shutdown] database pool did not close within ${shutdownDeadlineMs}ms; forcing exit`);
+    }
+    process.exit(0);
+  };
+  process.once("SIGTERM", () => { void shutdown("SIGTERM"); });
+  process.once("SIGINT", () => { void shutdown("SIGINT"); });
 
   // ── Monthly comparison report scheduler ──────────────────────────────────
   let lastRunYearMonth = "";

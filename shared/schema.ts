@@ -219,6 +219,13 @@ export const customPrices = pgTable("custom_prices", {
 export const orders = pgTable("orders", {
   id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
   orderNumber: text("order_number"),
+  // A client-generated checkout key. A restaurant may place a multi-supplier
+  // checkout, so this value is deliberately shared by every order in that
+  // checkout and is unique only within the restaurant.
+  idempotencyKey: varchar("idempotency_key", { length: 128 }),
+  // Binds the retry key to the exact checkout request so a changed request
+  // cannot be silently replayed as the earlier order.
+  idempotencyFingerprint: varchar("idempotency_fingerprint", { length: 32 }),
   restaurantId: varchar("restaurant_id", { length: 36 }).notNull().references(() => users.id),
   supplierId: varchar("supplier_id", { length: 36 }).notNull().references(() => users.id),
   createdByUserId: varchar("created_by_user_id", { length: 36 }).references(() => users.id),
@@ -240,6 +247,7 @@ export const orders = pgTable("orders", {
   index("idx_orders_status").on(table.status),
   index("idx_orders_created_at").on(table.createdAt),
   uniqueIndex("uniq_orders_order_number").on(table.orderNumber),
+  uniqueIndex("uniq_orders_restaurant_idempotency_supplier").on(table.restaurantId, table.idempotencyKey, table.supplierId),
 ]);
 
 export const orderItems = pgTable("order_items", {
@@ -304,6 +312,7 @@ export const messages = pgTable("messages", {
   index("idx_messages_conversation_created").on(table.conversationId, table.createdAt),
   index("idx_messages_sender_id").on(table.senderId),
   index("idx_messages_is_read").on(table.conversationId, table.senderId, table.isRead),
+  uniqueIndex("uniq_order_card_per_order").on(table.orderId).where(sql`${table.messageType} = 'order'`),
 ]);
 
 export const orderStatusHistory = pgTable("order_status_history", {
@@ -371,11 +380,13 @@ export const notifications = pgTable("notifications", {
   title: text("title").notNull(),
   message: text("message").notNull(),
   referenceId: varchar("reference_id", { length: 36 }),
+  deliveryDedupKey: varchar("delivery_dedup_key", { length: 32 }),
   isRead: boolean("is_read").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => [
   index("idx_notifications_user_id").on(table.userId),
   index("idx_notifications_user_read").on(table.userId, table.isRead),
+  uniqueIndex("uniq_checkout_new_order_notification").on(table.userId, table.referenceId).where(sql`${table.deliveryDedupKey} = 'checkout_v1'`),
 ]);
 
 // Durable outbox for post-checkout supplier delivery. The order is committed
@@ -395,7 +406,9 @@ export const orderNotificationRetries = pgTable("order_notification_retries", {
   }>().notNull(),
   attempts: integer("attempts").default(0).notNull(),
   nextAttemptAt: timestamp("next_attempt_at").defaultNow().notNull(),
+  leaseToken: varchar("lease_token", { length: 36 }),
   lastError: text("last_error"),
+  failedAt: timestamp("failed_at"),
   completedAt: timestamp("completed_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => [
@@ -574,7 +587,7 @@ export const insertComplaintSchema = createInsertSchema(complaints).omit({ id: t
 export const updateComplaintSchema = createInsertSchema(complaints).omit({ id: true, createdAt: true, updatedAt: true, orderId: true, restaurantId: true, supplierId: true }).partial();
 export const insertComplaintCommentSchema = createInsertSchema(complaintComments).omit({ id: true, createdAt: true });
 export const insertNotificationSchema = createInsertSchema(notifications).omit({ id: true, createdAt: true, isRead: true });
-export const insertOrderNotificationRetrySchema = createInsertSchema(orderNotificationRetries).omit({ id: true, createdAt: true, attempts: true, nextAttemptAt: true, lastError: true, completedAt: true });
+export const insertOrderNotificationRetrySchema = createInsertSchema(orderNotificationRetries).omit({ id: true, createdAt: true, attempts: true, nextAttemptAt: true, lastError: true, failedAt: true, completedAt: true });
 export const insertDocumentSchema = createInsertSchema(documents).omit({ id: true, createdAt: true });
 export const insertOrderStatusHistorySchema = createInsertSchema(orderStatusHistory).omit({ id: true, createdAt: true });
 export const insertComplaintStatusHistorySchema = createInsertSchema(complaintStatusHistory).omit({ id: true, createdAt: true });

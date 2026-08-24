@@ -25,3 +25,4 @@
 - [Vaul drawer body lock](vaul-drawer-body-lock.md) — vaul can strand pointer-events:none on body on iOS (app-wide dead taps); guarded registry cleanup lives in the shared drawer component.
 - [Clerk Auth Migration](clerk-auth-migration.md) — req.auth collision with @clerk/express; must reset (req as any).auth = undefined after getAuth() in loadAuth; every member needs an accepted invitation record (resolveClerkAuth); demo members need ensureDemoInvitationAccepted() at bootstrap.
 - [Registration approval gate](registration-approval-gate.md) — self-registration email verification and platform approval are separate; pending/denied organizations never receive protected API auth.
+- [Checkout delivery outbox](checkout-delivery-outbox.md) — checkout order, initial status, and supplier-delivery retry must commit together; leases and sink uniqueness prevent duplicate recovery sends.

@@ -47,11 +47,18 @@ import { registerOcrImportRoutes } from "./ocrImport";
 import { registerAiSearchRoutes } from "./aiSearch";
 import { runAiKnowledgeMigration } from "./aiKnowledge";
 import { objectStorageClient, ObjectStorageService } from "./replit_integrations/object_storage/objectStorage";
+import { parseIdempotencyFingerprint, parseIdempotencyKey } from "./resilience";
 import PDFDocument from "pdfkit";
 import { randomUUID, timingSafeEqual } from "crypto";
 import { z } from "zod";
 
 import type { InsertNotification, OrderWithDetails, Document } from "@shared/schema";
+
+function isOrderIdempotencyConflict(error: unknown): boolean {
+  const dbError = (error as any)?.cause ?? error as any;
+  return dbError?.code === "23505"
+    && dbError?.constraint === "uniq_orders_restaurant_idempotency_supplier";
+}
 
 type PublicStats = {
   avgSavingsPercent: number;
@@ -265,7 +272,11 @@ async function createNotificationWithPush(
     ? { ...notification, title: localTitle, message: localMsg }
     : notification;
 
-  const created = await storage.createNotification(localizedNotification);
+  const notificationResult = notification.type === "new_order"
+    ? await storage.createNewOrderNotificationOnce(localizedNotification)
+    : { notification: await storage.createNotification(localizedNotification), created: true };
+  const created = notificationResult.notification;
+  if (!notificationResult.created) return created;
   const urlRole = role || "restaurant";
   let url = "/";
   switch (notification.type) {
@@ -369,6 +380,10 @@ type OrderNotificationRetryPayload = {
 export async function processOrderNotificationRetries(): Promise<void> {
   const retries = await storage.getPendingOrderNotificationRetries();
   for (const retry of retries) {
+    const leaseToken = await storage.claimOrderNotificationRetry(retry.orderId, retry.supplierId);
+    if (!leaseToken) {
+      continue;
+    }
     try {
       const payload = retry.payload as OrderNotificationRetryPayload;
       if (!(await storage.hasOrderMessage(retry.orderId))) {
@@ -394,9 +409,9 @@ export async function processOrderNotificationRetries(): Promise<void> {
           message_it: payload.messageIt,
         });
       }
-      await storage.markOrderNotificationRetryCompleted(retry.id);
+      await storage.markOrderNotificationRetryCompleted(retry.id, leaseToken);
     } catch (error: any) {
-      await storage.markOrderNotificationRetryFailed(retry.id, error?.message ?? String(error));
+      await storage.markOrderNotificationRetryFailed(retry.id, leaseToken, error?.message ?? String(error));
       console.error(`[order-notify] retry failed for order ${retry.orderId}:`, error);
     }
   }
@@ -863,6 +878,7 @@ export async function registerRoutes(
   // not locked out by the login email-gate).
   await storage.runEmailVerificationMigration();
   await storage.runAdminMigration();
+  await storage.assertCheckoutResilienceSchema();
   // Driver module tables/enums (delivery assignments, live locations, internal chat)
   await storage.runDriverMigration();
   // Central AI knowledge base (learns from user feedback on assistant answers)
@@ -894,6 +910,9 @@ export async function registerRoutes(
     });
   }, 30_000);
   orderNotificationRetryTimer.unref();
+  processOrderNotificationRetries().catch((error) => {
+    console.error("[order-notify] startup retry batch failed:", error);
+  });
   // Backfill article numbers for any existing products that lack one
   try {
     const backfilled = await storage.backfillArticleNumbers();
@@ -3438,11 +3457,24 @@ export async function registerRoutes(
   });
 
   app.post("/api/orders", async (req, res) => {
+    const parsedIdempotencyKey = parseIdempotencyKey(req.headers["idempotency-key"]);
+    if (parsedIdempotencyKey.invalid) {
+      return res.status(400).json({ error: "invalid_idempotency_key" });
+    }
+    const idempotencyKey = parsedIdempotencyKey.key;
+    if (!idempotencyKey) {
+      return res.status(400).json({ error: "idempotency_key_required" });
+    }
+    const idempotencyFingerprint = parseIdempotencyFingerprint(req.headers["idempotency-request-fingerprint"]);
+    if (!idempotencyFingerprint) {
+      return res.status(400).json({ error: "idempotency_fingerprint_required" });
+    }
+    let restaurantId: string | undefined;
     try {
       if (!req.auth) return res.status(401).json({ error: "unauthenticated" });
       const validated = createOrderSchema.parse(req.body);
       const { supplierId: targetSupplierId, notes, requestedDeliveryDate, deliveryDates, perSupplierNotes, createdByUserId } = validated;
-      const restaurantId = req.auth.organizationId;
+      restaurantId = req.auth.organizationId;
       const actingMemberId = req.auth.memberId;
 
       const orderDenied = checkActingCapability(req, restaurantId, "orders.create");
@@ -3450,9 +3482,29 @@ export async function registerRoutes(
         return res.status(orderDenied.status).json(orderDenied.body);
       }
 
+      const replayExistingCheckout = async (): Promise<boolean> => {
+        if (!idempotencyKey) return false;
+        const existing = await storage.getOrdersByIdempotencyKey(restaurantId!, idempotencyKey);
+        if (existing.length > 0) {
+          if (existing.some(order => order.idempotencyFingerprint !== idempotencyFingerprint)) {
+            res.status(409).json({ error: "idempotency_key_reused" });
+            return true;
+          }
+          res.setHeader("Idempotent-Replay", "true");
+          res.status(200).json(existing);
+          return true;
+        }
+        return false;
+      };
+      if (await replayExistingCheckout()) return;
+
       // Get cart items
       const allCartItems = await storage.getCartItems(restaurantId);
       if (allCartItems.length === 0) {
+        // A same-key request may observe the other checkout's cart clear just
+        // after its first replay lookup. Check the durable order result again
+        // before returning an empty-cart error.
+        if (await replayExistingCheckout()) return;
         return res.status(400).json({ error: "Cart is empty" });
       }
 
@@ -3462,6 +3514,7 @@ export async function registerRoutes(
         : allCartItems;
 
       if (cartItems.length === 0) {
+        if (await replayExistingCheckout()) return;
         return res.status(400).json({ error: "No items found for this supplier" });
       }
 
@@ -3570,7 +3623,7 @@ export async function registerRoutes(
       const createdOrders = await storage.createOrdersAtomically(
         orderBatches.map(({ supplierId, orderItems, totalAmount }) => ({
           order: {
-            restaurantId,
+            restaurantId: restaurantId!,
             supplierId,
             totalAmount,
             status: "pending",
@@ -3578,11 +3631,14 @@ export async function registerRoutes(
             requestedDeliveryDate: deliveryDates?.[supplierId] || requestedDeliveryDate || null,
             createdByUserId: createdByUserId || restaurantId,
             createdByMemberId: actingMemberId || null,
+            idempotencyKey,
+            idempotencyFingerprint,
           },
           items: orderItems,
         })),
         restaurantId,
         targetSupplierId ?? undefined,
+        { queueNotifications: true },
       );
 
       // External side effects happen only after the atomic write succeeds.
@@ -3599,6 +3655,10 @@ export async function registerRoutes(
           orderId: order.id,
           orderNumber: formatOrderNumber(order),
         });
+        const leaseToken = await storage.claimOrderNotificationRetry(order.id, supplierId);
+        if (!leaseToken) {
+          continue;
+        }
         try {
           // MAIN was debited (reserved) at placement; check low-stock now.
           for (const item of orderItems) {
@@ -3626,31 +3686,13 @@ export async function registerRoutes(
             title_it: `Nuovo ordine #${formatOrderNumber(order)}`,
             message_it: `${restaurant?.companyName || restaurant?.name || "Un'azienda"} ha effettuato un nuovo ordine #${formatOrderNumber(order)} (€${totalAmount})`,
           });
+          await storage.markOrderNotificationRetryCompletedForOrder(order.id, supplierId, leaseToken);
         } catch (sideEffectError) {
           // The atomic order already exists. Do not return 500 here: the
           // client must not retry and create duplicates because chat/push
           // delivery is temporarily unavailable.
           console.error(`Post-checkout side effect failed for order ${order.id}:`, sideEffectError);
-          try {
-            const restaurant = await storage.getUser(restaurantId);
-            const restaurantName = restaurant?.companyName || restaurant?.name || "Ein Betrieb";
-            await storage.enqueueOrderNotificationRetry({
-              orderId: order.id,
-              restaurantId,
-              supplierId,
-              payload: {
-                orderContent,
-                title: `Neue Bestellung #${formatOrderNumber(order)}`,
-                message: `${restaurantName} hat eine neue Bestellung aufgegeben #${formatOrderNumber(order)} (€${totalAmount})`,
-                titleIt: `Nuovo ordine #${formatOrderNumber(order)}`,
-                messageIt: `${restaurantName} ha effettuato un nuovo ordine #${formatOrderNumber(order)} (€${totalAmount})`,
-              },
-            });
-          } catch (queueError) {
-            // The order response remains successful; log the exceptional case
-            // where even the durable recovery record could not be written.
-            console.error(`[order-notify] failed to enqueue retry for order ${order.id}:`, queueError);
-          }
+          await storage.markOrderNotificationRetryFailedForOrder(order.id, supplierId, leaseToken, sideEffectError instanceof Error ? sideEffectError.message : String(sideEffectError));
         }
       }
 
@@ -3662,22 +3704,56 @@ export async function registerRoutes(
           message: `Nicht genügend Lagerbestand: ${error.productName} (nur ${error.available} verfügbar).`,
         });
       }
+      if (idempotencyKey && restaurantId && isOrderIdempotencyConflict(error)) {
+        const existing = await storage.getOrdersByIdempotencyKey(restaurantId, idempotencyKey);
+        if (existing.length > 0) {
+          if (existing.some(order => order.idempotencyFingerprint !== idempotencyFingerprint)) {
+            return res.status(409).json({ error: "idempotency_key_reused" });
+          }
+          res.setHeader("Idempotent-Replay", "true");
+          return res.status(200).json(existing);
+        }
+      }
       console.error("Create order error:", error);
       res.status(500).json({ error: "Failed to create order" });
     }
   });
 
   app.post("/api/orders/direct", async (req, res) => {
+    const parsedIdempotencyKey = parseIdempotencyKey(req.headers["idempotency-key"]);
+    if (parsedIdempotencyKey.invalid) {
+      return res.status(400).json({ error: "invalid_idempotency_key" });
+    }
+    const idempotencyKey = parsedIdempotencyKey.key;
+    if (!idempotencyKey) {
+      return res.status(400).json({ error: "idempotency_key_required" });
+    }
+    const idempotencyFingerprint = parseIdempotencyFingerprint(req.headers["idempotency-request-fingerprint"]);
+    if (!idempotencyFingerprint) {
+      return res.status(400).json({ error: "idempotency_fingerprint_required" });
+    }
+    let restaurantId: string | undefined;
     try {
       if (!req.auth) return res.status(401).json({ error: "unauthenticated" });
       const validated = directOrderSchema.parse(req.body);
       const { supplierId, items, notes, createdByUserId } = validated;
-      const restaurantId = req.auth.organizationId;
+      restaurantId = req.auth.organizationId;
       const actingMemberId = req.auth.memberId;
 
       const directDenied = checkActingCapability(req, restaurantId, "orders.create");
       if (directDenied) {
         return res.status(directDenied.status).json(directDenied.body);
+      }
+
+      if (idempotencyKey) {
+        const existing = await storage.getOrdersByIdempotencyKey(restaurantId, idempotencyKey);
+        if (existing.length > 0) {
+          if (existing.some(order => order.idempotencyFingerprint !== idempotencyFingerprint)) {
+            return res.status(409).json({ error: "idempotency_key_reused" });
+          }
+          res.setHeader("Idempotent-Replay", "true");
+          return res.status(200).json(existing[0]);
+        }
       }
 
       const products = await storage.getProductsBySupplier(supplierId);
@@ -3736,19 +3812,11 @@ export async function registerRoutes(
         .toFixed(2);
 
       const order = await storage.createOrder(
-        { restaurantId, supplierId, totalAmount, status: "pending", notes: notes || "", createdByUserId: createdByUserId || restaurantId, createdByMemberId: actingMemberId || null },
+        { restaurantId, supplierId, totalAmount, status: "pending", notes: notes || "", createdByUserId: createdByUserId || restaurantId, createdByMemberId: actingMemberId || null, idempotencyKey, idempotencyFingerprint },
         orderItems as any,
-        { reserveStock: true, strictReserve: true }
+        { reserveStock: true, strictReserve: true, initialStatusHistory: true, queueNotification: true }
       );
-      // MAIN was debited (reserved) at placement; check low-stock now.
-      for (const item of orderItems) {
-        await checkAndNotifyLowStock(item.productId, supplierId);
-      }
-      
-      await storage.addOrderStatusHistory(order.id, null, "pending", createdByUserId || restaurantId, actingMemberId || null);
 
-      // Create order message in chat
-      const conversation = await storage.getOrCreateConversation(restaurantId, supplierId);
       const productImages: Record<string, string | null> = {};
       for (const item of items) {
         const prod = productMap.get(item.productId);
@@ -3765,14 +3833,41 @@ export async function registerRoutes(
         orderId: order.id,
         orderNumber: formatOrderNumber(order),
       });
-      await storage.sendMessage({
-        conversationId: conversation.id,
-        senderId: restaurantId,
-        senderMemberId: actingMemberId || null,
-        messageType: "order",
-        content: orderContent,
-        orderId: order.id,
-      });
+      // Mirror cart checkout: post-commit delivery failures are recoverable and
+      // must never turn an already-created order into a client-visible error.
+      const leaseToken = await storage.claimOrderNotificationRetry(order.id, supplierId);
+      if (!leaseToken) {
+        return res.status(201).json(order);
+      }
+      try {
+        for (const item of orderItems) {
+          await checkAndNotifyLowStock(item.productId, supplierId);
+        }
+        const conversation = await storage.getOrCreateConversation(restaurantId, supplierId);
+        await storage.sendMessage({
+          conversationId: conversation.id,
+          senderId: restaurantId,
+          senderMemberId: actingMemberId || null,
+          messageType: "order",
+          content: orderContent,
+          orderId: order.id,
+        });
+        const restaurant = await storage.getUser(restaurantId);
+        await createNotificationWithPush({
+          userId: supplierId,
+          type: "new_order",
+          title: `Neue Bestellung #${formatOrderNumber(order)}`,
+          message: `${restaurant?.companyName || restaurant?.name || "Ein Betrieb"} hat eine neue Bestellung aufgegeben #${formatOrderNumber(order)} (€${totalAmount})`,
+          referenceId: order.id,
+        }, "supplier", {
+          title_it: `Nuovo ordine #${formatOrderNumber(order)}`,
+          message_it: `${restaurant?.companyName || restaurant?.name || "Un'azienda"} ha effettuato un nuovo ordine #${formatOrderNumber(order)} (€${totalAmount})`,
+        });
+        await storage.markOrderNotificationRetryCompletedForOrder(order.id, supplierId, leaseToken);
+      } catch (sideEffectError) {
+        console.error(`Post-direct-checkout side effect failed for order ${order.id}:`, sideEffectError);
+        await storage.markOrderNotificationRetryFailedForOrder(order.id, supplierId, leaseToken, sideEffectError instanceof Error ? sideEffectError.message : String(sideEffectError));
+      }
 
       res.status(201).json(order);
     } catch (error) {
@@ -3781,6 +3876,16 @@ export async function registerRoutes(
           error: "insufficient_stock",
           message: `Nicht genügend Lagerbestand: ${error.productName} (nur ${error.available} verfügbar).`,
         });
+      }
+      if (idempotencyKey && restaurantId && isOrderIdempotencyConflict(error)) {
+        const existing = await storage.getOrdersByIdempotencyKey(restaurantId, idempotencyKey);
+        if (existing.length > 0) {
+          if (existing.some(order => order.idempotencyFingerprint !== idempotencyFingerprint)) {
+            return res.status(409).json({ error: "idempotency_key_reused" });
+          }
+          res.setHeader("Idempotent-Replay", "true");
+          return res.status(200).json(existing[0]);
+        }
       }
       console.error("Direct order error:", error);
       res.status(500).json({ error: "Failed to create order" });

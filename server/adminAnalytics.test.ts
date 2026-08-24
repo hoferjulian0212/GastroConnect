@@ -181,7 +181,7 @@ describe("platform overview aggregation", () => {
 describe("platform health aggregation", () => {
   test("returns the documented shape including unread-message backlog", async () => {
     const health = await storage.getPlatformHealth();
-    for (const key of ["pendingVerifications", "openComplaints", "pendingAdmins", "lowStockProducts", "unreadMessages"] as const) {
+    for (const key of ["pendingVerifications", "openComplaints", "pendingAdmins", "lowStockProducts", "unreadMessages", "failedOrderNotifications"] as const) {
       assert.equal(typeof health[key], "number", `${key} should be a number`);
       assert.ok(health[key] >= 0, `${key} should be non-negative`);
     }

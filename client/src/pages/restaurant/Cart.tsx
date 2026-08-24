@@ -17,6 +17,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { formatOrderNumber, type CartItemWithProduct, type DeliverySchedule, type Promotion } from "@shared/schema";
 import { can } from "@shared/permissions";
 import { ProductImage } from "@/components/ProductImage";
+import { checkoutFingerprint, clearPendingCheckoutKey, getPendingCheckoutKey } from "@/lib/checkoutIdempotency";
 
 type CartItemWithPromotion = CartItemWithProduct & { activePromotion?: Promotion | null };
 
@@ -234,16 +235,26 @@ export default function RestaurantCart() {
       for (const sid of supplierIds) {
         perSupplierDates[sid] = deliveryOptions[sid] === "date" && selectedDeliveryDates[sid] ? selectedDeliveryDates[sid] : null;
       }
+      const fingerprint = checkoutFingerprint({
+        scope: "all",
+        items: (cartItems || []).map(item => ({
+          id: item.id, productId: item.productId, supplierId: item.supplierId, quantity: item.quantity,
+        })).sort((a, b) => a.id.localeCompare(b.id)),
+        notes: orderNotes,
+        deliveryDates: perSupplierDates,
+      });
+      const idempotencyKey = getPendingCheckoutKey(`gc-checkout:${currentUser?.id}:all`, fingerprint);
       const res = await apiRequest("POST", "/api/orders", {
         restaurantId: currentUser?.id,
         perSupplierNotes: orderNotes,
         deliveryDates: perSupplierDates,
         createdByUserId: currentUser?.id,
         actingMemberId: currentMember?.id,
-      });
+      }, { headers: { "Idempotency-Key": idempotencyKey, "Idempotency-Request-Fingerprint": fingerprint } });
       return res.json();
     },
     onSuccess: (data) => {
+      clearPendingCheckoutKey(`gc-checkout:${currentUser?.id}:all`);
       fireConfetti("center");
       const supplierNames = Object.values(groupedBySupplier || {}).map(g => g.supplier.companyName || g.supplier.name);
       const itemCount = cartItems?.length || 0;
@@ -291,6 +302,16 @@ export default function RestaurantCart() {
     mutationFn: async (supplierId: string) => {
       setSendingSupplier(supplierId);
       const deliveryDate = deliveryOptions[supplierId] === "date" && selectedDeliveryDates[supplierId] ? selectedDeliveryDates[supplierId] : null;
+      const fingerprint = checkoutFingerprint({
+        scope: "supplier",
+        supplierId,
+        items: (groupedBySupplier?.[supplierId]?.items || []).map(item => ({
+          id: item.id, productId: item.productId, quantity: item.quantity,
+        })).sort((a, b) => a.id.localeCompare(b.id)),
+        notes: orderNotes[supplierId] || "",
+        deliveryDate,
+      });
+      const idempotencyKey = getPendingCheckoutKey(`gc-checkout:${currentUser?.id}:supplier:${supplierId}`, fingerprint);
       const res = await apiRequest("POST", "/api/orders", {
         restaurantId: currentUser?.id,
         supplierId,
@@ -298,11 +319,12 @@ export default function RestaurantCart() {
         requestedDeliveryDate: deliveryDate,
         createdByUserId: currentUser?.id,
         actingMemberId: currentMember?.id,
-      });
+      }, { headers: { "Idempotency-Key": idempotencyKey, "Idempotency-Request-Fingerprint": fingerprint } });
       return res.json();
     },
     onSuccess: (data, supplierId) => {
       setSendingSupplier(null);
+      clearPendingCheckoutKey(`gc-checkout:${currentUser?.id}:supplier:${supplierId}`);
       const supplierGroup = groupedBySupplier?.[supplierId];
       const supplierName = supplierGroup?.supplier.companyName || supplierGroup?.supplier.name || "";
       toast({

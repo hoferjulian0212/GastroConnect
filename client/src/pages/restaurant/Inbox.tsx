@@ -44,6 +44,7 @@ import { usePullToRefresh } from "@/hooks/use-pull-to-refresh";
 import { ProductImage } from "@/components/ProductImage";
 import { WhatsappInboxCard } from "@/components/WhatsappInboxCard";
 import { HeroPortal } from "@/context/HeroContext";
+import { checkoutFingerprint, clearPendingCheckoutKey, getPendingCheckoutKey } from "@/lib/checkoutIdempotency";
 
 type ActionMode = "none" | "order" | "complaint";
 
@@ -792,15 +793,18 @@ export default function RestaurantInbox() {
       if (!currentUser?.id) throw new Error(lang === "de" ? "Nicht angemeldet" : "Non autenticato");
       if (!supplierId) throw new Error(lang === "de" ? "Kein Lieferant ausgewählt" : "Nessun fornitore selezionato");
       if (items.length === 0) throw new Error(lang === "de" ? "Keine Artikel ausgewählt" : "Nessun articolo selezionato");
+      const fingerprint = checkoutFingerprint({ scope: "direct", supplierId, items: [...items].sort((a, b) => a.productId.localeCompare(b.productId)) });
+      const idempotencyKey = getPendingCheckoutKey(`gc-direct-checkout:${currentUser.id}:${supplierId}`, fingerprint);
       return apiRequest("POST", "/api/orders/direct", {
         restaurantId: currentUser.id,
         supplierId,
         items,
         createdByUserId: currentUser.id,
         actingMemberId: currentMember?.id,
-      });
+      }, { headers: { "Idempotency-Key": idempotencyKey, "Idempotency-Request-Fingerprint": fingerprint } });
     },
-    onSuccess: () => {
+    onSuccess: (_data, items) => {
+      clearPendingCheckoutKey(`gc-direct-checkout:${currentUser?.id}:${supplierId}`);
       queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
       queryClient.invalidateQueries({ queryKey: [`/api/orders?restaurantId=${currentUser?.id}`] });
       queryClient.invalidateQueries({ queryKey: ['/api/restaurant/stats', currentUser?.id] });

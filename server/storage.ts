@@ -115,11 +115,13 @@ export interface IStorage {
   getRecentOrdersByRestaurant(restaurantId: string): Promise<OrderWithDetails[]>;
   getRecentOrdersBySupplier(supplierId: string): Promise<OrderWithDetails[]>;
   getOrder(id: string): Promise<OrderWithDetails | undefined>;
-  createOrder(order: InsertOrder, items: InsertOrderItem[]): Promise<Order>;
+  getOrdersByIdempotencyKey(restaurantId: string, idempotencyKey: string): Promise<OrderWithDetails[]>;
+  createOrder(order: InsertOrder, items: InsertOrderItem[], opts?: { reserveStock?: boolean; strictReserve?: boolean; initialStatusHistory?: boolean; queueNotification?: boolean }): Promise<Order>;
   createOrdersAtomically(
     entries: { order: InsertOrder; items: InsertOrderItem[] }[],
     restaurantId: string,
     supplierId?: string,
+    opts?: { queueNotifications?: boolean },
   ): Promise<Order[]>;
   updateOrderStatus(id: string, status: string, requestedDeliveryDate?: string, deliveryNotes?: string | null): Promise<Order | undefined>;
   updateOrderItems(id: string, items: InsertOrderItem[], totalAmount: string, requestedDeliveryDate?: string | null): Promise<Order | undefined>;
@@ -225,10 +227,14 @@ export interface IStorage {
   getNotifications(userId: string): Promise<Notification[]>;
   getUnreadNotificationCount(userId: string): Promise<number>;
   createNotification(notification: InsertNotification): Promise<Notification>;
+  createNewOrderNotificationOnce(notification: InsertNotification): Promise<{ notification: Notification; created: boolean }>;
   enqueueOrderNotificationRetry(retry: InsertOrderNotificationRetry): Promise<OrderNotificationRetry>;
   getPendingOrderNotificationRetries(limit?: number): Promise<OrderNotificationRetry[]>;
-  markOrderNotificationRetryCompleted(id: string): Promise<void>;
-  markOrderNotificationRetryFailed(id: string, error: string): Promise<void>;
+  claimOrderNotificationRetry(orderId: string, supplierId: string): Promise<string | undefined>;
+  markOrderNotificationRetryCompleted(id: string, leaseToken: string): Promise<void>;
+  markOrderNotificationRetryCompletedForOrder(orderId: string, supplierId: string, leaseToken: string): Promise<void>;
+  markOrderNotificationRetryFailed(id: string, leaseToken: string, error: string): Promise<void>;
+  markOrderNotificationRetryFailedForOrder(orderId: string, supplierId: string, leaseToken: string, error: string): Promise<void>;
   hasOrderMessage(orderId: string): Promise<boolean>;
   hasNotification(userId: string, type: string, referenceId: string): Promise<boolean>;
   markNotificationAsRead(id: string): Promise<Notification | undefined>;
@@ -326,6 +332,7 @@ export interface IStorage {
 
   // Platform admins (GastroConnect system owners — separate from org-level roles)
   runAdminMigration(): Promise<void>;
+  assertCheckoutResilienceSchema(): Promise<void>;
   getPlatformAdmin(id: string): Promise<PlatformAdmin | undefined>;
   getPlatformAdminByReplitUserId(replitUserId: string): Promise<PlatformAdmin | undefined>;
   getPlatformAdminByEmail(email: string): Promise<PlatformAdmin | undefined>;
@@ -358,6 +365,8 @@ export interface IStorage {
     openComplaints: number;
     pendingAdmins: number;
     lowStockProducts: number;
+    unreadMessages: number;
+    failedOrderNotifications: number;
   }>;
   getPlatformRecentActivity(limit?: number): Promise<Array<{
     type: "org" | "order" | "complaint";
@@ -1101,6 +1110,13 @@ export class DatabaseStorage implements IStorage {
     return this.enrichOrderWithDetails(order);
   }
 
+  async getOrdersByIdempotencyKey(restaurantId: string, idempotencyKey: string): Promise<OrderWithDetails[]> {
+    const matching = await db.select().from(orders)
+      .where(and(eq(orders.restaurantId, restaurantId), eq(orders.idempotencyKey, idempotencyKey)))
+      .orderBy(orders.createdAt, orders.id);
+    return Promise.all(matching.map(order => this.enrichOrderWithDetails(order)));
+  }
+
   private generateOrderNumber(): string {
     return "B-" + Math.random().toString(36).slice(2, 8).toUpperCase();
   }
@@ -1121,7 +1137,7 @@ export class DatabaseStorage implements IStorage {
   async createOrder(
     order: InsertOrder,
     items: InsertOrderItem[],
-    opts?: { reserveStock?: boolean; strictReserve?: boolean },
+    opts?: { reserveStock?: boolean; strictReserve?: boolean; initialStatusHistory?: boolean; queueNotification?: boolean },
   ): Promise<Order> {
     const orderNumber = await this.generateUniqueOrderNumber();
     const reserveStock = opts?.reserveStock ?? false;
@@ -1162,6 +1178,29 @@ export class DatabaseStorage implements IStorage {
           });
         }
       }
+      if (opts?.initialStatusHistory) {
+        await tx.insert(orderStatusHistory).values({
+          orderId: created.id,
+          fromStatus: null,
+          toStatus: created.status,
+          changedBy: order.createdByUserId ?? order.restaurantId,
+          changedByMemberId: order.createdByMemberId ?? null,
+        });
+      }
+      if (opts?.queueNotification) {
+        await tx.insert(orderNotificationRetries).values({
+          orderId: created.id,
+          restaurantId: order.restaurantId,
+          supplierId: order.supplierId,
+          payload: {
+            orderContent: JSON.stringify({ items, total: order.totalAmount, orderId: created.id, orderNumber }),
+            title: `Neue Bestellung #${orderNumber}`,
+            message: `Neue Bestellung #${orderNumber} (€${order.totalAmount})`,
+            titleIt: `Nuovo ordine #${orderNumber}`,
+            messageIt: `Nuovo ordine #${orderNumber} (€${order.totalAmount})`,
+          },
+        });
+      }
 
       return created;
     });
@@ -1171,6 +1210,7 @@ export class DatabaseStorage implements IStorage {
     entries: { order: InsertOrder; items: InsertOrderItem[] }[],
     restaurantId: string,
     supplierId?: string,
+    opts?: { queueNotifications?: boolean },
   ): Promise<Order[]> {
     return await db.transaction(async (tx) => {
       const created: Order[] = [];
@@ -1210,6 +1250,20 @@ export class DatabaseStorage implements IStorage {
           changedBy: entry.order.createdByUserId ?? entry.order.restaurantId,
           changedByMemberId: entry.order.createdByMemberId ?? null,
         });
+        if (opts?.queueNotifications) {
+          await tx.insert(orderNotificationRetries).values({
+            orderId: order.id,
+            restaurantId: entry.order.restaurantId,
+            supplierId: entry.order.supplierId,
+            payload: {
+              orderContent: JSON.stringify({ items: entry.items, total: entry.order.totalAmount, orderId: order.id, orderNumber }),
+              title: `Neue Bestellung #${orderNumber}`,
+              message: `Neue Bestellung #${orderNumber} (€${entry.order.totalAmount})`,
+              titleIt: `Nuovo ordine #${orderNumber}`,
+              messageIt: `Nuovo ordine #${orderNumber} (€${entry.order.totalAmount})`,
+            },
+          });
+        }
         created.push(order);
       }
 
@@ -1529,7 +1583,16 @@ export class DatabaseStorage implements IStorage {
   }
 
   async sendMessage(message: InsertMessage): Promise<Message> {
-    const [created] = await db.insert(messages).values(message).returning();
+    const [created] = await db.insert(messages).values(message)
+      .onConflictDoNothing()
+      .returning();
+    if (!created && message.messageType === "order" && message.orderId) {
+      const [existing] = await db.select().from(messages)
+        .where(and(eq(messages.orderId, message.orderId), eq(messages.messageType, "order")))
+        .limit(1);
+      if (existing) return existing;
+    }
+    if (!created) throw new Error("Message could not be created");
     
     // Update conversation lastMessageAt
     await db
@@ -4148,8 +4211,39 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createNotification(notification: InsertNotification): Promise<Notification> {
-    const [created] = await db.insert(notifications).values(notification).returning();
-    return created;
+    const [created] = await db.insert(notifications).values(notification)
+      .onConflictDoNothing()
+      .returning();
+    if (created) return created;
+    if (notification.referenceId) {
+      const [existing] = await db.select().from(notifications)
+        .where(and(
+          eq(notifications.userId, notification.userId),
+          eq(notifications.type, notification.type),
+          eq(notifications.referenceId, notification.referenceId),
+        ))
+        .limit(1);
+      if (existing) return existing;
+    }
+    throw new Error("Notification could not be created");
+  }
+
+  async createNewOrderNotificationOnce(notification: InsertNotification): Promise<{ notification: Notification; created: boolean }> {
+    const checkoutNotification = { ...notification, deliveryDedupKey: "checkout_v1" };
+    const [created] = await db.insert(notifications).values(checkoutNotification)
+      .onConflictDoNothing()
+      .returning();
+    if (created) return { notification: created, created: true };
+    const [existing] = await db.select().from(notifications)
+      .where(and(
+        eq(notifications.userId, notification.userId),
+        eq(notifications.type, "new_order"),
+        eq(notifications.referenceId, notification.referenceId!),
+        eq(notifications.deliveryDedupKey, "checkout_v1"),
+      ))
+      .limit(1);
+    if (existing) return { notification: existing, created: false };
+    throw new Error("New order notification could not be created");
   }
 
   async enqueueOrderNotificationRetry(retry: InsertOrderNotificationRetry): Promise<OrderNotificationRetry> {
@@ -4157,7 +4251,7 @@ export class DatabaseStorage implements IStorage {
       .values(retry)
       .onConflictDoUpdate({
         target: [orderNotificationRetries.orderId, orderNotificationRetries.supplierId],
-        set: { completedAt: null, nextAttemptAt: new Date(), lastError: null },
+        set: { completedAt: null, failedAt: null, nextAttemptAt: new Date(), lastError: null, leaseToken: null },
       })
       .returning();
     return created;
@@ -4165,25 +4259,77 @@ export class DatabaseStorage implements IStorage {
 
   async getPendingOrderNotificationRetries(limit = 25): Promise<OrderNotificationRetry[]> {
     return db.select().from(orderNotificationRetries)
-      .where(and(isNull(orderNotificationRetries.completedAt), lte(orderNotificationRetries.nextAttemptAt, new Date())))
+      .where(and(
+        isNull(orderNotificationRetries.completedAt),
+        isNull(orderNotificationRetries.failedAt),
+        lte(orderNotificationRetries.nextAttemptAt, new Date()),
+      ))
       .orderBy(orderNotificationRetries.createdAt)
       .limit(limit);
   }
 
-  async markOrderNotificationRetryCompleted(id: string): Promise<void> {
-    await db.update(orderNotificationRetries)
-      .set({ completedAt: new Date(), lastError: null })
-      .where(eq(orderNotificationRetries.id, id));
+  async claimOrderNotificationRetry(orderId: string, supplierId: string): Promise<string | undefined> {
+    const leaseUntil = new Date(Date.now() + 5 * 60 * 1000);
+    const leaseToken = randomUUID();
+    const [claimed] = await db.update(orderNotificationRetries)
+      .set({ nextAttemptAt: leaseUntil, leaseToken })
+      .where(and(
+        eq(orderNotificationRetries.orderId, orderId),
+        eq(orderNotificationRetries.supplierId, supplierId),
+        isNull(orderNotificationRetries.completedAt),
+        isNull(orderNotificationRetries.failedAt),
+        lte(orderNotificationRetries.nextAttemptAt, new Date()),
+      ))
+      .returning({ id: orderNotificationRetries.id });
+    return claimed ? leaseToken : undefined;
   }
 
-  async markOrderNotificationRetryFailed(id: string, error: string): Promise<void> {
+  async markOrderNotificationRetryCompleted(id: string, leaseToken: string): Promise<void> {
     await db.update(orderNotificationRetries)
+      .set({ completedAt: new Date(), failedAt: null, lastError: null, leaseToken: null })
+      .where(and(eq(orderNotificationRetries.id, id), eq(orderNotificationRetries.leaseToken, leaseToken)));
+  }
+
+  async markOrderNotificationRetryCompletedForOrder(orderId: string, supplierId: string, leaseToken: string): Promise<void> {
+    await db.update(orderNotificationRetries)
+      .set({ completedAt: new Date(), failedAt: null, lastError: null, leaseToken: null })
+      .where(and(eq(orderNotificationRetries.orderId, orderId), eq(orderNotificationRetries.supplierId, supplierId), eq(orderNotificationRetries.leaseToken, leaseToken)));
+  }
+
+  async markOrderNotificationRetryFailed(id: string, leaseToken: string, error: string): Promise<void> {
+    const [updated] = await db.update(orderNotificationRetries)
       .set({
         attempts: sql`${orderNotificationRetries.attempts} + 1`,
-        nextAttemptAt: sql`now() + LEAST((2 ^ LEAST(${orderNotificationRetries.attempts} + 1, 6)) * interval '30 seconds', interval '30 minutes')`,
+        nextAttemptAt: sql`CASE WHEN ${orderNotificationRetries.attempts} + 1 >= 10 THEN now() ELSE now() + LEAST((2 ^ LEAST(${orderNotificationRetries.attempts} + 1, 6)) * interval '30 seconds', interval '30 minutes') END`,
         lastError: error.slice(0, 1000),
+        failedAt: sql`CASE WHEN ${orderNotificationRetries.attempts} + 1 >= 10 THEN now() ELSE NULL END`,
+        leaseToken: null,
       })
-      .where(eq(orderNotificationRetries.id, id));
+      .where(and(eq(orderNotificationRetries.id, id), eq(orderNotificationRetries.leaseToken, leaseToken)))
+      .returning({ orderId: orderNotificationRetries.orderId, attempts: orderNotificationRetries.attempts, failedAt: orderNotificationRetries.failedAt });
+    if (updated?.failedAt) {
+      console.error(`[order-notify] terminal delivery failure for order ${updated.orderId} after ${updated.attempts} attempts`);
+    }
+  }
+
+  async markOrderNotificationRetryFailedForOrder(orderId: string, supplierId: string, leaseToken: string, error: string): Promise<void> {
+    const [updated] = await db.update(orderNotificationRetries)
+      .set({
+        attempts: sql`${orderNotificationRetries.attempts} + 1`,
+        nextAttemptAt: sql`CASE WHEN ${orderNotificationRetries.attempts} + 1 >= 10 THEN now() ELSE now() + LEAST((2 ^ LEAST(${orderNotificationRetries.attempts} + 1, 6)) * interval '30 seconds', interval '30 minutes') END`,
+        lastError: error.slice(0, 1000),
+        failedAt: sql`CASE WHEN ${orderNotificationRetries.attempts} + 1 >= 10 THEN now() ELSE NULL END`,
+        leaseToken: null,
+      })
+      .where(and(
+        eq(orderNotificationRetries.orderId, orderId),
+        eq(orderNotificationRetries.supplierId, supplierId),
+        eq(orderNotificationRetries.leaseToken, leaseToken),
+      ))
+      .returning({ orderId: orderNotificationRetries.orderId, attempts: orderNotificationRetries.attempts, failedAt: orderNotificationRetries.failedAt });
+    if (updated?.failedAt) {
+      console.error(`[order-notify] terminal delivery failure for order ${updated.orderId} after ${updated.attempts} attempts`);
+    }
   }
 
   async hasOrderMessage(orderId: string): Promise<boolean> {
@@ -5672,25 +5818,6 @@ export class DatabaseStorage implements IStorage {
     await db.execute(sql`ALTER TABLE delivery_assignments ADD COLUMN IF NOT EXISTS rejected_at timestamp`);
     await db.execute(sql`ALTER TABLE delivery_assignments ADD COLUMN IF NOT EXISTS delay_minutes integer`);
 
-    // Durable outbox for supplier order notifications. Kept as idempotent DDL
-    // because this table must be added safely to existing installations.
-    await db.execute(sql`
-      CREATE TABLE IF NOT EXISTS order_notification_retries (
-        id varchar(36) PRIMARY KEY DEFAULT gen_random_uuid(),
-        order_id varchar(36) NOT NULL REFERENCES orders(id),
-        restaurant_id varchar(36) NOT NULL REFERENCES users(id),
-        supplier_id varchar(36) NOT NULL REFERENCES users(id),
-        payload jsonb NOT NULL,
-        attempts integer NOT NULL DEFAULT 0,
-        next_attempt_at timestamp NOT NULL DEFAULT now(),
-        last_error text,
-        completed_at timestamp,
-        created_at timestamp NOT NULL DEFAULT now()
-      )
-    `);
-    await db.execute(sql`CREATE UNIQUE INDEX IF NOT EXISTS uniq_order_notification_retries_order_supplier ON order_notification_retries (order_id, supplier_id)`);
-    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_order_notification_retries_pending ON order_notification_retries (completed_at, next_attempt_at)`);
-
     // Fix wrong FK: created_by stores the reporting MEMBER id (members.id), but the
     // table was created with a FK to users(id), so every insert failed. Idempotent:
     // drop the wrong constraint if present and add the correct one once.
@@ -5721,6 +5848,45 @@ export class DatabaseStorage implements IStorage {
     if ((closeApplied.rows || []).length === 0) {
       await db.update(errorLogs).set({ status: "closed" }).where(ne(errorLogs.status, "closed"));
       await db.execute(sql`INSERT INTO app_migrations (name) VALUES (${ERROR_LOG_CLOSE_MIGRATION}) ON CONFLICT DO NOTHING`);
+    }
+  }
+
+  async assertCheckoutResilienceSchema(): Promise<void> {
+    const result = await db.execute(sql`
+      SELECT
+        to_regclass('public.order_notification_retries') IS NOT NULL AS outbox_exists,
+        EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'orders' AND column_name = 'idempotency_fingerprint'
+        ) AS fingerprint_exists,
+        EXISTS (
+          SELECT 1 FROM pg_indexes
+          WHERE indexname = 'uniq_orders_restaurant_idempotency_supplier'
+        ) AS idempotency_index_exists,
+        EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'notifications' AND column_name = 'delivery_dedup_key'
+        ) AS notification_dedup_column_exists,
+        EXISTS (
+          SELECT 1 FROM pg_indexes
+          WHERE indexname = 'uniq_checkout_new_order_notification'
+        ) AS notification_dedup_index_exists,
+        EXISTS (
+          SELECT 1 FROM schema_migrations
+          WHERE name = 'checkout-resilience-v1'
+        ) AS checkout_migration_recorded
+    `);
+    const row = result.rows[0] as {
+      outbox_exists?: boolean;
+      fingerprint_exists?: boolean;
+      idempotency_index_exists?: boolean;
+      notification_dedup_column_exists?: boolean;
+      notification_dedup_index_exists?: boolean;
+      checkout_migration_recorded?: boolean;
+    } | undefined;
+    if (!row?.outbox_exists || !row.fingerprint_exists || !row.idempotency_index_exists ||
+      !row.notification_dedup_column_exists || !row.notification_dedup_index_exists || !row.checkout_migration_recorded) {
+      throw new Error("Checkout resilience schema is missing. Run `npm run db:migrate-checkout-resilience` before starting the application.");
     }
   }
 
@@ -5947,6 +6113,7 @@ export class DatabaseStorage implements IStorage {
     pendingAdmins: number;
     lowStockProducts: number;
     unreadMessages: number;
+    failedOrderNotifications: number;
   }> {
     const [pendingVerifications, complaintRes, adminRes, lowStockRes, unreadRes] = await Promise.all([
       this.getPendingOrgCount(),
@@ -5961,12 +6128,22 @@ export class DatabaseStorage implements IStorage {
         WHERE is_read = false AND dismissed = false
       `),
     ]);
+    let failedOrderNotifications = 0;
+    try {
+      const failedOutboxRes = await db.execute(sql`SELECT COUNT(*) as cnt FROM order_notification_retries WHERE failed_at IS NOT NULL`);
+      failedOrderNotifications = Number((failedOutboxRes.rows?.[0] as any)?.cnt) || 0;
+    } catch (error: any) {
+      // The admin health endpoint remains available during a rolling deployment
+      // before the new outbox migration has reached this database.
+      if (error?.code !== "42703" && error?.code !== "42P01") throw error;
+    }
     return {
       pendingVerifications,
       openComplaints: Number((complaintRes.rows?.[0] as any)?.cnt) || 0,
       pendingAdmins: Number((adminRes.rows?.[0] as any)?.cnt) || 0,
       lowStockProducts: Number((lowStockRes.rows?.[0] as any)?.cnt) || 0,
       unreadMessages: Number((unreadRes.rows?.[0] as any)?.cnt) || 0,
+      failedOrderNotifications,
     };
   }
 
