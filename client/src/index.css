@@ -501,6 +501,14 @@ input[type="date"].date-empty:not(.dark *)::-webkit-datetime-edit-year-field {
     width: 100vw;
     height: 24rem;
   }
+  /* The mobile registration CTA is intentionally just a button on the
+     landing canvas. The desktop guide styling above must not leave a card
+     surface behind it. */
+  .landing-page .landing-hero [data-testid="registration-guide"] > div {
+    border-color: transparent !important;
+    background: transparent !important;
+    box-shadow: none !important;
+  }
   .landing-page [data-testid^="card-step-"]::before {
     left: 0;
   }
