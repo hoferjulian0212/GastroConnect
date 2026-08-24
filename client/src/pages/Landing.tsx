@@ -730,19 +730,57 @@ function RegistrationGuide({
 
         {/* On mobile, make the access action feel like an invitation instead
             of a dense three-step information card. */}
-        <div className="mt-1 flex items-center justify-between gap-4 border-t border-border/70 pt-5 md:hidden">
-          <p className="max-w-[15rem] text-xs leading-relaxed text-muted-foreground">
-            {t.guideMobileCopy}
-          </p>
-          <Button
-            size="lg"
-            className="h-10 shrink-0 gap-1.5 rounded-full bg-black px-4 text-sm font-medium text-white shadow-none hover:bg-black/85 dark:bg-white dark:text-black dark:hover:bg-white/90"
-            onClick={() => onStart("restaurant")}
-            data-testid="button-guide-mobile-cta"
-          >
-            {t.guideCta}
-            <ArrowUpRight className="h-4 w-4" />
-          </Button>
+        <div className="relative mt-1 overflow-hidden rounded-[1.5rem] border border-border/70 bg-muted/25 p-4 md:hidden">
+          <motion.div
+            aria-hidden="true"
+            className="pointer-events-none absolute -right-12 -top-16 h-36 w-36 rounded-full bg-primary/10 blur-2xl"
+            animate={reduceMotion ? undefined : { x: [-8, 8, -8], y: [4, -8, 4], scale: [1, 1.12, 1] }}
+            transition={{ duration: 7, repeat: Infinity, ease: "easeInOut" }}
+          />
+          <div className="relative">
+            <div className="mb-4 flex items-center justify-between">
+              <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-primary">
+                {t.guideEyebrow}
+              </span>
+              <span className="text-[10px] font-medium tracking-[0.14em] text-muted-foreground/70">
+                01 — 03
+              </span>
+            </div>
+            <div className="mb-5 flex items-center gap-2" aria-hidden="true">
+              {steps.map((step, i) => {
+                const Icon = step.icon;
+                return (
+                  <motion.div
+                    key={`mobile-guide-step-${step.title}`}
+                    className="flex min-w-0 flex-1 items-center gap-2"
+                    initial={reduceMotion ? { opacity: 1 } : { opacity: 0, x: -8 }}
+                    whileInView={{ opacity: 1, x: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.35, delay: reduceMotion ? 0 : i * 0.12 }}
+                  >
+                    <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${i === 2 ? "bg-foreground text-background" : "bg-background text-primary shadow-sm"}`}>
+                      <Icon className="h-3.5 w-3.5" />
+                    </span>
+                    {i < steps.length - 1 && <span className="h-px min-w-2 flex-1 bg-border" />}
+                  </motion.div>
+                );
+              })}
+            </div>
+            <div className="flex items-end justify-between gap-4">
+              <p className="max-w-[15rem] text-xs leading-relaxed text-muted-foreground">
+                {t.guideMobileCopy}
+              </p>
+              <Button
+                size="lg"
+                className="h-10 shrink-0 gap-1.5 rounded-full bg-black px-4 text-sm font-medium text-white shadow-none hover:bg-black/85 dark:bg-white dark:text-black dark:hover:bg-white/90"
+                onClick={() => onStart("restaurant")}
+                data-testid="button-guide-mobile-cta"
+              >
+                {t.guideCta}
+                <ArrowUpRight className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
         </div>
       </div>
     </motion.div>
@@ -895,7 +933,7 @@ export default function Landing() {
     <div className="landing-page min-h-screen bg-white dark:bg-background text-foreground">
       {/* HEADER — floating pill */}
        <header className="fixed top-0 left-0 right-0 z-50 flex justify-center pt-8 px-4 pointer-events-none">
-         <div className={`landing-header-inner pointer-events-auto w-full max-w-6xl flex items-center gap-3 px-5 py-3 md:px-7 md:py-3.5 rounded-full border transition-all duration-300 ${
+           <div className={`landing-header-inner pointer-events-auto w-full max-w-6xl flex items-center gap-1.5 px-4 py-2.5 md:gap-3 md:px-7 md:py-3.5 rounded-full border transition-all duration-300 ${
           scrolled
             ? "bg-white/92 dark:bg-background/92 backdrop-blur-md border-black/[0.06] dark:border-white/10 shadow-lg shadow-black/[0.07]"
             : "bg-white/75 dark:bg-background/75 backdrop-blur-sm border-black/[0.04] dark:border-white/[0.08] shadow-sm"
@@ -912,7 +950,12 @@ export default function Landing() {
               className="flex items-center"
               data-testid="link-brand"
             >
-              <Logo size="nav" variant="dark" thick className="[&_img]:drop-shadow-[0_0_0.6px_rgba(0,0,0,0.55)] dark:[&_img]:drop-shadow-[0_0_0.6px_rgba(255,255,255,0.45)]" data-testid="logo-landing-nav" />
+               <span className="md:hidden">
+                 <Logo size="nav" variant="dark" thick showText={false} className="[&_img]:drop-shadow-[0_0_0.6px_rgba(0,0,0,0.55)] dark:[&_img]:drop-shadow-[0_0_0.6px_rgba(255,255,255,0.45)]" data-testid="logo-landing-nav-mobile" />
+               </span>
+               <span className="hidden md:inline-flex">
+                 <Logo size="nav" variant="dark" thick className="[&_img]:drop-shadow-[0_0_0.6px_rgba(0,0,0,0.55)] dark:[&_img]:drop-shadow-[0_0_0.6px_rgba(255,255,255,0.45)]" data-testid="logo-landing-nav" />
+               </span>
             </a>
           </div>
 
@@ -947,7 +990,7 @@ export default function Landing() {
             <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
               <SheetTrigger asChild>
                 <button
-                  className="lg:hidden inline-flex h-9 items-center gap-1.5 rounded-full border border-black/[0.08] bg-black/[0.04] px-3 text-xs font-semibold text-foreground backdrop-blur-sm dark:border-white/10 dark:bg-white/[0.06]"
+                   className="lg:hidden inline-flex h-9 items-center gap-1.5 rounded-full border border-black bg-black px-3 text-xs font-semibold text-white shadow-sm shadow-black/10 transition-colors hover:bg-black/85 dark:border-black dark:bg-black dark:text-white"
                   aria-label={t.navMenu}
                   data-testid="button-mobile-menu"
                 >
@@ -1024,18 +1067,29 @@ export default function Landing() {
         <div className="mx-auto max-w-5xl text-center flex flex-col justify-center gap-10 md:gap-14 min-h-[calc(100svh-5rem)]">
           {/* Headline + subtitle */}
           <div>
-            <HeadlineCta
-              href="/about"
-              pillText={t.heroDiscover}
-              testId="link-hero-headline"
-            >
-              <HeadlineReveal
-                key={`hero-${lang}`}
-                text={t.heroH1}
-                 className="mx-auto max-w-[21rem] text-[2.6rem] font-semibold leading-[.98] tracking-tight md:max-w-6xl md:text-8xl"
-                testId="text-hero-headline"
-              />
-            </HeadlineCta>
+            {isDesktop ? (
+              <HeadlineCta
+                href="/about"
+                pillText={t.heroDiscover}
+                testId="link-hero-headline"
+              >
+                <HeadlineReveal
+                  key={`hero-${lang}`}
+                  text={t.heroH1}
+                  className="mx-auto max-w-6xl text-[2.6rem] font-semibold leading-[.98] tracking-tight md:text-8xl"
+                  testId="text-hero-headline"
+                />
+              </HeadlineCta>
+            ) : (
+              <div data-testid="text-hero-headline-mobile">
+                <HeadlineReveal
+                  key={`hero-mobile-${lang}`}
+                  text={t.heroH1}
+                  className="mx-auto max-w-[20rem] text-[2.45rem] font-semibold leading-[.98] tracking-tight"
+                  testId="text-hero-headline"
+                />
+              </div>
+            )}
             <MotionReveal delay={400} y={16} blur={false}>
                <p className="mt-6 md:mt-8 text-base md:text-xl text-muted-foreground leading-relaxed max-w-2xl mx-auto">
                 {t.heroSub}
