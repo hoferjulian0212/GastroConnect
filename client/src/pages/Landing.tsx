@@ -877,7 +877,9 @@ function OrderingProcessCanvas({
         aria-hidden="true"
         tabIndex={-1}
         className="pointer-events-none absolute inset-0 z-0 h-full w-full object-cover object-top"
-        style={{ opacity: 0.001 }}
+        // Keep the decoder genuinely visible to mobile autoplay heuristics.
+        // The canvas above it still fully covers the native media surface.
+        style={{ opacity: 1 }}
       />
     </>
   );
