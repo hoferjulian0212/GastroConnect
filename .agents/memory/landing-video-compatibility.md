@@ -7,4 +7,4 @@ Landing-page phone recordings should use a browser-compatible H.264 MP4 plus a p
 
 **Why:** iPhone screen recordings commonly arrive as HEVC and include battery/recording indicators; HEVC is not reliably playable in desktop preview browsers and visible device chrome makes product demos look unfinished. Some mobile browsers can still block native video playback and display a play overlay even after normal autoplay safeguards.
 
-**How to apply:** Keep the source recording if needed, but crop the status-bar area and generate a cleaned web-safe derivative plus poster. Prefer the MP4 for normal video contexts; for an autoplay-only decorative phone demo that receives a native play overlay, export a lower-resolution animated WebP loop and render it as an image.
+**How to apply:** Keep the source recording if needed, but crop the status-bar area and generate a cleaned web-safe derivative plus poster. Prefer the MP4 for normal video contexts; for an autoplay-only decorative phone demo that receives a native play overlay, export a phone-sized, low-frame-rate animated WebP loop and render it as an image. Large animated WebPs can lag during decode.
