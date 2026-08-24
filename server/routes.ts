@@ -5823,6 +5823,24 @@ export async function registerRoutes(
       if (req.auth.org.role !== "restaurant") {
         return res.status(403).json({ error: "forbidden" });
       }
+      const order = await storage.getOrder(validated.orderId);
+      if (!order) {
+        return res.status(404).json({ error: "Order not found" });
+      }
+      if (
+        order.restaurantId !== req.auth.organizationId ||
+        order.supplierId !== validated.supplierId
+      ) {
+        return res.status(403).json({ error: "order_party_mismatch" });
+      }
+      const existingComplaint = await storage.getComplaintByOrderId(order.id);
+      if (existingComplaint) {
+        return res.status(409).json({
+          error: "complaint_already_exists",
+          message: "Für diese Bestellung existiert bereits eine Reklamation.",
+          complaintId: existingComplaint.id,
+        });
+      }
       const complaint = await storage.createComplaint(validated);
       
       await storage.addComplaintStatusHistory(complaint.id, null, "open", validated.restaurantId);

@@ -37,6 +37,8 @@ import {
   products,
   orders,
   orderItems,
+  complaints,
+  complaintStatusHistory,
   conversations,
   messages,
   platformAdmins,
@@ -651,6 +653,24 @@ describe("route authz: cross-org / wrong-role requests → 403", () => {
     );
     assert.equal(status, 403, "supplier must be rejected with 403 on POST /api/complaints");
   });
+
+  test("POST /api/complaints — restaurant cannot attach a complaint to another supplier's order", async () => {
+    const cookie = await seedSessionCookie(restaurantAdminId);
+    const { status, json } = await api(
+      "POST",
+      "/api/complaints",
+      {
+        supplierId: otherSupplierId,
+        orderId: confirmedOrderId,
+        title: "Mismatched order complaint",
+        description: "This must not be attached to an unrelated supplier.",
+        reason: "quality",
+      },
+      { cookie },
+    );
+    assert.equal(status, 403, "supplier/order mismatch must be rejected");
+    assert.deepEqual(json, { error: "order_party_mismatch" });
+  });
 });
 
 // ── 3. Correct member → 2xx ───────────────────────────────────────────────────
@@ -730,6 +750,32 @@ describe("route authz: correct member → 2xx", () => {
       sql`DELETE FROM order_status_history WHERE order_id = ${freshOrder.id}`,
     );
     await db.delete(orderItems).where(eq(orderItems.orderId, freshOrder.id));
+    await db.delete(orders).where(eq(orders.id, freshOrder.id));
+  });
+
+  test("POST /api/complaints — duplicate complaint for one order is rejected", async () => {
+    const cookie = await seedSessionCookie(restaurantAdminId);
+    const [freshOrder] = await db
+      .insert(orders)
+      .values({ restaurantId, supplierId, status: "delivered", totalAmount: "10.00" })
+      .returning();
+    const body = {
+      supplierId,
+      orderId: freshOrder.id,
+      title: "Duplicate complaint test",
+      description: "Only one complaint may be opened for this order.",
+      reason: "quality",
+    };
+    const first = await api("POST", "/api/complaints", body, { cookie });
+    assert.equal(first.status, 201, `first complaint must succeed: ${JSON.stringify(first.json)}`);
+    const second = await api("POST", "/api/complaints", body, { cookie });
+    assert.equal(second.status, 409, "second complaint for the same order must be rejected");
+    assert.equal((second.json as { error?: string }).error, "complaint_already_exists");
+
+    const complaintId = (first.json as { id: string }).id;
+    await db.delete(messages).where(eq(messages.orderId, freshOrder.id));
+    await db.delete(complaintStatusHistory).where(eq(complaintStatusHistory.complaintId, complaintId));
+    await db.delete(complaints).where(eq(complaints.id, complaintId));
     await db.delete(orders).where(eq(orders.id, freshOrder.id));
   });
 

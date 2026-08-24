@@ -178,3 +178,169 @@ they cannot be truthfully marked complete through application code alone:
   not prove external provider availability or data recoverability.
 - Production observability, backup policy, failover, and rollback require
   operations-level implementation and acceptance evidence.
+
+## End-to-end workflow audit
+
+This section records the current application workflow after reviewing the
+attached end-to-end specification, the shared status/permission definitions,
+the route handlers, and the role-specific pages. It intentionally preserves
+the existing business model and status names.
+
+### Complete workflow map
+
+- **Restaurant ordering:** authenticate → discover supplier/catalog → inspect
+  unit and price → add/change/remove cart items → choose delivery details →
+  submit checkout → receive a `pending` order number → monitor supplier
+  confirmation → monitor planned/in-delivery delivery → view delivered history
+  → optionally create a complaint.
+- **Supplier order processing:** receive order notification → inspect items,
+  customer, amount, and requested date → confirm all/part of the order (or
+  reject all) → optionally set/change the active delivery date → assign or
+  reassign a driver → driver starts the tour → driver completes delivery →
+  delivery note is available → order remains historical.
+- **Driver delivery:** assigned stop → driver marks en route (which transitions
+  the order to `in_delivery`) → driver can report an existing delivery problem
+  or complete the stop → completion transitions the order to `delivered`.
+- **Complaint handling:** restaurant creates one complaint linked to one of its
+  orders → supplier receives the complaint → supplier may start work, reject,
+  partially resolve, resolve, comment, or create a follow-up order where
+  supported → restaurant can comment, close with a note, or reopen terminal
+  complaints where the current UI supports it.
+- **Supporting workflows:** supplier catalog and pricing changes feed future
+  discovery/cart operations; delivery zones control supplier availability;
+  documents are attached to an order or complaint and are access-checked by
+  the related parties; team invitations establish organization and role;
+  admin routes are protected separately from business-member routes.
+
+### Current status maps
+
+- **Orders:** `pending`, `confirmed`, `partially_confirmed`, `scheduled`,
+  `in_delivery`, `delivered`, `cancelled`, `to_review`.
+- **Complaints:** `open`, `in_progress`, `resolved`, `closed`, `rejected`,
+  `partially_resolved`.
+- **Delivery assignments:** assignment lifecycle is separate from order
+  status; driver departure is the source of the order's `in_delivery` state.
+
+### Order action matrix
+
+| Order status | Restaurant actions | Supplier actions |
+| --- | --- | --- |
+| `pending` | View, edit, reorder, report problem, cancel, message, upload document | **Confirm** (full/partial/reject), set date, cancel, message, upload document |
+| `confirmed` / `partially_confirmed` | View, request change, reorder, report problem, cancel, message, documents | Set/change date, assign/reassign driver, cancel, message, documents |
+| `scheduled` | View, request change, reorder, report problem, cancel, message, documents | Change date, assign/reassign driver, message, documents |
+| `in_delivery` | View delivery tracking, request change, reorder, report problem, message, documents | Reassign driver where permitted, mark delivered through the existing UI path, message, documents |
+| `delivered` | View, reorder, report problem, rate supplier, message, documents | View, message, documents |
+| `cancelled` | View history, reorder, report problem, message, documents | View history, message, documents |
+| `to_review` | View, request change, reorder, report problem, cancel, message, documents | Assign/reassign driver, message, documents; review-specific existing route/UI handles the delivery exception |
+
+Actions that are irrelevant to a state are hidden. Actions that are relevant
+but waiting on a real prerequisite remain disabled only where the current
+workflow has an explicit prerequisite. Backend authorization and transition
+checks remain authoritative.
+
+### Complaint action matrix
+
+| Complaint status | Restaurant | Supplier |
+| --- | --- | --- |
+| `open` | Comment, close with required note, message | Start work, partially resolve, reject with reason, comment, proposal/follow-up where applicable |
+| `in_progress` | Comment, close with required note, message | Partially resolve, resolve, reject with reason, comment, proposal/follow-up |
+| `partially_resolved` | Comment, close/reopen according to current UI, message | Continue the existing resolution actions, comment |
+| `resolved` / `closed` | Reopen where supported, comment, message | View/comment; terminal resolution actions are unavailable |
+| `rejected` | View/comment/message according to current page | View/comment/message; no duplicate resolution transition |
+
+### Verified bugs corrected
+
+1. **Medium — impossible order-detail actions were displayed as disabled.**
+   Supplier confirmation, delivery completion, delivery-note creation,
+   cancellation, and restaurant edit/change actions were presented even when
+   the backend could not accept them. The detail page now hides irrelevant
+   actions and keeps only state-valid actions visible.
+2. **Medium — `to_review` driver assignment was omitted from the supplier
+   action UI.** The backend already accepted assignment in that state; the
+   detail page now exposes the existing assignment flow.
+3. **High — complaint creation trusted client-supplied order relationships.**
+   The server now verifies the authenticated restaurant owns the order and
+   that the submitted supplier is the order's supplier.
+4. **Medium — duplicate complaints could be created for one order.** The
+   server now returns a conflict with the existing complaint identifier rather
+   than creating a second workflow record.
+
+### Backend/state and cross-user evidence
+
+- Supplier confirmation is restricted to `pending`; partial confirmation
+  produces `confirmed`, `partially_confirmed`, or `cancelled` according to the
+  submitted quantities.
+- Driver assignment is restricted to the established confirmed/planned/
+  review states and assignment plans the delivery; departure, not a generic
+  status edit, creates `in_delivery`.
+- Delivery completion is restricted to the driver lifecycle and results in
+  `delivered`; terminal orders cannot be restarted through the detail actions.
+- Open change requests block conflicting order status transitions until the
+  request is answered.
+- Session-derived organization and role checks prevent restaurants from
+  confirming orders, suppliers from creating complaints, unrelated
+  organizations from changing orders, and direct-ID access across tenants.
+- Cache invalidation refreshes the order, history, list, action-required,
+  delivery, and counterparty views after mutations. Notifications and chat
+  cards carry the cross-user update for the existing workflow.
+
+### Edge-case and failure matrix
+
+| Scenario | Evidence/result |
+| --- | --- |
+| Wrong role / wrong organization | Automated 401/403 route tests pass; no data mutation |
+| Skipped order step | Generic status and driver routes reject driver-only delivery and invalid lifecycle entry points |
+| Repeated checkout | Durable idempotency key/fingerprint and transactional stock reservation prevent duplicates |
+| Repeated complaint | New regression test returns `409 complaint_already_exists` |
+| Concurrent order transition | Row lock and conflict error prevent stale transitions |
+| Stale detail page | Server re-reads state and rejects conflicting transition; client invalidates affected queries |
+| Browser refresh / navigation | State comes from server queries; checkout identity persists locally for safe retry |
+| Empty / loading / mutation failure | Existing pages provide skeleton, empty, disabled-pending, toast/error, and retry-safe mutation behavior |
+| Direct URL / missing object | Protected routes derive identity from the session; missing records return not-found responses |
+| Database/provider failure | Generic public errors, readiness checks, and checkout notification outbox preserve business state |
+
+### Dead code and duplicate-path decisions
+
+No component or endpoint was removed solely because its purpose was not
+obvious. The order detail and delivery pages intentionally share delivery-date
+and driver workflows, and both reach the same backend guards. Historical
+notification rows, order history, complaint history, and uploaded documents are
+retained for auditability. No clearly orphaned handler was found during this
+pass.
+
+### Manual tests still required
+
+These cannot be truthfully completed from the development workspace alone:
+
+1. Test the full restaurant → supplier → driver → restaurant journey with real
+   browser sessions and verify notification timing on production-like devices.
+2. Exercise offline/reconnect behavior, object storage failure, email/push
+   provider failure, ERP/PMS failure, and Clerk outage in a controlled
+   non-production environment.
+3. Run production-like concurrent checkout and delivery load/race tests.
+4. Verify backups, restore drills, deployment rollback, external monitoring,
+   alert routing, and operational ownership.
+
+### Ambiguous business rules requiring manual decision
+
+- Whether restaurants may create complaints for `pending`, `confirmed`, or
+  `cancelled` orders, since the current API supports order-linked complaints
+  without a status deadline and the specification does not establish one.
+- Whether a complaint should permit more than one complaint record per order
+  after a previous complaint is rejected or closed. The implementation now
+  enforces the existing one-complaint lookup contract; changing that policy
+  would be a business decision.
+- Whether `to_review` orders should expose a dedicated review action in the
+  supplier UI; the current implementation exposes the existing assignment and
+  exception paths without inventing a new action.
+
+## End-to-end audit validation
+
+| Check | Result |
+| --- | --- |
+| `npm run check` | passed |
+| `node --import tsx --test server/*.test.ts` | passed: 185 tests |
+| `npx vitest run` | passed: 18 tests |
+| `git diff --check` | passed |
+| `Start application` workflow restart | serving on port 5000 |
+| Runtime logs | clean startup; no application crash |

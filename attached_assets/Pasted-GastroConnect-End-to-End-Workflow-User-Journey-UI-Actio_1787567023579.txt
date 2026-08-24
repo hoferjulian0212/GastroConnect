@@ -1,0 +1,1977 @@
+GastroConnect – End-to-End Workflow, User Journey, UI Action & State-Flow Audit
+
+OBJECTIVE
+
+Perform a complete end-to-end workflow audit of the existing GastroConnect application.
+
+This audit is specifically about:
+
+* user journeys
+* workflow clarity
+* state-dependent actions
+* button visibility
+* button availability
+* redundant actions
+* conflicting actions
+* dead buttons
+* dead code
+* impossible actions
+* skipped workflow steps
+* incorrect transitions
+* inconsistent terminology
+* inconsistent behavior between pages
+* unclear responsibility between Restaurant and Supplier users
+* unclear responsibility between different Supplier users
+* unclear responsibility between Admin and normal users
+* complaints and issue handling
+* order processing
+* delivery processing
+* product management
+* pricing
+* supplier/restaurant interactions
+* documents
+* invitations
+* all other existing GastroConnect features
+
+The goal is NOT to redesign GastroConnect.
+
+The existing:
+
+* business logic
+* order statuses
+* complaint statuses
+* roles
+* workflows
+* terminology
+* database model
+* core functionality
+
+must remain the source of truth.
+
+First understand what the application currently does.
+
+Then identify inconsistencies and bugs.
+
+Then correct the implementation so that the EXISTING intended workflow is clear, deterministic and difficult to misuse.
+
+⸻
+
+1. CRITICAL RULE: DO NOT INVENT A NEW WORKFLOW
+
+Before changing anything:
+
+Inspect the existing codebase and determine:
+
+* all entities
+* all statuses
+* all roles
+* all transitions
+* all buttons
+* all actions
+* all API endpoints
+* all state-changing operations
+* all pages
+* all modals
+* all forms
+* all workflows
+
+Do NOT invent new statuses.
+
+Do NOT rename statuses.
+
+Do NOT invent new business processes.
+
+Do NOT remove functionality merely because it is not obvious.
+
+First determine what the existing application intends to do.
+
+If two parts of the application contradict each other, identify the contradiction and resolve it in favor of the established/current business logic.
+
+If something is genuinely ambiguous, document it instead of inventing a business rule.
+
+⸻
+
+2. CORE PRINCIPLE
+
+A user should always know:
+
+1. What is the current state?
+2. What am I responsible for?
+3. What is the next action?
+4. What happens if I click it?
+5. What does the other party need to do afterward?
+6. What actions are currently unavailable?
+7. Why are they unavailable?
+8. When do they become available?
+
+The interface should guide the user through the workflow.
+
+Do NOT present users with 10 buttons when only 1 meaningful action is appropriate.
+
+⸻
+
+3. STATE = AVAILABLE ACTIONS
+
+Every entity with a workflow/status must have a deterministic action matrix.
+
+For every status:
+
+* determine what actions are allowed
+* determine who can perform them
+* determine what actions are forbidden
+* determine what actions should be hidden
+* determine what actions should be disabled
+* determine what happens after the action
+* determine what the other user sees afterward
+
+Do not rely only on frontend visibility.
+
+Backend must enforce the same rules.
+
+⸻
+
+4. HIDDEN VS DISABLED ACTIONS
+
+Use a consistent rule.
+
+If an action is completely irrelevant to the current state:
+
+Hide it.
+
+Example:
+
+An order has not yet been accepted.
+
+Do not show unrelated delivery-completion controls.
+
+If an action is conceptually relevant but currently unavailable because of a missing prerequisite:
+
+Disable it and explain why, if useful.
+
+Example:
+
+Assign Driver
+
+disabled because:
+
+Order must first be accepted.
+
+Do not show confusing combinations of active buttons that allow users to skip the intended workflow.
+
+⸻
+
+5. ORDER FLOW AUDIT
+
+Audit the COMPLETE order lifecycle from:
+
+Restaurant discovers product
+        ↓
+Restaurant selects product
+        ↓
+Restaurant adds product
+        ↓
+Restaurant creates cart
+        ↓
+Restaurant submits order
+        ↓
+Supplier receives order
+        ↓
+Supplier processes order
+        ↓
+Supplier prepares delivery
+        ↓
+Driver/delivery process
+        ↓
+Delivery
+        ↓
+Order completion
+        ↓
+Historical order
+
+Use the EXISTING statuses in the application.
+
+Do not replace them.
+
+⸻
+
+6. RESTAURANT – ORDER CREATION
+
+Simulate a real restaurant chef.
+
+Scenario:
+
+Chef opens GastroConnect.
+
+Chef wants to order tomatoes.
+
+Check:
+
+* Can chef easily find supplier?
+* Can chef find product?
+* Is price clear?
+* Is unit clear?
+* Is quantity clear?
+* Is delivery information clear?
+* Can chef understand whether supplier delivers to restaurant?
+* Is there unnecessary information?
+* Are irrelevant buttons visible?
+* Can chef accidentally perform actions that should belong to supplier?
+
+⸻
+
+7. RESTAURANT CART
+
+Test:
+
+Scenario A
+
+Chef adds one product.
+
+What does the UI show?
+
+Scenario B
+
+Chef adds multiple products.
+
+Scenario C
+
+Chef changes quantity.
+
+Scenario D
+
+Chef removes product.
+
+Scenario E
+
+Chef empties cart.
+
+Scenario F
+
+Chef leaves page and comes back.
+
+Scenario G
+
+Chef refreshes browser.
+
+Scenario H
+
+Chef has unavailable product in cart.
+
+Scenario I
+
+Price changes while product is in cart.
+
+For each:
+
+Determine the correct current workflow.
+
+Do not create additional statuses unless they already exist.
+
+⸻
+
+8. RESTAURANT SUBMITS ORDER
+
+After clicking the final order button:
+
+The user should clearly understand:
+
+The order has been submitted and is now waiting for the supplier.
+
+Check:
+
+* confirmation
+* status
+* next expected actor
+* order number
+* relevant delivery information
+* no duplicate buttons
+* no confusing actions
+
+After successful submission, remove/hide actions that are no longer relevant.
+
+⸻
+
+9. SUPPLIER RECEIVES NEW ORDER
+
+Simulate the supplier user receiving an order.
+
+The supplier should immediately understand:
+
+* new order exists
+* what was ordered
+* who ordered it
+* quantity
+* price
+* delivery information
+* current status
+* what they are supposed to do next
+
+There should be a clear primary action.
+
+⸻
+
+10. SUPPLIER NEW-ORDER BUTTON AUDIT
+
+This is especially important.
+
+Example current behavior:
+
+Inside order details the supplier may see:
+
+* Confirm Order
+* Set Delivery Date
+* Assign Driver
+* other actions
+
+Determine whether this is logically correct.
+
+The user must NOT have to wonder:
+
+“Should I set the delivery date first?”
+
+“Should I assign the driver first?”
+
+“Do I confirm first?”
+
+“Can I assign a driver before accepting?”
+
+“What happens if I set the delivery date but don’t confirm?”
+
+Audit all such combinations.
+
+⸻
+
+11. ORDER ACTION PRIORITY
+
+For every order state determine:
+
+PRIMARY ACTION
+
+The ONE action the user should normally perform next.
+
+SECONDARY ACTIONS
+
+Actions that are genuinely relevant but not the primary workflow.
+
+INFORMATION
+
+Things the user can view but should not modify.
+
+FORBIDDEN ACTIONS
+
+Things that should not be available.
+
+Avoid multiple equally prominent buttons when the workflow is sequential.
+
+⸻
+
+12. EXAMPLE: SUPPLIER ORDER CONFIRMATION
+
+If the existing intended workflow is:
+
+New Order
+    ↓
+Confirm
+    ↓
+Set delivery details
+    ↓
+Assign driver
+    ↓
+Deliver
+
+then the UI should reflect exactly that order.
+
+Do NOT allow the user to casually perform step 4 while step 1 is incomplete if the business logic does not permit it.
+
+However:
+
+IMPORTANT:
+
+Do not assume this is the correct existing workflow.
+
+Inspect the actual application logic first.
+
+If the existing intended workflow allows delivery date and driver assignment in parallel or before confirmation, preserve that behavior and only improve clarity.
+
+⸻
+
+13. SUPPLIER CONFIRMS ORDER
+
+When supplier confirms:
+
+Check:
+
+* exact status transition
+* restaurant notification
+* supplier UI after confirmation
+* available next action
+* unavailable old actions
+* timestamps
+* order history
+
+After confirmation:
+
+The Confirm action must no longer be available.
+
+Do not allow:
+
+Confirm → Confirm → Confirm
+
+⸻
+
+14. SUPPLIER REJECTS ORDER
+
+Audit:
+
+* rejection button
+* rejection reason
+* status transition
+* restaurant notification
+* supplier UI afterward
+* available actions afterward
+
+After rejection:
+
+Actions that only apply to active orders should disappear.
+
+Test:
+
+* rejected → confirm
+* rejected → assign driver
+* rejected → set delivery date
+
+These should follow the existing business rules and be enforced consistently.
+
+⸻
+
+15. DELIVERY DATE
+
+Audit every place where delivery date can be set.
+
+Determine:
+
+* who can set it
+* when
+* whether it is mandatory
+* whether it can be changed
+* who sees it
+* whether restaurant can change it
+* whether supplier can change it
+* what happens if date is removed
+* what happens if date is in the past
+* what happens if date is changed after driver assignment
+* what happens if date is changed after dispatch
+* whether historical changes are recorded
+
+Most importantly:
+
+There must be ONE understandable workflow.
+
+Avoid multiple different ways to set the same value unless both are intentional.
+
+⸻
+
+16. DRIVER ASSIGNMENT
+
+Audit:
+
+* who can assign driver
+* when assignment becomes available
+* whether order must first reach another status
+* whether driver can be changed
+* whether driver can be removed
+* what happens if assigned driver becomes unavailable
+* what restaurant sees
+* what supplier sees
+* whether assignment is mandatory before dispatch
+
+If driver assignment is not relevant at a particular status:
+
+Hide it.
+
+If relevant but blocked by a prerequisite:
+
+Disable it with a clear reason.
+
+⸻
+
+17. DELIVERY DATE + DRIVER COMBINATION
+
+Test every realistic combination:
+
+Case 1
+
+Order confirmed.
+
+No delivery date.
+
+No driver.
+
+Case 2
+
+Order confirmed.
+
+Delivery date set.
+
+No driver.
+
+Case 3
+
+Order confirmed.
+
+Driver assigned.
+
+No delivery date.
+
+Case 4
+
+Order confirmed.
+
+Delivery date + driver.
+
+Case 5
+
+Delivery date changed after driver assignment.
+
+Case 6
+
+Driver changed after delivery date.
+
+Case 7
+
+Order dispatched.
+
+Try changing delivery date.
+
+Case 8
+
+Order delivered.
+
+Try changing driver.
+
+Case 9
+
+Order completed.
+
+Try changing delivery details.
+
+For every combination:
+
+Determine what the current application intends.
+
+Fix contradictions.
+
+⸻
+
+18. DELIVERY PROCESS
+
+Simulate the real supplier workflow.
+
+Ask at every step:
+
+What does the supplier see?
+
+What does the restaurant see?
+
+What is the next action?
+
+Which buttons disappear?
+
+Which buttons appear?
+
+Which actions are impossible?
+
+⸻
+
+19. DRIVER / DELIVERY SCENARIOS
+
+Test:
+
+Driver assigned
+
+Then:
+
+* driver completes delivery
+* driver unavailable
+* driver changed
+* delivery delayed
+* delivery date changed
+* order cancelled if applicable
+* restaurant not available
+* delivery fails
+
+Do not invent new business rules.
+
+Check how current system handles these scenarios.
+
+If functionality exists but UI permits impossible states, fix it.
+
+⸻
+
+20. DELIVERY COMPLETION
+
+After delivery/completion:
+
+Audit:
+
+* final status
+* restaurant view
+* supplier view
+* historical record
+* documents
+* timestamps
+* remaining buttons
+
+There should be no accidental way to restart the order workflow.
+
+Example:
+
+Completed order should not suddenly show:
+
+Confirm Order
+
+again.
+
+⸻
+
+21. ORDER HISTORY
+
+Open an old order.
+
+Check:
+
+* status
+* products
+* quantities
+* prices
+* supplier
+* restaurant
+* delivery information
+* documents
+* history
+
+No current workflow buttons should accidentally appear simply because the order is being viewed.
+
+⸻
+
+22. ORDER DETAIL PAGE ACTION AUDIT
+
+For EVERY order status, create a complete action inventory.
+
+For each button/action:
+
+* name
+* role
+* status
+* visible?
+* enabled?
+* disabled?
+* reason
+* resulting status
+* resulting data changes
+* resulting user notification
+
+Remove:
+
+* dead buttons
+* duplicate actions
+* actions that do nothing
+* actions that lead nowhere
+* actions that are impossible
+* actions that duplicate another UI path
+* actions that contradict the state machine
+
+⸻
+
+23. ORDER STATUS ACTION MATRIX
+
+Create an internal matrix such as:
+
+Status	Restaurant	Supplier	Admin
+Existing Status A	allowed actions	allowed actions	allowed actions
+Existing Status B	allowed actions	allowed actions	allowed actions
+Existing Status C	allowed actions	allowed actions	allowed actions
+
+IMPORTANT:
+
+Populate this using the actual current statuses discovered in the codebase.
+
+Do not invent statuses.
+
+⸻
+
+24. COMPLAINT WORKFLOW AUDIT
+
+Perform the same end-to-end audit for complaints.
+
+Start from:
+
+Restaurant notices problem.
+
+Examples:
+
+* wrong product
+* missing product
+* damaged product
+* incorrect quantity
+* late delivery
+* delivery problem
+* price issue
+* other existing complaint categories
+
+Follow the entire existing workflow.
+
+⸻
+
+25. COMPLAINT CREATION
+
+Restaurant creates complaint.
+
+Check:
+
+* who can create it
+* what order it must reference
+* what information is required
+* whether complaint can be created for unrelated order
+* whether duplicate complaints can be created accidentally
+* whether complaint can be created after order completion
+* whether complaint has deadline rules if currently implemented
+
+Do not invent new rules.
+
+⸻
+
+26. COMPLAINT ACCESS
+
+Restaurant must see:
+
+* own complaints
+
+Supplier must see:
+
+* complaints relevant to its orders
+
+Admin:
+
+* according to existing permissions
+
+Test direct ID manipulation.
+
+⸻
+
+27. COMPLAINT STATUS FLOW
+
+Discover the actual complaint statuses.
+
+For each status:
+
+Determine:
+
+* who owns the next action
+* what the primary action is
+* what buttons are visible
+* what buttons should disappear
+* what transitions are allowed
+* what happens to the other user’s UI
+
+Do not create new statuses.
+
+⸻
+
+28. COMPLAINT RESPONSE
+
+Supplier receives complaint.
+
+The UI should clearly answer:
+
+“What do I need to do now?”
+
+If supplier has multiple actions:
+
+Determine whether they are actually parallel or whether one should happen first.
+
+Avoid ambiguous workflow.
+
+⸻
+
+29. COMPLAINT RESOLUTION
+
+Follow:
+
+Restaurant → Supplier → Restaurant
+
+through the existing complaint workflow.
+
+Check:
+
+* response
+* evidence/documents
+* resolution
+* acceptance/rejection
+* final state
+
+Every action must have a clear next actor.
+
+⸻
+
+30. COMPLAINT EDGE CASES
+
+Test:
+
+* duplicate complaint
+* complaint on cancelled order
+* complaint on rejected order
+* complaint on delivered order
+* complaint after long delay
+* supplier responds
+* restaurant responds
+* restaurant does not respond
+* supplier does not respond
+* complaint resolved
+* resolved complaint reopened if currently supported
+* complaint status changed by wrong role
+* complaint ID manipulated
+* order deleted/archived
+* product referenced by complaint later deleted
+
+Do not invent behavior where the product currently has no rule.
+
+Instead document ambiguous cases.
+
+⸻
+
+31. COMPLAINT BUTTON AUDIT
+
+For every complaint status:
+
+Identify:
+
+* primary action
+* secondary action
+* irrelevant actions
+* forbidden actions
+
+Remove/hide confusing actions.
+
+⸻
+
+32. PRODUCT MANAGEMENT WORKFLOW
+
+Audit supplier product lifecycle:
+
+Create product
+→ configure product
+→ set price
+→ make available
+→ restaurant discovers product
+→ product ordered
+→ product changes
+→ product becomes unavailable
+
+Use current application states.
+
+Check:
+
+* what supplier does next
+* what restaurant sees
+* which buttons appear/disappear
+* whether inactive products can still be ordered
+* whether historical orders remain intact
+
+⸻
+
+33. PRICE MANAGEMENT WORKFLOW
+
+Audit:
+
+* standard price
+* restaurant-specific price
+* editing
+* deletion
+* activation/deactivation
+* price change while product is in cart
+* price change while order is being submitted
+
+The UI should clearly communicate what action is being performed.
+
+⸻
+
+34. DELIVERY ZONE WORKFLOW
+
+Audit supplier delivery configuration.
+
+Scenarios:
+
+* add ZIP
+* remove ZIP
+* duplicate ZIP
+* invalid ZIP
+* restaurant already has active order
+* restaurant has cart
+* supplier removes delivery zone
+* supplier re-adds delivery zone
+
+Check which existing orders are affected and which should not be.
+
+⸻
+
+35. SUPPLIER PROFILE WORKFLOW
+
+Audit:
+
+* initial setup
+* editing
+* activation
+* deactivation
+* missing required information
+* incomplete profile
+
+Determine which features should remain unavailable until required setup is complete.
+
+Do not expose actions that are guaranteed to fail because required setup is missing.
+
+⸻
+
+36. RESTAURANT PROFILE WORKFLOW
+
+Same audit.
+
+Check:
+
+* address
+* postal code
+* organization
+* users
+* supplier discovery
+* ordering
+
+If a required field is missing:
+
+The application should clearly tell the user what must be completed.
+
+⸻
+
+37. INVITATION WORKFLOW
+
+Audit:
+
+Admin/authorized user:
+
+→ invite user
+
+→ user receives invitation
+
+→ user accepts
+
+→ account activated
+
+→ correct organization assigned
+
+→ correct role assigned
+
+Check every step.
+
+Remove actions that allow invitation workflow to be bypassed.
+
+⸻
+
+38. DOCUMENT WORKFLOW
+
+Audit:
+
+* upload
+* view
+* download
+* replace
+* delete
+* access control
+* document associated with order/complaint/etc.
+
+At every stage determine who can act.
+
+⸻
+
+39. ADMIN WORKFLOW
+
+Audit every Admin page.
+
+Admin should not see random actions that:
+
+* do nothing
+* duplicate another action
+* cause undefined states
+* bypass normal workflow without explicit purpose
+
+If Admin has an override capability, make it visually and logically distinct.
+
+⸻
+
+40. NAVIGATION AUDIT
+
+For every page:
+
+Ask:
+
+Why is this page accessible from here?
+
+Can the user get stuck?
+
+Can the user enter an invalid workflow state through navigation?
+
+Does the browser back button create confusion?
+
+Does a direct URL bypass workflow?
+
+Are stale pages showing obsolete actions?
+
+⸻
+
+41. MODAL AUDIT
+
+For every modal:
+
+Check:
+
+* primary action
+* cancel action
+* close button
+* validation
+* loading
+* error
+* duplicate submission
+* escape key
+* clicking outside
+* refresh
+
+A modal must not allow the user to accidentally perform an action twice.
+
+⸻
+
+42. BUTTON AUDIT
+
+Search the ENTIRE codebase for buttons/actions.
+
+For each:
+
+* Does it do anything?
+* Does it call a real handler?
+* Does the handler work?
+* Is it appropriate for the current role?
+* Is it appropriate for the current status?
+* Does it create a duplicate path?
+* Is it still needed?
+* Does it lead to a dead page?
+* Does it produce an impossible state?
+
+Remove dead code/buttons where clearly safe.
+
+Do NOT remove legitimate functionality simply because it is not immediately obvious.
+
+⸻
+
+43. DEAD CODE AUDIT
+
+Find:
+
+* unused components
+* unused handlers
+* obsolete status logic
+* unreachable conditions
+* old workflow code
+* duplicate API calls
+* duplicate components
+* unused state variables
+* abandoned features
+* commented-out obsolete code
+
+Do not aggressively delete uncertain code.
+
+First determine whether it is actually unused.
+
+⸻
+
+44. DUPLICATE WORKFLOW PATHS
+
+Example:
+
+A delivery date can be changed:
+
+* from order details
+* from delivery page
+* from another modal
+
+Determine whether all are intentional.
+
+If multiple paths perform the same action:
+
+They must behave consistently.
+
+Do not allow one path to enforce rules while another bypasses them.
+
+⸻
+
+45. CROSS-USER SYNCHRONIZATION
+
+For every important action:
+
+Ask:
+
+What does the other user see immediately afterward?
+
+Example:
+
+Restaurant submits order.
+
+Supplier:
+
+* receives order
+* sees correct status
+
+Restaurant:
+
+* sees submitted state
+
+Supplier confirms.
+
+Restaurant:
+
+* sees confirmed state
+
+Every state transition must propagate correctly.
+
+⸻
+
+46. USER A VS USER B TESTING
+
+Create two test accounts:
+
+Restaurant
+
+Restaurant A
+
+Supplier
+
+Supplier A
+
+Perform the complete workflow.
+
+At every action record:
+
+USER A ACTION
+↓
+BACKEND RESULT
+↓
+STATUS
+↓
+USER A UI
+↓
+USER B UI
+↓
+NEXT AVAILABLE ACTION
+
+Repeat for all major workflows.
+
+⸻
+
+47. THREE-USER TESTING
+
+Where applicable:
+
+* Restaurant user
+* Supplier user
+* Admin
+
+Test what each sees after every important action.
+
+⸻
+
+48. WRONG-USER SCENARIOS
+
+At every step ask:
+
+What if the wrong role attempts this?
+
+Examples:
+
+Restaurant tries supplier confirmation.
+
+Supplier tries restaurant complaint creation.
+
+Restaurant tries driver assignment.
+
+Supplier tries another supplier’s order.
+
+Expected:
+
+* action unavailable
+* backend rejects manipulation
+* no data changes
+
+⸻
+
+49. SKIPPED-STEP TESTING
+
+For every sequential workflow:
+
+Try skipping each step.
+
+Example:
+
+If intended workflow is:
+
+A → B → C → D
+
+attempt:
+
+A → C
+
+A → D
+
+B → D
+
+and direct API calls to C/D.
+
+If skipping is not allowed:
+
+* frontend must not expose it
+* backend must reject it
+
+⸻
+
+50. BACKWARD-STEP TESTING
+
+Attempt:
+
+C → B
+
+D → A
+
+etc.
+
+Determine whether backward transitions are allowed by the existing business logic.
+
+If not:
+
+* hide/disable UI
+* reject backend call
+
+⸻
+
+51. REPEATED-ACTION TESTING
+
+Every action should be tested twice.
+
+Examples:
+
+* confirm twice
+* reject twice
+* assign driver twice
+* set delivery date twice
+* submit complaint twice
+* resolve complaint twice
+* upload twice
+* delete twice
+
+Determine correct behavior.
+
+⸻
+
+52. PAGE-RELOAD TESTING
+
+After every important state transition:
+
+1. Perform action.
+2. Reload.
+3. Navigate away.
+4. Return.
+5. Verify state.
+6. Verify available buttons.
+
+The page must not revert to a previous state because frontend state was not persisted.
+
+⸻
+
+53. DIRECT-URL TESTING
+
+For every workflow page:
+
+Open the page directly.
+
+Check:
+
+* authorization
+* state validation
+* unavailable actions
+* missing object
+* deleted object
+* archived object
+
+⸻
+
+54. STALE PAGE TESTING
+
+User keeps order page open for 30 minutes.
+
+Another user changes order.
+
+Original user clicks an old button.
+
+Backend must protect against stale state.
+
+UI should refresh/reconcile where appropriate.
+
+⸻
+
+55. ERROR RECOVERY WORKFLOW
+
+For every action that fails:
+
+Determine:
+
+* Does the user know it failed?
+* Does the user know whether the operation was committed?
+* Can they safely retry?
+* Does retry duplicate anything?
+* Does UI recover?
+* Can they continue?
+
+⸻
+
+56. EMPTY STATE WORKFLOW
+
+Test each page with:
+
+* no data
+* one item
+* many items
+* deleted last item
+
+The user should always know what to do next.
+
+⸻
+
+57. LOADING STATE WORKFLOW
+
+During every async operation:
+
+* prevent duplicate actions
+* show progress where appropriate
+* prevent conflicting actions
+* restore UI after success/failure
+
+⸻
+
+58. CONSISTENT TERMINOLOGY
+
+Audit every user-facing term.
+
+The same concept must not be called:
+
+* Confirm
+* Accept
+* Approve
+
+in different places unless they intentionally mean different things.
+
+Likewise:
+
+* Delivery date
+* Lieferdatum
+* Delivery day
+
+should be consistent according to the product’s language/design.
+
+Do not rename existing business concepts arbitrarily.
+
+Identify inconsistencies and correct them.
+
+⸻
+
+59. STATUS LABEL CONSISTENCY
+
+The same status must:
+
+* have the same meaning
+* have the same label
+* have consistent visual treatment
+* trigger the same available actions
+
+across:
+
+* list
+* detail page
+* notifications
+* dashboard
+* history
+
+⸻
+
+60. PRIMARY ACTION DESIGN
+
+For every workflow page, identify ONE primary next action.
+
+Example:
+
+NEW ORDER
+Primary:
+[Confirm Order]
+Secondary:
+[View details]
+Not shown:
+Assign Driver
+Set Delivery Date
+Complete Delivery
+
+This is only an EXAMPLE.
+
+Use the actual existing GastroConnect workflow discovered in the code.
+
+⸻
+
+61. STATE-DEPENDENT UI
+
+The UI must be derived from the actual entity state and user permissions.
+
+Avoid:
+
+if page == supplier:
+show all buttons
+
+Prefer:
+
+if role allows action
+AND current status allows action
+AND prerequisites satisfied
+→ show action
+
+Backend must enforce the same condition.
+
+⸻
+
+62. PREREQUISITES
+
+For every action identify prerequisites.
+
+Example:
+
+Assign Driver
+
+Possible prerequisites may include:
+
+* correct role
+* correct organization
+* correct order status
+* delivery information available
+* valid driver
+
+Again, use actual existing business rules.
+
+Do not invent new requirements.
+
+⸻
+
+63. ACTION DEPENDENCY GRAPH
+
+For every workflow create a logical dependency graph.
+
+Example structure:
+
+Action A
+   ↓
+Action B
+   ↓
+Action C
+
+or:
+
+Action A
+    ├── Action B
+    └── Action C
+
+Determine which actions are sequential and which are independent.
+
+The UI must reflect this.
+
+⸻
+
+64. NO ORPHANED ACTIONS
+
+Every visible button must have:
+
+* a valid purpose
+* valid handler
+* valid backend endpoint
+* valid state transition
+* valid success behavior
+* valid error behavior
+
+If it doesn’t:
+
+Fix or remove it.
+
+⸻
+
+65. NO IMPOSSIBLE STATES
+
+Search the code for combinations that should never occur.
+
+Examples:
+
+* completed order + active confirmation button
+* rejected order + delivery assignment
+* inactive supplier + new order acceptance
+* unauthorized user + admin action
+* deleted product + active new order
+* resolved complaint + unresolved action buttons
+
+Do not assume these combinations cannot occur just because the UI normally prevents them.
+
+Backend and database should protect against them.
+
+⸻
+
+66. END-TO-END RESTAURANT JOURNEY
+
+Perform this as a real user:
+
+1. Login.
+2. Find supplier.
+3. Find product.
+4. Check price.
+5. Add product.
+6. Change quantity.
+7. Submit order.
+8. Verify confirmation.
+9. Wait for supplier response.
+10. Verify status.
+11. Verify delivery information.
+12. Verify delivery.
+13. Open completed order.
+14. Create complaint if appropriate.
+15. Follow complaint to resolution.
+16. Return to historical order.
+
+At every step record:
+
+* what user sees
+* what user should do
+* what buttons are available
+* what buttons should not be available
+* what happens to supplier UI
+* what happens to status
+* what happens if action fails
+
+⸻
+
+67. END-TO-END SUPPLIER JOURNEY
+
+Perform:
+
+1. Login.
+2. See incoming order.
+3. Open order.
+4. Understand next action.
+5. Perform action.
+6. Verify state.
+7. Set only relevant delivery information at the appropriate point.
+8. Assign driver only when appropriate.
+9. Process delivery.
+10. Complete order.
+11. Receive complaint if applicable.
+12. Respond to complaint.
+13. Resolve complaint.
+14. Return to order history.
+
+At every step:
+
+Audit buttons and responsibilities.
+
+⸻
+
+68. END-TO-END COMPLAINT JOURNEY
+
+Perform:
+
+Restaurant:
+
+→ notices problem
+
+→ creates complaint
+
+→ supplier receives complaint
+
+→ supplier responds
+
+→ restaurant receives response
+
+→ complaint continues through existing workflow
+
+→ resolution
+
+→ final state
+
+At every transition:
+
+* correct user
+* correct status
+* correct buttons
+* correct notifications
+* correct next action
+
+⸻
+
+69. END-TO-END FAILURE JOURNEYS
+
+Repeat the complete workflows with:
+
+* internet loss
+* browser refresh
+* duplicate click
+* backend failure
+* database failure
+* stale page
+* user permission change
+* external API failure
+
+Verify the workflow does not become corrupted.
+
+⸻
+
+70. FINAL ACTION MATRIX
+
+Generate an internal matrix for EVERY major entity.
+
+For example:
+
+ENTITY: ORDER
+STATUS: [actual status discovered]
+RESTAURANT:
+- Action X → allowed
+- Action Y → hidden
+- Action Z → disabled because prerequisite missing
+SUPPLIER:
+- Action A → primary
+- Action B → hidden
+- Action C → disabled
+ADMIN:
+- Action D → allowed
+
+Repeat for:
+
+* orders
+* complaints
+* products
+* price lists
+* delivery zones
+* documents
+* invitations
+* users
+* organizations
+* every other workflow-enabled entity discovered
+
+⸻
+
+71. FINAL BUG AUDIT
+
+Identify and correct:
+
+* contradictory buttons
+* duplicate actions
+* dead buttons
+* dead handlers
+* dead pages
+* incorrect status conditions
+* missing status conditions
+* wrong-role actions
+* skipped workflows
+* impossible transitions
+* inconsistent terminology
+* inconsistent labels
+* stale UI
+* duplicate workflow paths
+* actions that should be hidden
+* actions that should be disabled
+* missing backend enforcement
+* missing error states
+* missing loading states
+* missing empty states
+* incorrect notifications
+* incorrect cross-user updates
+* stale cached state
+* incorrect redirect behavior
+* incorrect browser back behavior
+* direct URL bypasses
+
+⸻
+
+72. IMPORTANT: DO NOT CHANGE BUSINESS LOGIC UNNECESSARILY
+
+The purpose of this audit is NOT:
+
+“Make the workflow different.”
+
+The purpose is:
+
+“Make the existing workflow internally consistent, deterministic and easy to follow.”
+
+Keep:
+
+* existing statuses
+* existing intended transitions
+* existing business rules
+* existing data model
+* existing functionality
+
+unless the code contains a clear contradiction/bug.
+
+If you discover a genuine ambiguity that cannot be resolved from the existing application:
+
+DO NOT invent a new rule.
+
+Report:
+
+AMBIGUOUS BUSINESS RULE – MANUAL DECISION REQUIRED
+
+⸻
+
+73. TEST MATRIX
+
+For every major workflow, test:
+
+Happy path
+
+User does everything correctly.
+
+Wrong action
+
+User clicks an action that should not be available.
+
+Skipped action
+
+User attempts to skip a required existing step.
+
+Repeated action
+
+User performs same action twice.
+
+Wrong role
+
+Wrong user attempts action.
+
+Wrong organization
+
+User manipulates another organization’s ID.
+
+Stale state
+
+User acts on outdated page.
+
+Concurrent action
+
+Two users act simultaneously.
+
+Refresh
+
+Browser reloads.
+
+Navigation
+
+User leaves and returns.
+
+Network failure
+
+Connection disappears.
+
+Backend failure
+
+Server fails.
+
+Database failure
+
+Database fails.
+
+External service failure
+
+External API fails.
+
+Recovery
+
+Service returns.
+
+⸻
+
+74. FINAL ACCEPTANCE CRITERIA
+
+GastroConnect should satisfy:
+
+USER CLARITY
+
+At every step the user knows:
+
+“What do I need to do now?”
+
+RESPONSIBILITY
+
+At every step it is clear:
+
+“Is this my responsibility or the other user’s?”
+
+ACTION CLARITY
+
+There is no unnecessary collection of buttons.
+
+STATE CLARITY
+
+Current status is obvious.
+
+ACTION SAFETY
+
+Users cannot accidentally perform actions that contradict the workflow.
+
+BACKEND SAFETY
+
+Frontend restrictions cannot be bypassed by direct API calls.
+
+CROSS-USER CONSISTENCY
+
+When User A changes something, User B sees the correct resulting state.
+
+ERROR RECOVERY
+
+Failures do not corrupt workflows.
+
+HISTORICAL INTEGRITY
+
+Completed records remain correct.
+
+NO DEAD UI
+
+Visible buttons actually work and are relevant.
+
+NO DEAD CODE
+
+Clearly obsolete workflow code is removed safely.
+
+⸻
+
+75. REQUIRED FINAL REPORT
+
+After completing the audit, produce:
+
+1. COMPLETE WORKFLOW MAP
+
+For every major feature.
+
+2. CURRENT STATUS MAP
+
+All actual statuses discovered.
+
+3. ACTION MATRIX
+
+Role × status × available action.
+
+4. BUGS FOUND
+
+With severity.
+
+5. UI/UX WORKFLOW PROBLEMS
+
+Especially confusing or redundant actions.
+
+6. DEAD CODE / DEAD BUTTONS
+
+Removed or retained with reason.
+
+7. INCORRECT TRANSITIONS
+
+Found and fixed.
+
+8. MISSING RESTRICTIONS
+
+Frontend/backend.
+
+9. CROSS-USER ISSUES
+
+Restaurant ↔ Supplier ↔ Admin.
+
+10. EDGE CASES TESTED
+
+Include all scenarios actually executed.
+
+11. MANUAL TESTS REQUIRED
+
+Anything that cannot be safely automated.
+
+12. BUSINESS RULES THAT ARE AMBIGUOUS
+
+Do not invent answers.
+
+⸻
+
+FINAL PRINCIPLE
+
+Treat every GastroConnect workflow as a conversation between users and the system.
+
+Example:
+
+RESTAURANT
+"Here is my order."
+        ↓
+SYSTEM
+"Order received."
+        ↓
+SUPPLIER
+"This order requires my action."
+        ↓
+SYSTEM
+"Supplier has accepted the order."
+        ↓
+RESTAURANT
+"Supplier accepted it."
+        ↓
+SUPPLIER
+"Now I need to perform the next relevant step."
+        ↓
+SYSTEM
+"That step is complete."
+        ↓
+RESTAURANT
+"Delivery is progressing."
+        ↓
+DELIVERY
+"Order delivered."
+        ↓
+SYSTEM
+"Order is now historical."
+        ↓
+COMPLAINT (if necessary)
+"Restaurant reports an issue."
+        ↓
+SUPPLIER
+"Supplier handles the complaint."
+        ↓
+SYSTEM
+"Complaint resolved according to existing workflow."
+
+At EVERY transition:
+
+WHO acts → WHAT can they do → WHAT happens → WHAT status results → WHAT does the other user see → WHAT can they do next → WHAT actions disappear
+
+That logic must be reflected consistently in:
+
+* frontend
+* backend
+* database/state machine
+* permissions
+* buttons
+* menus
+* modals
+* notifications
+* navigation
+* API endpoints
+
+The final result should feel like a guided professional workflow rather than a collection of independent features.
+
+Do not change the underlying GastroConnect business model.
+
+Make the existing system deterministic, coherent, clean and impossible to accidentally skip or break through normal UI usage.

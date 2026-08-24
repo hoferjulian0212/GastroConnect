@@ -418,53 +418,51 @@ export default function OrderDetail() {
         testId: "action-reject-change-request",
       });
     }
-    // Confirm
-    actions.push({
-      label: lang === "de" ? "Bestellung bestätigen" : "Conferma ordine",
-      icon: Check,
-      style: st === "pending" ? "primary" : "secondary",
-      category: "primary",
-      action: () => setShowPartialConfirm(true),
-      testId: "action-confirm-order",
-      disabled: st !== "pending",
-      disabledReason: lang === "de" ? "Bereits bestätigt" : "Già confermato",
-    });
+    // Confirm — the server accepts confirmation only while pending.
+    if (st === "pending") {
+      actions.push({
+        label: lang === "de" ? "Bestellung bestätigen" : "Conferma ordine",
+        icon: Check,
+        style: "primary",
+        category: "primary",
+        action: () => setShowPartialConfirm(true),
+        testId: "action-confirm-order",
+      });
+    }
     // Set delivery date — the order keeps its status; delivery starts via driver app
-    actions.push({
-      label: lang === "de" ? "Lieferdatum setzen" : "Imposta data consegna",
-      icon: CalendarDays,
-      style: (st === "confirmed" || st === "partially_confirmed") ? "primary" : "secondary",
-      category: "primary",
-      action: () => setShowDatePicker(true),
-      testId: "action-set-delivery-date",
-      disabled: isTerminal,
-      disabledReason: lang === "de" ? "Bestellung abgeschlossen" : "Ordine completato",
-    });
+    if (!isTerminal) {
+      actions.push({
+        label: lang === "de" ? "Lieferdatum setzen" : "Imposta data consegna",
+        icon: CalendarDays,
+        style: (st === "confirmed" || st === "partially_confirmed") ? "primary" : "secondary",
+        category: "primary",
+        action: () => setShowDatePicker(true),
+        testId: "action-set-delivery-date",
+      });
+    }
     // Assign driver — required next step once the order is confirmed;
     // "scheduled" already has a driver, so it becomes a secondary reassign.
-    actions.push({
-      label: lang === "de" ? "Fahrer zuweisen" : "Assegna autista",
-      icon: UserRound,
-      style: (st === "confirmed" || st === "partially_confirmed") ? "primary" : "secondary",
-      category: "primary",
-      action: () => setShowAssignDriver(true),
-      testId: "action-assign-driver",
-      disabled: !(st === "confirmed" || st === "partially_confirmed" || st === "scheduled" || st === "in_delivery"),
-      disabledReason: st === "pending"
-        ? (lang === "de" ? "Erst bestätigen" : "Conferma prima")
-        : (lang === "de" ? "Nicht verfügbar" : "Non disponibile"),
-    });
+    if (["confirmed", "partially_confirmed", "scheduled", "in_delivery", "to_review"].includes(st)) {
+      actions.push({
+        label: lang === "de" ? "Fahrer zuweisen" : "Assegna autista",
+        icon: UserRound,
+        style: (st === "confirmed" || st === "partially_confirmed") ? "primary" : "secondary",
+        category: "primary",
+        action: () => setShowAssignDriver(true),
+        testId: "action-assign-driver",
+      });
+    }
     // Mark delivered
-    actions.push({
-      label: lang === "de" ? "Als geliefert markieren" : "Segna come consegnato",
-      icon: CheckCircle,
-      style: st === "in_delivery" ? "primary" : "secondary",
-      category: "primary",
-      action: () => setConfirmAction("delivered"),
-      testId: "action-mark-delivered",
-      disabled: st !== "in_delivery",
-      disabledReason: lang === "de" ? "Erst wenn die Lieferung unterwegs ist" : "Disponibile quando la consegna è in viaggio",
-    });
+    if (st === "in_delivery") {
+      actions.push({
+        label: lang === "de" ? "Als geliefert markieren" : "Segna come consegnato",
+        icon: CheckCircle,
+        style: "primary",
+        category: "primary",
+        action: () => setConfirmAction("delivered"),
+        testId: "action-mark-delivered",
+      });
+    }
     // Delivery note — once a note exists (auto-generated when shipping starts),
     // offer to view/download it; otherwise allow manual generation.
     if (existingDeliveryNote) {
@@ -477,52 +475,50 @@ export default function OrderDetail() {
         testId: "action-download-delivery-note",
       });
     } else {
-      actions.push({
-        label: lang === "de" ? "Lieferschein erstellen" : "Crea bolla di consegna",
-        icon: FileText,
-        style: "secondary",
-        category: "fulfillment",
-        action: () => deliveryNoteMutation.mutate(),
-        testId: "action-create-delivery-note",
-        disabled: !(st === "scheduled" || st === "in_delivery" || st === "delivered") || deliveryNoteMutation.isPending,
-        disabledReason: lang === "de" ? "Erst nach Lieferstart" : "Solo dopo l'avvio",
-      });
+      if (st === "scheduled" || st === "in_delivery" || st === "delivered") {
+        actions.push({
+          label: lang === "de" ? "Lieferschein erstellen" : "Crea bolla di consegna",
+          icon: FileText,
+          style: "secondary",
+          category: "fulfillment",
+          action: () => deliveryNoteMutation.mutate(),
+          testId: "action-create-delivery-note",
+          disabled: deliveryNoteMutation.isPending,
+        });
+      }
     }
     // Cancel
-    actions.push({
-      label: lang === "de" ? "Bestellung stornieren" : "Annulla ordine",
-      icon: Ban,
-      style: "destructive",
-      category: "destructive",
-      action: () => setConfirmAction("cancelled"),
-      testId: "action-cancel-order",
-      disabled: isTerminal || st === "in_delivery",
-      disabledReason: lang === "de" ? "Nicht mehr stornierbar" : "Non più annullabile",
-    });
+    if (!isTerminal && st !== "in_delivery") {
+      actions.push({
+        label: lang === "de" ? "Bestellung stornieren" : "Annulla ordine",
+        icon: Ban,
+        style: "destructive",
+        category: "destructive",
+        action: () => setConfirmAction("cancelled"),
+        testId: "action-cancel-order",
+      });
+    }
   } else {
     // Restaurant
-    actions.push({
-      label: lang === "de" ? "Bestellung bearbeiten" : "Modifica ordine",
-      icon: Pencil,
-      style: st === "pending" ? "primary" : "secondary",
-      category: "fulfillment",
-      action: () => setLocation(`/restaurant/orders?edit=${order.id}`),
-      testId: "action-edit-order",
-      disabled: st !== "pending",
-      disabledReason: lang === "de" ? "Nur vor Bestätigung" : "Solo prima della conferma",
-    });
-    actions.push({
-      label: lang === "de" ? "Änderung anfragen" : "Richiedi modifica",
-      icon: Send,
-      style: "secondary",
-      category: "fulfillment",
-      action: () => setConfirmAction("change_request"),
-      testId: "action-request-change",
-      disabled: !(st === "confirmed" || st === "partially_confirmed"),
-      disabledReason: st === "pending"
-        ? (lang === "de" ? "Direkt bearbeiten" : "Modifica direttamente")
-        : (lang === "de" ? "Nicht verfügbar" : "Non disponibile"),
-    });
+    if (st === "pending") {
+      actions.push({
+        label: lang === "de" ? "Bestellung bearbeiten" : "Modifica ordine",
+        icon: Pencil,
+        style: "primary",
+        category: "fulfillment",
+        action: () => setLocation(`/restaurant/orders?edit=${order.id}`),
+        testId: "action-edit-order",
+      });
+    } else if (["confirmed", "partially_confirmed", "scheduled", "in_delivery", "to_review"].includes(st)) {
+      actions.push({
+        label: lang === "de" ? "Änderung anfragen" : "Richiedi modifica",
+        icon: Send,
+        style: "secondary",
+        category: "fulfillment",
+        action: () => setConfirmAction("change_request"),
+        testId: "action-request-change",
+      });
+    }
     // Folgebestellung — always visible for restaurant
     actions.push({
       label: lang === "de" ? "Folgebestellung" : "Riordina",
@@ -542,16 +538,16 @@ export default function OrderDetail() {
       testId: "action-report-problem",
       disabled: false,
     });
-    actions.push({
-      label: lang === "de" ? "Bestellung stornieren" : "Annulla ordine",
-      icon: Ban,
-      style: "destructive",
-      category: "destructive",
-      action: () => setConfirmAction("cancelled"),
-      testId: "action-cancel-order",
-      disabled: isTerminal,
-      disabledReason: lang === "de" ? "Bestellung abgeschlossen" : "Ordine completato",
-    });
+    if (!isTerminal) {
+      actions.push({
+        label: lang === "de" ? "Bestellung stornieren" : "Annulla ordine",
+        icon: Ban,
+        style: "destructive",
+        category: "destructive",
+        action: () => setConfirmAction("cancelled"),
+        testId: "action-cancel-order",
+      });
+    }
   }
 
   // Add document — always available
