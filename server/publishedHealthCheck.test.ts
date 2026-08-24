@@ -4,7 +4,7 @@ import { once } from "node:events";
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { describe, test } from "node:test";
-import { mkdir, mkdtemp, readFile, rm, utimes, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readdir, readFile, rm, utimes, writeFile } from "node:fs/promises";
 import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 
@@ -658,6 +658,39 @@ describe("published health contract checker", () => {
       assert.equal(records.length, 1);
       assert.equal(records[0].deployment.id, "recovered");
       await assert.rejects(readFile(claimPath, "utf8"), { code: "ENOENT" });
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+
+  test("cleans stale recovery remnants without removing active ones", async () => {
+    const directory = await mkdtemp(resolve(projectRoot, "published-health-test-"));
+    const artifact = resolve(directory, "artifact", "history.jsonl");
+    const historyFile = resolve(directory, "workspace", "history.jsonl");
+    const lockPath = `${artifact}.lock`;
+    const staleRemnant = `${lockPath}.claim.reclaim-22222222-2222-4222-8222-222222222222`;
+    const activeRemnant = `${lockPath}.claim.reclaim-33333333-3333-4333-8333-333333333333`;
+
+    try {
+      await mkdir(resolve(directory, "artifact"), { recursive: true });
+      await mkdir(resolve(directory, "workspace"), { recursive: true });
+      await writeFile(artifact, "");
+      await writeFile(historyFile, "");
+      await mkdir(staleRemnant);
+      await mkdir(activeRemnant);
+      const expiredAt = new Date(Date.now() - 1_000);
+      await utimes(staleRemnant, expiredAt, expiredAt);
+
+      const result = await runHistoryCommand("--publish-history", {
+        RELEASE_HEALTH_HISTORY_ARTIFACT: artifact,
+        RELEASE_HEALTH_HISTORY_FILE: historyFile,
+        RELEASE_HEALTH_LOCK_STALE_MS: "500",
+      });
+
+      assert.equal(result.exitCode, 0, result.stdout + result.stderr);
+      const remaining = await readdir(resolve(directory, "artifact"));
+      assert.ok(!remaining.includes("history.jsonl.lock.claim.reclaim-22222222-2222-4222-8222-222222222222"));
+      assert.ok(remaining.includes("history.jsonl.lock.claim.reclaim-33333333-3333-4333-8333-333333333333"));
     } finally {
       await rm(directory, { recursive: true, force: true });
     }

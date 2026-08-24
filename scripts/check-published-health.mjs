@@ -15,11 +15,11 @@
  * and the check must be safe to run from a release pipeline.
  */
 
-import { appendFile, copyFile, mkdir, open, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
+import { appendFile, copyFile, mkdir, open, readdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
 import { spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { hostname } from "node:os";
-import { dirname } from "node:path";
+import { basename, dirname, join } from "node:path";
 
 const HISTORY_LOCK_PROTOCOL = "release-health-flock-v1";
 const HISTORY_LOCK_TOKEN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -386,6 +386,7 @@ async function acquireHistoryMarker(artifactPath) {
   const lockPath = `${artifactPath}.lock`;
   const claimPath = `${lockPath}.claim`;
   const staleMs = historyLockStaleMs();
+  await cleanupStaleRecoveryRemnants(lockPath, staleMs);
   let owner;
   let claimHeld = false;
 
@@ -509,6 +510,41 @@ async function acquireHistoryMarker(artifactPath) {
     }
     await releaseClaim();
   };
+}
+
+async function cleanupStaleRecoveryRemnants(lockPath, staleMs) {
+  const lockDirectory = dirname(lockPath);
+  const reclaimPrefix = `${basename(lockPath)}.claim.reclaim-`;
+  let entries;
+  try {
+    entries = await readdir(lockDirectory, { withFileTypes: true });
+  } catch (error) {
+    if (error?.code === "ENOENT") return;
+    throw error;
+  }
+
+  const staleBefore = Date.now() - staleMs;
+  for (const entry of entries) {
+    if (!entry.isDirectory() || !entry.name.startsWith(reclaimPrefix)) continue;
+    const reclaimToken = entry.name.slice(reclaimPrefix.length);
+    if (!HISTORY_LOCK_TOKEN.test(reclaimToken)) continue;
+
+    const reclaimPath = join(lockDirectory, entry.name);
+    let reclaimStats;
+    try {
+      reclaimStats = await stat(reclaimPath);
+    } catch (error) {
+      if (error?.code === "ENOENT") continue;
+      throw error;
+    }
+    if (reclaimStats.mtimeMs > staleBefore) continue;
+
+    try {
+      await rm(reclaimPath, { recursive: true, force: true });
+    } catch (error) {
+      if (error?.code !== "ENOENT") throw error;
+    }
+  }
 }
 
 function historyLockStaleMs() {
