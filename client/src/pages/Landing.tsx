@@ -150,6 +150,7 @@ const translations = {
     navLogin: "Anmelden",
     navStart: "Jetzt starten",
     navMenu: "Entdecken",
+    navLanguage: "Sprache",
 
     heroH1: "Händler und Betriebe. Alles auf einer Plattform.",
     heroDiscover: "Über uns",
@@ -355,6 +356,7 @@ const translations = {
     navLogin: "Accedi",
     navStart: "Inizia ora",
     navMenu: "Scopri",
+    navLanguage: "Lingua",
 
     heroH1: "Commercianti e aziende. Finalmente su un'unica piattaforma.",
     heroDiscover: "Chi siamo",
@@ -500,6 +502,7 @@ const translations = {
     navLogin: "Sign in",
     navStart: "Get started",
     navMenu: "Explore",
+    navLanguage: "Language",
 
     heroH1: "Suppliers and restaurants. Finally on one platform.",
     heroDiscover: "About us",
@@ -764,6 +767,11 @@ const featureIcons = [
 const mobileBulletIcons = [BellRing, WifiOff, Hand, Bookmark];
 const restaurantMobileShots = [shotMobileHome, shotMobileProducts, shotMobileInbox];
 const supplierMobileShots = [shotMobileSupplierHome, shotMobileSupplierProducts];
+const publicLanguageOptions: Array<{ code: Lang; flag: string; name: string }> = [
+  { code: "de", flag: "🇩🇪", name: "Deutsch" },
+  { code: "it", flag: "🇮🇹", name: "Italiano" },
+  { code: "en", flag: "🇬🇧", name: "English" },
+];
 
 /** Two rows of text that drift in opposite directions as the page is scrolled. */
 function ScrollMarquee({
@@ -1012,11 +1020,33 @@ export default function Landing() {
                     >
                       {t.navLogin}
                     </Button>
-                    <div className="flex items-center justify-between border-t border-border pt-4">
-                      <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                        Sprache / Language
-                      </span>
-                      <PublicLanguageSwitcher lang={lang} onChange={changeLang} compact />
+                    <div className="border-t border-border pt-5">
+                      <p className="mb-4 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                        {t.navLanguage}
+                      </p>
+                      <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label={t.navLanguage}>
+                        {publicLanguageOptions.map((option) => {
+                          const active = lang === option.code;
+                          return (
+                            <button
+                              key={option.code}
+                              type="button"
+                              role="radio"
+                              aria-checked={active}
+                              onClick={() => changeLang(option.code)}
+                              className={`flex min-h-24 flex-col items-center justify-center gap-2 rounded-2xl border px-2 py-3 text-xs transition-colors ${
+                                active
+                                  ? "border-foreground bg-foreground text-background"
+                                  : "border-border bg-transparent text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+                              }`}
+                              data-testid={`language-mobile-${option.code}`}
+                            >
+                              <span className="text-2xl leading-none" aria-hidden="true">{option.flag}</span>
+                              <span className="font-medium">{option.name}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
                     </div>
                   </div>
                 </div>
