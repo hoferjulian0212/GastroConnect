@@ -32,6 +32,9 @@ run = ["node", "./dist/index.cjs"]
 # RELEASE_HEALTH_HISTORY_ARTIFACT must point to the CI/release artifact file that
 # is restored and overwritten on each release. Comparison reads the durable
 # artifact when configured: npm run compare:published-health.
+# Set RELEASE_HEALTH_ALERT_FILE in the release environment to have cleanup
+# failures appended as sanitized JSONL for the operator monitoring collector.
+# The alert fields are event, operation (restore|publish), and reason only.
 build = ["npm", "run", "release:build"]
 
 [workflows]

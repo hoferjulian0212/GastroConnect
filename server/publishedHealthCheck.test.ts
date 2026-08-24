@@ -707,19 +707,32 @@ describe("published health contract checker", () => {
       await mkdir(resolve(directory, "workspace"), { recursive: true });
       await writeFile(historyFile, "");
 
+      const alertFile = resolve(directory, "monitoring", "release-alerts.jsonl");
       const result = await runHistoryCommand("--publish-history", {
         RELEASE_HEALTH_HISTORY_ARTIFACT: artifact,
         RELEASE_HEALTH_HISTORY_FILE: historyFile,
         NODE_ENV: "test",
         RELEASE_HEALTH_TEST_FORCE_CLEANUP_FAILURE: "1",
+        RELEASE_HEALTH_ALERT_FILE: alertFile,
       });
 
       assert.notEqual(result.exitCode, 0, result.stdout + result.stderr);
       const cleanupFailure = result.stderr
         .split("\n")
         .find((line) => line.startsWith("RELEASE_HEALTH_RECOVERY_CLEANUP_FAILURE"));
-      assert.equal(cleanupFailure, "RELEASE_HEALTH_RECOVERY_CLEANUP_FAILURE reason=cleanup_incomplete");
+      assert.equal(
+        cleanupFailure,
+        "RELEASE_HEALTH_RECOVERY_CLEANUP_FAILURE operation=publish reason=cleanup_incomplete",
+      );
       assert.doesNotMatch(cleanupFailure, /inaccessible|history\.jsonl|lock|token|\/tmp/);
+      assert.deepEqual(
+        JSON.parse(await readFile(alertFile, "utf8")),
+        {
+          event: "RELEASE_HEALTH_RECOVERY_CLEANUP_FAILURE",
+          operation: "publish",
+          reason: "cleanup_incomplete",
+        },
+      );
     } finally {
       await rm(directory, { recursive: true, force: true });
     }

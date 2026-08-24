@@ -23,6 +23,7 @@ import { basename, dirname, join } from "node:path";
 
 const HISTORY_LOCK_PROTOCOL = "release-health-flock-v1";
 const HISTORY_LOCK_TOKEN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const CLEANUP_FAILURE_EVENT = "RELEASE_HEALTH_RECOVERY_CLEANUP_FAILURE";
 const args = process.argv.slice(2);
 const lockedHistoryIndex = args.indexOf("--history-lock-held");
 if (lockedHistoryIndex !== -1) {
@@ -271,7 +272,7 @@ async function retainHistoryLocked(operation) {
   const { artifactPath, historyFile } = configuration;
   let releaseLock;
   try {
-    releaseLock = await acquireHistoryMarker(artifactPath);
+    releaseLock = await acquireHistoryMarker(artifactPath, operation);
   } catch (error) {
     console.error(
       `Unable to ${operation} release health history: ${errorMessage(error)}`,
@@ -382,7 +383,7 @@ function errorMessage(error) {
   return error instanceof Error ? error.message : String(error);
 }
 
-async function acquireHistoryMarker(artifactPath) {
+async function acquireHistoryMarker(artifactPath, operation) {
   const lockPath = `${artifactPath}.lock`;
   const claimPath = `${lockPath}.claim`;
   const staleMs = historyLockStaleMs();
@@ -392,7 +393,9 @@ async function acquireHistoryMarker(artifactPath) {
   } catch (error) {
     // Keep the alert stable and free of paths, lock tokens, and filesystem
     // diagnostics. The surrounding command still fails closed with details.
-    console.error("RELEASE_HEALTH_RECOVERY_CLEANUP_FAILURE reason=cleanup_incomplete");
+    const alert = `${CLEANUP_FAILURE_EVENT} operation=${operation} reason=cleanup_incomplete`;
+    console.error(alert);
+    await writeCleanupFailureAlert(operation);
     throw error;
   }
   console.log(
@@ -521,6 +524,29 @@ async function acquireHistoryMarker(artifactPath) {
     }
     await releaseClaim();
   };
+}
+
+async function writeCleanupFailureAlert(operation) {
+  const alertFile = process.env.RELEASE_HEALTH_ALERT_FILE;
+  if (!alertFile) return;
+
+  // The release pipeline can ship this JSONL file to the operator monitor.
+  // Keep the payload deliberately limited to the stable public alert fields.
+  try {
+    await mkdir(dirname(alertFile), { recursive: true });
+    await appendFile(
+      alertFile,
+      `${JSON.stringify({
+        event: CLEANUP_FAILURE_EVENT,
+        operation,
+        reason: "cleanup_incomplete",
+      })}\n`,
+      "utf8",
+    );
+  } catch {
+    // Alert delivery must never replace the original fail-closed cleanup
+    // failure. The stderr event remains available to the release pipeline.
+  }
 }
 
 async function cleanupStaleRecoveryRemnants(lockPath, staleMs) {
