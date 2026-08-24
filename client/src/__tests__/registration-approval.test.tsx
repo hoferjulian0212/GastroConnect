@@ -17,7 +17,7 @@ vi.mock("@clerk/shared/keys", () => ({ publishableKeyFromHost: () => "pk_test_mo
 
 import { render, screen, waitFor, cleanup, fireEvent } from "@testing-library/react";
 import App from "@/App";
-import { RegistrationPage } from "@/pages/Registration";
+import { RegistrationPage, buildRegistrationCompletionPayload } from "@/pages/Registration";
 import { queryClient } from "@/lib/queryClient";
 
 const pendingOrg = { id: "org-pending", name: "Pending applicant", companyName: "Pending applicant", role: "restaurant" };
@@ -58,6 +58,22 @@ afterEach(() => {
 });
 
 describe("public registration approval UI", () => {
+  test("registration completion converts the saved map coordinates to the API payload", () => {
+    const payload = buildRegistrationCompletionPayload({
+      role: "restaurant",
+      companyName: "Testbetrieb",
+      coordinates: { lat: 46.948, lng: 7.447 },
+      locationConfirmed: true,
+    });
+
+    expect(payload).toMatchObject({
+      latitude: 46.948,
+      longitude: 7.447,
+      locationConfirmed: true,
+    });
+    expect(payload).not.toHaveProperty("coordinates");
+  });
+
   test("registration keeps the required company fields for both restaurant and supplier roles", async () => {
     const { getByRole, getAllByRole } = render(<RegistrationPage />);
 

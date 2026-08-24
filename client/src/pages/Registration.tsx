@@ -28,6 +28,21 @@ type Form = {
   coordinates: RegistrationCoordinates | null;
   locationConfirmed: boolean;
 };
+
+type RegistrationDraft = Partial<Form> & {
+  latitude?: number;
+  longitude?: number;
+};
+
+export function buildRegistrationCompletionPayload(draft: RegistrationDraft) {
+  const { coordinates, ...rest } = draft;
+  return {
+    ...rest,
+    latitude: draft.latitude ?? coordinates?.lat,
+    longitude: draft.longitude ?? coordinates?.lng,
+  };
+}
+
 const empty: Form = {
   role: "",
   companyName: "",
@@ -213,7 +228,7 @@ export function RegistrationCompletePage() {
   const { signOut } = useClerk();
   const [error, setError] = useState("");
   useEffect(() => { if (!isLoaded || !isSignedIn) return; let cancelled = false;
-    (async () => { try { const data = JSON.parse(sessionStorage.getItem(KEY) || "{}"); await apiRequest("POST", "/api/auth/registration/complete", data); sessionStorage.removeItem(KEY); await queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] }); if (!cancelled) navigate("/registration-status"); } catch (e: any) { if (!cancelled) setError(e?.message || "Die Registrierung konnte nicht abgeschlossen werden."); } })();
+    (async () => { try { const data = JSON.parse(sessionStorage.getItem(KEY) || "{}") as RegistrationDraft; await apiRequest("POST", "/api/auth/registration/complete", buildRegistrationCompletionPayload(data)); sessionStorage.removeItem(KEY); await queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] }); if (!cancelled) navigate("/registration-status"); } catch (e: any) { if (!cancelled) setError(e?.message || "Die Registrierung konnte nicht abgeschlossen werden."); } })();
     return () => { cancelled = true; };
   }, [isLoaded, isSignedIn]);
   return <Shell step={3}><div className="rounded-3xl bg-white p-8 text-center shadow-xl"><h1 className="text-3xl font-semibold">Registrierung wird abgeschlossen</h1><p className="mt-3 text-black/55">{error || "Ihre E-Mail wurde bestätigt. Wir speichern Ihre Unternehmensdaten sicher."}</p>{error && <Button className="mt-6" onClick={() => signOut({ redirectUrl: "/register" })}>Erneut versuchen</Button>}</div></Shell>;
