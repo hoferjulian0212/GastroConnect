@@ -913,10 +913,10 @@ export default function Landing() {
     <div className="landing-page min-h-screen bg-white dark:bg-background text-foreground">
       {/* HEADER — floating pill */}
        <header className="fixed top-0 left-0 right-0 z-50 flex justify-center pt-8 px-4 pointer-events-none">
-          <div className={`landing-header-inner pointer-events-auto w-full max-w-6xl flex items-center justify-between gap-1.5 px-4 py-2.5 md:gap-3 md:px-7 md:py-3.5 rounded-full border transition-all duration-300 ${
+           <div className={`landing-header-inner pointer-events-auto w-full max-w-6xl flex items-center justify-between gap-1.5 px-4 py-2.5 md:gap-3 md:px-7 md:py-3.5 rounded-full border transition-all duration-300 ${
           scrolled
-            ? "bg-white/92 dark:bg-background/92 backdrop-blur-md border-black/[0.06] dark:border-white/10 shadow-lg shadow-black/[0.07]"
-            : "bg-white/75 dark:bg-background/75 backdrop-blur-sm border-black/[0.04] dark:border-white/[0.08] shadow-sm"
+             ? "bg-white dark:bg-background md:bg-white/92 md:dark:bg-background/92 backdrop-blur-md border-black/[0.06] dark:border-white/10 shadow-lg shadow-black/[0.07]"
+             : "bg-white dark:bg-background md:bg-white/75 md:dark:bg-background/75 backdrop-blur-sm border-black/[0.04] dark:border-white/[0.08] shadow-sm"
         }`}>
           {/* Left: logo */}
           <div className="shrink-0">
