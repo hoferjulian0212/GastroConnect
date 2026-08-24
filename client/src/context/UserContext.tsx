@@ -43,6 +43,7 @@ const ME_SNAPSHOT_KEY = "gc.me.snapshot";
 
 function readMeSnapshot(): MeResponse | undefined {
   try {
+    if (typeof window === "undefined") return undefined;
     const raw = localStorage.getItem(ME_SNAPSHOT_KEY);
     if (!raw) return undefined;
     const parsed = JSON.parse(raw) as MeResponse;
@@ -67,8 +68,13 @@ function writeMeSnapshot(me: MeResponse | undefined) {
 export function UserProvider({ children }: { children: ReactNode }) {
   const { isLoaded: clerkLoaded, isSignedIn } = useClerkAuth();
   const { signOut } = useClerk();
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [currentMember, setCurrentMember] = useState<Member | null>(null);
+  const [meSnapshot] = useState<MeResponse | undefined>(readMeSnapshot);
+  const [currentUser, setCurrentUser] = useState<User | null>(
+    () => (meSnapshot?.org as User | undefined) ?? null,
+  );
+  const [currentMember, setCurrentMember] = useState<Member | null>(
+    () => (meSnapshot?.member as Member | undefined) ?? null,
+  );
 
   // Gate the /api/auth/me query on Clerk being loaded and the user being
   // signed in. This prevents transient 401s that would arise from the fetch
@@ -79,7 +85,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
     staleTime: 30000,
     enabled: clerkLoaded && !!isSignedIn,
     // Render instantly from the last-known session on a cold start.
-    placeholderData: readMeSnapshot,
+    placeholderData: meSnapshot,
   });
 
   // Keep the snapshot up to date (only after a real server response).
@@ -111,7 +117,16 @@ export function UserProvider({ children }: { children: ReactNode }) {
   const currentRole = (currentUser?.role as UserRole) ?? "restaurant";
   const isWarehouse = isWarehouseRole(currentMember?.role);
   const isDriver = isDriverRole(currentMember?.role);
-  const isAuthenticated = !!me?.authenticated;
+  // Let a valid last-known session render while Clerk starts and the server
+  // refresh runs. This is display-only optimism: once the first real request
+  // completes, its result remains authoritative.
+  const hasRestorableSession = !!(
+    meSnapshot?.authenticated
+    && meSnapshot.org
+    && !isFetchedAfterMount
+    && (!clerkLoaded || isSignedIn)
+  );
+  const isAuthenticated = !!me?.authenticated || hasRestorableSession;
   // Clerk is signed in but the server has no member row for this email.
   const isClerkSignedInButUnauthorized = clerkLoaded && !!isSignedIn && !isAuthenticated && !meLoading;
 
@@ -146,9 +161,11 @@ export function UserProvider({ children }: { children: ReactNode }) {
         members,
         membersLoading,
         isAuthenticated,
-        // Show splash while Clerk is loading or while the first /api/auth/me
-        // fetch is in flight and there is no cached/snapshot data to show yet.
-        isLoading: !clerkLoaded || (meLoading && !me),
+        // Only show the splash when neither the session bootstrap nor the
+        // local PWA snapshot can render the shell. A real auth response always
+        // replaces the snapshot in the background.
+        isLoading: (!clerkLoaded && !hasRestorableSession)
+          || (clerkLoaded && !!isSignedIn && meLoading && !me && !hasRestorableSession),
         isClerkSignedInButUnauthorized,
         registrationStatus: me?.registrationStatus,
         refetchMe,

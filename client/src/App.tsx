@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useTheme } from "@/hooks/use-theme";
 import { useT } from "@/lib/translations";
-import { ShoppingCart, ChevronDown, Moon, Sun, LogOut, Users, UserRound } from "lucide-react";
+import { ShoppingCart, ChevronDown, Moon, Sun, LogOut, Users, UserRound, Loader2 } from "lucide-react";
 import logoImgThick from "@assets/logo_no_bg_thick.png";
 import { Link } from "wouter";
 import { Badge } from "@/components/ui/badge";
@@ -985,6 +985,116 @@ function ClerkProviderWithRouter({ children }: { children: ReactNode }) {
     </ClerkProvider>
   );
 }
+
+const MOBILE_RESUME_MARKER = "gc.app.resume-pending";
+const MOBILE_RESUME_THRESHOLD = 800;
+const MOBILE_RESUME_MARKER_TTL = 10 * 60 * 1000;
+const MOBILE_RESUME_DISPLAY_TIME = 1400;
+
+/**
+ * iOS can suspend or discard a standalone PWA while it is in the app switcher.
+ * Leave a short, explicit loading state on the next visible frame so the user
+ * understands that the app is reconnecting instead of assuming the tap froze.
+ */
+function MobileResumeLoader() {
+  const [visible, setVisible] = useState(false);
+  const hiddenAtRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (
+      typeof window.matchMedia !== "function"
+      || !window.matchMedia("(max-width: 767px)").matches
+    ) return;
+
+    let dismissTimer: number | undefined;
+
+    const showLoader = () => {
+      setVisible(true);
+      if (dismissTimer !== undefined) window.clearTimeout(dismissTimer);
+      dismissTimer = window.setTimeout(() => setVisible(false), MOBILE_RESUME_DISPLAY_TIME);
+    };
+
+    const readMarker = () => {
+      try {
+        const timestamp = Number(localStorage.getItem(MOBILE_RESUME_MARKER));
+        if (!Number.isFinite(timestamp) || Date.now() - timestamp > MOBILE_RESUME_MARKER_TTL) {
+          localStorage.removeItem(MOBILE_RESUME_MARKER);
+          return null;
+        }
+        return timestamp;
+      } catch {
+        return null;
+      }
+    };
+
+    const clearMarker = () => {
+      try {
+        localStorage.removeItem(MOBILE_RESUME_MARKER);
+      } catch {
+        // Storage can be unavailable in private browsing; visibility still works.
+      }
+    };
+
+    // If the WebView was killed while hidden, this is a fresh mount and the
+    // marker is the only signal that the previous app instance was suspended.
+    if (document.visibilityState === "visible" && readMarker() !== null) {
+      clearMarker();
+      showLoader();
+    }
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "hidden") {
+        hiddenAtRef.current = Date.now();
+        try {
+          localStorage.setItem(MOBILE_RESUME_MARKER, String(hiddenAtRef.current));
+        } catch {
+          // The in-memory timestamp still covers a normal background/resume.
+        }
+        return;
+      }
+
+      const hiddenFor = hiddenAtRef.current === null
+        ? 0
+        : Date.now() - hiddenAtRef.current;
+      hiddenAtRef.current = null;
+
+      // Do not flash a loader for a quick app switch. A longer hidden period
+      // indicates that the mobile browser may have frozen or discarded React.
+      if (hiddenFor >= MOBILE_RESUME_THRESHOLD) {
+        clearMarker();
+        showLoader();
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      if (dismissTimer !== undefined) window.clearTimeout(dismissTimer);
+    };
+  }, []);
+
+  if (!visible) return null;
+
+  return (
+    <div
+      className="fixed inset-0 z-[100] flex min-h-dvh flex-col items-center justify-center bg-background px-6 text-foreground md:hidden"
+      role="status"
+      aria-live="polite"
+      aria-label="App wird aktualisiert"
+    >
+      <img
+        src={logoImgThick}
+        alt=""
+        className="h-20 w-20 object-contain dark:invert"
+        aria-hidden="true"
+      />
+      <span className="mt-3 text-xl font-bold tracking-tight">GastroConnect</span>
+      <Loader2 className="mt-6 h-5 w-5 animate-spin text-muted-foreground" aria-hidden="true" />
+      <span className="mt-3 text-sm text-muted-foreground">App wird aktualisiert…</span>
+    </div>
+  );
+}
+
 function App() {
   return (
     <WouterRouter base={basePath}>
@@ -999,6 +1109,7 @@ function App() {
                     <ChatProvider>
                       <TourProvider>
                         <AppLayout />
+                        <MobileResumeLoader />
                         <Toaster />
                       </TourProvider>
                     </ChatProvider>

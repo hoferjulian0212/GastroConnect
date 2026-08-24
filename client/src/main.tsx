@@ -9,9 +9,7 @@ installErrorReporter();
 // settings) so the app shell & assets are cached and a cold PWA restart is
 // near-instant even on a slow connection.
 if ("serviceWorker" in navigator) {
-  window.addEventListener("load", () => {
-    navigator.serviceWorker.register("/sw.js").catch(() => {});
-  });
+  navigator.serviceWorker.register("/sw.js").catch(() => {});
 }
 
 createRoot(document.getElementById("root")!).render(<App />);

@@ -4,12 +4,22 @@
 // switching apps) renders instantly from cache while data refreshes in the
 // background — instead of a slow full reload over the network.
 
-const CACHE_VERSION = "gc-v1";
+const CACHE_VERSION = "gc-v2";
 const ASSET_CACHE = `${CACHE_VERSION}-assets`;
 const SHELL_CACHE = `${CACHE_VERSION}-shell`;
 
-self.addEventListener("install", () => {
+self.addEventListener("install", (event) => {
   self.skipWaiting();
+  // Prime the app shell during installation so the next standalone-PWA launch
+  // can paint from disk before the network reconnects.
+  event.waitUntil(
+    fetch("/")
+      .then((response) => {
+        if (!response.ok) return;
+        return caches.open(SHELL_CACHE).then((cache) => cache.put("/", response));
+      })
+      .catch(() => undefined),
+  );
 });
 
 self.addEventListener("activate", (event) => {
@@ -54,23 +64,27 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(request.url);
   if (url.origin !== self.location.origin || isBypassed(url)) return;
 
-  // App shell (navigations): network-first so updates arrive, but fall back to
-  // the cached shell instantly when offline / while the connection re-establishes.
+  // App shell (navigations): return the cached shell immediately, then refresh
+  // it in the background. iOS routinely discards standalone PWA WebViews while
+  // switching apps; waiting for a fresh navigation request made every restart
+  // feel like a full reload even though a safe shell was already on disk.
   if (request.mode === "navigate") {
     event.respondWith(
       (async () => {
-        try {
-          const response = await fetch(request);
-          if (response.ok) {
-            const cache = await caches.open(SHELL_CACHE);
-            cache.put("/", response.clone());
-          }
-          return response;
-        } catch {
-          const cached = await caches.match("/", { cacheName: SHELL_CACHE });
-          if (cached) return cached;
-          throw new Error("offline and no cached shell");
+        const cache = await caches.open(SHELL_CACHE);
+        const cached = await cache.match("/");
+        const refresh = fetch(request)
+          .then((response) => {
+            if (response.ok) cache.put("/", response.clone());
+            return response;
+          });
+
+        if (cached) {
+          event.waitUntil(refresh.catch(() => undefined));
+          return cached;
         }
+
+        return refresh;
       })(),
     );
     return;

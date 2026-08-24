@@ -50,7 +50,10 @@ export const queryClient = new QueryClient({
     queries: {
       queryFn: getQueryFn({ on401: "throw" }),
       refetchInterval: 30000,
-      refetchOnWindowFocus: true,
+      // Returning to an installed PWA should not fan out a request for every
+      // stale screen query at once. Active views already refresh on their
+      // normal interval and explicit mutations still invalidate immediately.
+      refetchOnWindowFocus: false,
       staleTime: 15000,
       refetchIntervalInBackground: false,
       retry: false,
