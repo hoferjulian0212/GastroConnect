@@ -174,6 +174,7 @@ const translations = {
     pillarsHeadline: "Für wen GastroConnect gebaut ist",
     pillarsSub:
       "Eine Plattform, zwei klar getrennte Erlebnisse — beide perfekt auf die jeweilige Rolle zugeschnitten.",
+    pillarsSwipe: "Wischen, um beide Ansichten zu sehen",
     pillarRestaurantTitle: "Für Betriebe",
     pillarRestaurantBullets: [
       "Alle Lieferanten in einem Katalog — suchen, vergleichen, bestellen.",
@@ -380,6 +381,7 @@ const translations = {
     pillarsHeadline: "Per chi è pensato GastroConnect",
     pillarsSub:
       "Una piattaforma, due esperienze chiaramente separate — entrambe ottimizzate per il rispettivo ruolo.",
+    pillarsSwipe: "Scorri per vedere entrambe le viste",
     pillarRestaurantTitle: "Per le aziende",
     pillarRestaurantBullets: [
       "Tutti i fornitori in un unico catalogo — cerca, confronta, ordina.",
@@ -526,6 +528,7 @@ const translations = {
     pillarsHeadline: "Who GastroConnect is built for",
     pillarsSub:
       "One platform, two clearly separated experiences — both tailored perfectly to their role.",
+    pillarsSwipe: "Swipe to see both views",
     pillarRestaurantTitle: "For restaurants",
     pillarRestaurantBullets: [
       "All your suppliers in one catalog — search, compare, order.",
@@ -813,6 +816,8 @@ export default function Landing() {
   const [lang, setLang] = useState<Lang>("de");
   const [mobileShotRole, setMobileShotRole] = useState<"restaurant" | "supplier">("restaurant");
   const [mobileShotIndex, setMobileShotIndex] = useState(0);
+  const [pillarSlideIndex, setPillarSlideIndex] = useState(0);
+  const pillarsCarouselRef = useRef<HTMLDivElement | null>(null);
   const reduceMotion = useReducedMotion();
   const [isDesktop, setIsDesktop] = useState(() =>
     typeof window !== "undefined" &&
@@ -887,6 +892,13 @@ export default function Landing() {
 
   function handleLogin() {
     setLocation("/login");
+  }
+
+  function selectPillarSlide(index: number) {
+    const carousel = pillarsCarouselRef.current;
+    const slide = carousel?.querySelector<HTMLElement>(`[data-pillar-slide="${index}"]`);
+    slide?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "start" });
+    setPillarSlideIndex(index);
   }
 
   const anchors = [
@@ -1276,7 +1288,14 @@ export default function Landing() {
             </p>
           </div>
           <div
-            className="-mx-4 flex w-[calc(100%+2rem)] snap-x snap-mandatory gap-4 overflow-x-auto scroll-smooth px-4 pb-3 scrollbar-hide md:mx-0 md:grid md:w-auto md:grid-cols-2 md:gap-6 md:overflow-visible md:px-0 md:pb-0"
+            ref={pillarsCarouselRef}
+            onScroll={(event) => {
+              const firstSlide = event.currentTarget.querySelector<HTMLElement>("[data-pillar-slide]");
+              if (!firstSlide) return;
+              const slideDistance = firstSlide.offsetWidth + 16;
+              setPillarSlideIndex(Math.min(1, Math.max(0, Math.round(event.currentTarget.scrollLeft / slideDistance))));
+            }}
+            className="flex w-full snap-x snap-mandatory gap-4 overflow-x-auto overscroll-x-contain scroll-smooth scroll-px-4 touch-pan-x pb-3 scrollbar-hide md:grid md:grid-cols-2 md:gap-6 md:overflow-visible md:pb-0"
             aria-label={t.eyebrowPillars}
           >
             {[
@@ -1307,6 +1326,7 @@ export default function Landing() {
                 className="w-full min-w-full shrink-0 snap-start md:min-w-0 md:shrink"
               >
               <div
+                data-pillar-slide={pIdx}
                 className="h-full rounded-3xl p-6 md:p-10 flex flex-col border bg-white dark:bg-neutral-900 border-neutral-200 dark:border-neutral-800"
                 data-testid={p.testid}
               >
@@ -1340,6 +1360,33 @@ export default function Landing() {
               </div>
               </MotionReveal>
             ))}
+          </div>
+          <div className="mt-4 flex flex-col items-center gap-2 md:hidden">
+            <div className="flex items-center gap-2" aria-label={t.pillarsSwipe}>
+              {[0, 1].map((index) => (
+                <button
+                  key={index}
+                  type="button"
+                  aria-label={`${t.eyebrowPillars} ${index + 1}`}
+                  aria-current={pillarSlideIndex === index}
+                  onClick={() => selectPillarSlide(index)}
+                  className={`h-2 rounded-full transition-all duration-200 ${
+                    pillarSlideIndex === index ? "w-6 bg-foreground" : "w-2 bg-foreground/20"
+                  }`}
+                  data-testid={`pillar-carousel-dot-${index}`}
+                />
+              ))}
+            </div>
+            <motion.div
+              className="flex items-center gap-1.5 text-[11px] text-muted-foreground"
+              animate={reduceMotion ? undefined : { x: [-4, 5, -4], opacity: [0.45, 1, 0.45] }}
+              transition={reduceMotion ? undefined : { duration: 1.6, repeat: 2, ease: "easeInOut" }}
+              aria-hidden="true"
+            >
+              <Hand className="h-3.5 w-3.5" />
+              <span>{t.pillarsSwipe}</span>
+              <ArrowLeftRight className="h-3.5 w-3.5" />
+            </motion.div>
           </div>
         </div>
       </section>
