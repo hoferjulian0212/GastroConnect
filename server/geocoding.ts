@@ -5,6 +5,13 @@ export interface GeocodeResult {
   lng: number;
 }
 
+export interface AddressSuggestion extends GeocodeResult {
+  label: string;
+  address?: string;
+  city?: string;
+  postalCode?: string;
+}
+
 /** Returns the Google Maps key used for server-side Geocoding API calls. */
 function getApiKey(): string | undefined {
   return process.env.GOOGLE_MAPS_API_KEY || process.env.VITE_GOOGLE_MAPS_API_KEY;
@@ -122,6 +129,94 @@ async function geocodeWithNominatim(query: string): Promise<GeocodeResult | null
   }
 }
 
+async function suggestWithGoogle(query: string, key: string): Promise<AddressSuggestion[]> {
+  const url = new URL("https://maps.googleapis.com/maps/api/geocode/json");
+  url.searchParams.set("address", query);
+  url.searchParams.set("region", "it");
+  url.searchParams.set("bounds", "46.2,10.3|47.1,12.5");
+  url.searchParams.set("key", key);
+  try {
+    const res = await fetch(url.toString());
+    if (!res.ok) return [];
+    const data = (await res.json()) as {
+      status: string;
+      results?: Array<{
+        formatted_address?: string;
+        geometry?: { location?: { lat: number; lng: number } };
+        address_components?: Array<{ long_name: string; types: string[] }>;
+      }>;
+    };
+    if (data.status !== "OK" || !data.results) return [];
+    return data.results.flatMap((result) => {
+      const location = result.geometry?.location;
+      if (!location || !result.formatted_address) return [];
+      const component = (type: string) =>
+        result.address_components?.find((item) => item.types.includes(type))?.long_name;
+      const route = component("route");
+      const streetNumber = component("street_number");
+      return [{
+        label: result.formatted_address,
+        lat: location.lat,
+        lng: location.lng,
+        address: [route, streetNumber].filter(Boolean).join(" ") || result.formatted_address,
+        city: component("locality") || component("postal_town") || component("administrative_area_level_2"),
+        postalCode: component("postal_code"),
+      }];
+    });
+  } catch (error) {
+    console.error("[geocoding] Google suggestions failed", error);
+    return [];
+  }
+}
+
+async function suggestWithNominatim(query: string): Promise<AddressSuggestion[]> {
+  const url = new URL("https://nominatim.openstreetmap.org/search");
+  url.searchParams.set("q", query);
+  url.searchParams.set("format", "jsonv2");
+  url.searchParams.set("limit", "5");
+  url.searchParams.set("addressdetails", "1");
+  url.searchParams.set("viewbox", "10.3,47.1,12.5,46.2");
+  try {
+    const res = await fetch(url.toString(), {
+      headers: {
+        "User-Agent": "GastroConnect/1.0 (gastroconnect map fallback)",
+        "Accept-Language": "de,it",
+      },
+    });
+    if (!res.ok) return [];
+    const data = (await res.json()) as Array<{
+      lat?: string;
+      lon?: string;
+      display_name?: string;
+      address?: {
+        road?: string;
+        house_number?: string;
+        city?: string;
+        town?: string;
+        village?: string;
+        postcode?: string;
+      };
+    }>;
+    return data.flatMap((item) => {
+      const lat = parseFloat(item.lat ?? "");
+      const lng = parseFloat(item.lon ?? "");
+      if (!Number.isFinite(lat) || !Number.isFinite(lng) || !item.display_name) return [];
+      const parts = item.address;
+      return [{
+        label: item.display_name,
+        lat,
+        lng,
+        address: [parts?.road, parts?.house_number].filter(Boolean).join(" ") || undefined,
+        city: parts?.city || parts?.town || parts?.village,
+        postalCode: parts?.postcode,
+      }];
+    });
+  } catch (error) {
+    console.error("[geocoding] Nominatim suggestions failed", error);
+    return [];
+  }
+}
+
 /**
  * Geocodes an address, biased toward the South Tyrol / Italy region. Uses
  * Google's Geocoding API when a key is configured, otherwise falls back to the
@@ -140,6 +235,17 @@ export async function geocodeAddress(parts: {
   const key = getApiKey();
   if (key) return geocodeWithGoogle(query, key);
   return geocodeWithNominatim(query);
+}
+
+export async function suggestAddresses(parts: {
+  address?: string | null;
+  postalCode?: string | null;
+  city?: string | null;
+}): Promise<AddressSuggestion[]> {
+  const query = buildAddressQuery(parts);
+  if (query.length < 3) return [];
+  const key = getApiKey();
+  return key ? suggestWithGoogle(query, key) : suggestWithNominatim(query);
 }
 
 /**

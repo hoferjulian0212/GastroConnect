@@ -30,23 +30,23 @@ import {
   PublicLanguageSwitcher,
   PublicFooter,
 } from "@/pages/About";
-import shotChefPhone from "@assets/iStock-1277816551_1781732715128.jpg";
-import shotOfficePhone from "@assets/sk_art-corporate-training-10046033_1920_1781806207063.jpg";
+import shotChefPhone from "@assets/iStock-1277816551_1781732715128.webp";
+import shotOfficePhone from "@assets/sk_art-corporate-training-10046033_1920_1781806207063.webp";
 import shotOrderingProcess from "@assets/landing-ordering-process-webcodecs.mp4";
 import shotOrderingProcessPoster from "@assets/landing-ordering-process-clean-poster.jpg";
 import shotBusinessProcess from "@assets/landing-business-process-webcodecs.mp4";
 import shotBusinessProcessPoster from "@assets/landing-business-process-clean-poster.jpg";
-import shotMobileHome from "@assets/landing-mobile-home.png";
-import shotMobileProducts from "@assets/landing-mobile-products.png";
-import shotMobileInbox from "@assets/landing-mobile-inbox.png";
-import shotMobileSupplierHome from "@assets/landing-mobile-supplier-home.png";
-import shotMobileSupplierProducts from "@assets/landing-mobile-supplier-products.png";
-import shotPrice from "@assets/landing-story/price-2-savings.jpg";
-import shotPriceOverview from "@assets/landing-story/price-1-overview.jpg";
-import shotPriceCatalog from "@assets/landing-story/price-3-catalog.jpg";
-import shotComplaintDialog from "@assets/landing-story/complaint-1-dialog.jpg";
-import shotComplaintInbox from "@assets/landing-story/complaint-2-inbox.jpg";
-import shotComplaintDetail from "@assets/landing-story/complaint-3-detail.jpg";
+import shotMobileHome from "@assets/landing-mobile-home.webp";
+import shotMobileProducts from "@assets/landing-mobile-products.webp";
+import shotMobileInbox from "@assets/landing-mobile-inbox.webp";
+import shotMobileSupplierHome from "@assets/landing-mobile-supplier-home.webp";
+import shotMobileSupplierProducts from "@assets/landing-mobile-supplier-products.webp";
+import shotPrice from "@assets/landing-story/price-2-savings.webp";
+import shotPriceOverview from "@assets/landing-story/price-1-overview.webp";
+import shotPriceCatalog from "@assets/landing-story/price-3-catalog.webp";
+import shotComplaintDialog from "@assets/landing-story/complaint-1-dialog.webp";
+import shotComplaintInbox from "@assets/landing-story/complaint-2-inbox.webp";
+import shotComplaintDetail from "@assets/landing-story/complaint-3-detail.webp";
 import {
   MessageSquare,
   FileText,
@@ -1328,6 +1328,9 @@ export default function Landing() {
                   alt={t.lifestyleHeadline}
                   className="w-full h-[460px] md:h-[600px] object-cover object-center"
                   loading="lazy"
+                  decoding="async"
+                  width={1400}
+                  height={934}
                   data-testid="img-lifestyle"
                 />
                 {/* legibility gradient — darker on the left under the phone, fading right */}
@@ -1420,6 +1423,9 @@ export default function Landing() {
                   alt={t.lifestyleSupplierHeadline}
                   className="w-full h-[460px] md:h-[600px] object-cover object-[60%_center]"
                   loading="lazy"
+                  decoding="async"
+                  width={1600}
+                  height={893}
                   data-testid="img-lifestyle-supplier"
                 />
                 {/* legibility gradient — darker on the left under the phone, fading right toward the people */}

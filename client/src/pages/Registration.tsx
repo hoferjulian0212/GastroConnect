@@ -12,6 +12,13 @@ import {
 import { isValidRegistrationPhone } from "@shared/registrationValidation";
 import logo from "@assets/logo_no_bg_thick.png";
 
+type AddressSuggestion = RegistrationCoordinates & {
+  label: string;
+  address?: string;
+  city?: string;
+  postalCode?: string;
+};
+
 type Form = {
   role: "" | "restaurant" | "supplier";
   companyName: string; contactName: string; phone: string; address: string;
@@ -68,6 +75,35 @@ export function RegistrationPage() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [geocoding, setGeocoding] = useState(false);
   const [geocodeError, setGeocodeError] = useState("");
+  const [suggestions, setSuggestions] = useState<AddressSuggestion[]>([]);
+  const [suggestionsOpen, setSuggestionsOpen] = useState(false);
+
+  useEffect(() => {
+    if (step !== 2 || form.coordinates) {
+      setSuggestions([]);
+      return;
+    }
+    const queryLength = form.address.trim().length >= 3 || form.city.trim().length >= 2;
+    if (!queryLength) {
+      setSuggestions([]);
+      return;
+    }
+    const timer = window.setTimeout(async () => {
+      try {
+        const response = await apiRequest("POST", "/api/auth/registration/address-suggestions", {
+          address: form.address,
+          city: form.city,
+          postalCode: form.postalCode,
+        });
+        const data = (await response.json()) as { suggestions?: AddressSuggestion[] };
+        setSuggestions(data.suggestions ?? []);
+        setSuggestionsOpen(true);
+      } catch {
+        setSuggestions([]);
+      }
+    }, 700);
+    return () => window.clearTimeout(timer);
+  }, [step, form.address, form.city, form.postalCode, form.coordinates]);
 
   const update = (key: keyof Form, value: string) =>
     setForm((current) => {
@@ -138,6 +174,20 @@ export function RegistrationPage() {
     }
   };
 
+  const selectSuggestion = (suggestion: AddressSuggestion) => {
+    setForm((current) => ({
+      ...current,
+      address: suggestion.address || suggestion.label,
+      city: suggestion.city || current.city,
+      postalCode: suggestion.postalCode || current.postalCode,
+      coordinates: { lat: suggestion.lat, lng: suggestion.lng },
+      locationConfirmed: false,
+    }));
+    setSuggestions([]);
+    setSuggestionsOpen(false);
+    setGeocodeError("");
+  };
+
   const next = () => {
     if (!validateStep()) return;
     sessionStorage.setItem(KEY, JSON.stringify(form));
@@ -147,9 +197,9 @@ export function RegistrationPage() {
   if (step === 3) return <Shell step={3}><div className="rounded-3xl bg-white p-6 shadow-xl md:p-10"><h1 className="mb-2 text-3xl font-semibold">Konto erstellen</h1><p className="mb-6 text-sm text-black/55">Geben Sie Ihre E-Mail bei Clerk ein und bestätigen Sie den Code. Erst danach wird Ihre Registrierung angelegt.</p><SignUp routing="path" path="/register" signInUrl="/sign-in" forceRedirectUrl="/register/complete" /></div></Shell>;
   return <Shell step={step}>
     <div className="rounded-3xl bg-white p-6 shadow-xl md:p-10">
-      {step === 1 ? <><p className="mb-2 text-sm font-medium uppercase tracking-widest text-black/45">Willkommen bei GastroConnect</p><h1 className="mb-3 text-3xl font-semibold">Wie möchten Sie GastroConnect nutzen?</h1><p className="mb-8 text-black/55">Wählen Sie Ihren Bereich. Wir passen die Registrierung daran an.</p><div className="grid gap-4 md:grid-cols-2" aria-invalid={Boolean(errors.role)}>
+      {step === 1 ? <><p className="mb-2 text-sm font-medium uppercase tracking-widest text-black/45">Willkommen bei GastroConnect</p><h1 className="mb-3 text-3xl font-semibold">Wie möchten Sie GastroConnect nutzen?</h1><p className="mb-2 text-black/55">Wählen Sie Ihren Bereich. Wir passen die Registrierung daran an.</p><p className="mb-8 text-xs text-black/50"><span className="font-bold text-red-600" aria-hidden="true">*</span> Pflichtfeld</p><div className="grid gap-4 md:grid-cols-2" aria-invalid={Boolean(errors.role)}>
         {([["restaurant", "Betrieb", "Bestellen, Lieferanten finden und Abläufe vereinfachen"], ["supplier", "Händler", "Sortiment anbieten und Kunden zuverlässig beliefern"]] as const).map(([value, title, desc]) => <button type="button" key={value} onClick={() => { update("role", value); setErrors((current) => ({ ...current, role: "" })); }} className={`rounded-2xl border-2 p-5 text-left transition ${form.role === value ? "border-[#161921] bg-[#f1f1ed]" : "border-black/10 hover:border-black/30"}`}><strong className="block text-lg">{title}</strong><span className="mt-2 block text-sm text-black/55">{desc}</span></button>)}</div>{errors.role && <p className="mt-3 text-sm text-red-600" role="alert">{errors.role}</p>}</> :
-      <><h1 className="mb-2 text-3xl font-semibold">Erzählen Sie uns von Ihrem Unternehmen</h1><p className="mb-6 text-black/55">Alle Angaben sind erforderlich, damit wir Ihr Unternehmen prüfen und für Bestellungen vorbereiten können.</p><div className="grid gap-4 md:grid-cols-2">{([["companyName", "Unternehmensname"], ["contactName", "Ansprechperson"], ["phone", "Telefonnummer"], ["address", "Straße und Hausnummer"], ["city", "Ort"], ["postalCode", "PLZ"]] as const).map(([key, label]) => <label key={key} className="text-sm font-medium">{label}<Input className="mt-1.5" type={key === "phone" ? "tel" : "text"} inputMode={key === "phone" ? "tel" : key === "postalCode" ? "numeric" : undefined} value={form[key]} onChange={e => update(key, e.target.value)} required aria-label={key === "phone" ? "Telefon" : key === "address" ? "Adresse" : undefined} aria-invalid={Boolean(errors[key])} aria-describedby={errors[key] ? `${key}-error` : undefined} />{errors[key] && <span id={`${key}-error`} className="mt-1 block text-xs font-normal text-red-600">{errors[key]}</span>}</label>)}</div><div className="mt-5 rounded-2xl border border-black/10 bg-[#fafaf8] p-4"><div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div><h2 className="font-semibold">Standort auf der Karte festlegen</h2><p className="mt-1 text-sm text-black/55">Wir suchen die Adresse und Sie bestätigen anschließend den exakten Pin für Lieferungen und Stammdaten.</p></div><Button type="button" variant="outline" onClick={lookupAddress} disabled={geocoding}>{geocoding ? "Adresse wird gesucht…" : "Adresse auf Karte prüfen"}</Button></div>{geocodeError && <p className="mt-3 text-sm text-red-600" role="alert">{geocodeError}</p>}{!form.coordinates && errors.location && <p className="mt-3 text-sm text-red-600" role="alert">{errors.location}</p>}{form.coordinates && <div className="mt-4"><RegistrationLocationPicker coordinates={form.coordinates} onChange={(coordinates) => setForm((current) => ({ ...current, coordinates, locationConfirmed: false }))} /><p className="mt-2 text-xs text-black/55">Klicken Sie auf die Karte oder ziehen Sie den Pin auf den Eingang bzw. die Lieferadresse.</p><Button type="button" className="mt-3 w-full sm:w-auto" variant={form.locationConfirmed ? "secondary" : "default"} onClick={() => setForm((current) => ({ ...current, locationConfirmed: true }))}>{form.locationConfirmed ? "Standort bestätigt" : "Diesen Standort bestätigen"}</Button>{errors.location && <p className="mt-2 text-sm text-red-600" role="alert">{errors.location}</p>}</div>}</div><label className="mt-4 block text-sm font-medium">Kurzprofil (optional)<Textarea className="mt-1.5" value={form.profile} onChange={e => update("profile", e.target.value)} placeholder={form.role === "restaurant" ? "Zum Beispiel: Küche, Sitzplätze oder Schwerpunkte" : "Zum Beispiel: Liefergebiet und Sortiment"} /></label></>}
+      <><h1 className="mb-2 text-3xl font-semibold">Erzählen Sie uns von Ihrem Unternehmen</h1><p className="mb-2 text-black/55">Alle Angaben sind erforderlich, damit wir Ihr Unternehmen prüfen und für Bestellungen vorbereiten können.</p><p className="mb-6 text-xs text-black/50"><span className="font-bold text-red-600" aria-hidden="true">*</span> Pflichtfeld</p><div className="grid gap-4 md:grid-cols-2">{([["companyName", "Unternehmensname"], ["contactName", "Ansprechperson"], ["phone", "Telefonnummer"], ["address", "Straße und Hausnummer"], ["city", "Ort"], ["postalCode", "PLZ"]] as const).map(([key, label]) => <label key={key} className="text-sm font-medium"><span>{label} <span className="font-bold text-red-600" aria-hidden="true">*</span></span><div className="relative"><Input className="mt-1.5" type={key === "phone" ? "tel" : "text"} inputMode={key === "phone" ? "tel" : key === "postalCode" ? "numeric" : undefined} value={form[key]} onFocus={() => key === "address" && suggestions.length > 0 && setSuggestionsOpen(true)} onChange={e => update(key, e.target.value)} required aria-label={key === "phone" ? "Telefon" : key === "address" ? "Adresse" : undefined} aria-invalid={Boolean(errors[key])} aria-describedby={errors[key] ? `${key}-error` : undefined} />{key === "address" && suggestionsOpen && suggestions.length > 0 && <div className="absolute z-20 mt-1 max-h-56 w-full overflow-auto rounded-xl border border-black/15 bg-white p-1 shadow-xl" role="listbox" aria-label="Adressvorschläge">{suggestions.map((suggestion) => <button type="button" key={`${suggestion.lat}-${suggestion.lng}-${suggestion.label}`} className="block w-full rounded-lg px-3 py-2 text-left text-sm hover:bg-black/5" onMouseDown={(event) => event.preventDefault()} onClick={() => selectSuggestion(suggestion)} role="option"><span className="block font-medium">{suggestion.address || suggestion.label}</span><span className="block text-xs text-black/50">{[suggestion.postalCode, suggestion.city].filter(Boolean).join(" · ") || suggestion.label}</span></button>)}</div>}</div>{errors[key] && <span id={`${key}-error`} className="mt-1 block text-xs font-normal text-red-600">{errors[key]}</span>}</label>)}</div><div className="mt-5 rounded-2xl border border-black/10 bg-[#fafaf8] p-4"><div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div><h2 className="font-semibold">Standort auf der Karte festlegen</h2><p className="mt-1 text-sm text-black/55">Beginnen Sie mit der Eingabe: passende Adressen erscheinen automatisch. Wählen Sie eine aus und bestätigen Sie anschließend den exakten Pin für Lieferungen und Stammdaten.</p></div><Button type="button" variant="outline" onClick={lookupAddress} disabled={geocoding}>{geocoding ? "Adresse wird gesucht…" : "Adresse auf Karte prüfen"}</Button></div>{geocodeError && <p className="mt-3 text-sm text-red-600" role="alert">{geocodeError}</p>}{!form.coordinates && errors.location && <p className="mt-3 text-sm text-red-600" role="alert">{errors.location}</p>}{form.coordinates && <div className="mt-4"><RegistrationLocationPicker coordinates={form.coordinates} onChange={(coordinates) => setForm((current) => ({ ...current, coordinates, locationConfirmed: false }))} /><p className="mt-2 text-xs text-black/55">Klicken Sie auf die Karte oder ziehen Sie den Pin auf den Eingang bzw. die Lieferadresse.</p><Button type="button" className="mt-3 w-full sm:w-auto" variant={form.locationConfirmed ? "secondary" : "default"} onClick={() => setForm((current) => ({ ...current, locationConfirmed: true }))}>{form.locationConfirmed ? "Standort bestätigt" : "Diesen Standort bestätigen"}</Button>{errors.location && <p className="mt-2 text-sm text-red-600" role="alert">{errors.location}</p>}</div>}</div><label className="mt-4 block text-sm font-medium">Kurzprofil (optional)<Textarea className="mt-1.5" value={form.profile} onChange={e => update("profile", e.target.value)} placeholder={form.role === "restaurant" ? "Zum Beispiel: Küche, Sitzplätze oder Schwerpunkte" : "Zum Beispiel: Liefergebiet und Sortiment"} /></label></>}
        <div className="mt-8 flex justify-between"><Button type="button" variant="ghost" onClick={() => step === 1 ? navigate("/") : setStep(1)}>Zurück</Button><Button type="button" onClick={next}>{step === 1 ? "Weiter" : "Mit E-Mail fortfahren"}</Button></div>
     </div>
   </Shell>;

@@ -12,7 +12,7 @@ import { generateToken, hashToken, INVITE_TTL_MS } from "./tokens";
 import { requireAuth } from "./middleware";
 import { getAuth } from "@clerk/express";
 import { sendEmail, renderNotificationEmail, isEmailConfigured } from "../emailService";
-import { geocodeAddress } from "../geocoding";
+import { geocodeAddress, suggestAddresses } from "../geocoding";
 import {
   registrationCompletionSchema,
 } from "@shared/registrationValidation";
@@ -105,6 +105,21 @@ export function registerAuthRoutes(app: Express) {
         error: "geocoding_unavailable",
         message: "Die Adresse konnte gerade nicht geprüft werden. Bitte versuchen Sie es erneut.",
       });
+    }
+  });
+
+  app.post("/api/auth/registration/address-suggestions", authLimiter, async (req, res) => {
+    const parsed = z.object({
+      address: z.string().trim().max(200).optional().default(""),
+      city: z.string().trim().max(100).optional().default(""),
+      postalCode: z.string().trim().max(20).optional().default(""),
+    }).safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ error: "invalid_address" });
+    try {
+      return res.json({ suggestions: await suggestAddresses(parsed.data) });
+    } catch (error) {
+      console.error("[auth] registration address suggestions error", error);
+      return res.json({ suggestions: [] });
     }
   });
 

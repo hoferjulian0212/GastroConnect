@@ -114,6 +114,8 @@ export function PinnedFeatureStory({
                       src={img.src}
                       alt={img.alt}
                       className="w-full h-auto block"
+                      loading="lazy"
+                      decoding="async"
                     />
                     <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
                       <div className="h-8 w-8 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center">
@@ -174,6 +176,8 @@ export function PinnedFeatureStory({
                   alt=""
                   aria-hidden="true"
                   className="w-full h-auto block invisible"
+                  loading="lazy"
+                  decoding="async"
                 />
                 {resolvedImages.map((img, i) => {
                   const isActive = i === activeStep;
@@ -182,7 +186,8 @@ export function PinnedFeatureStory({
                       key={i}
                       src={img.src}
                       alt={img.alt}
-                      loading={i === 0 ? "eager" : "lazy"}
+                      loading="lazy"
+                      decoding="async"
                       className="absolute inset-0 w-full h-full object-cover block"
                       initial={false}
                       animate={{
@@ -312,6 +317,7 @@ function Lightbox({
           src={lightbox.img.src}
           alt={lightbox.img.alt}
           className="w-full h-auto block"
+          decoding="async"
           data-testid="lightbox-image"
         />
         <div className="px-6 py-5 border-t border-border">
@@ -393,7 +399,8 @@ function MobileStoryCarousel({
                   <img
                     src={img.src}
                     alt={img.alt}
-                    loading={i === 0 ? "eager" : "lazy"}
+                    loading="lazy"
+                    decoding="async"
                     className="w-full h-auto block"
                     data-testid={
                       testId ? `${testId}-mobile-image-${i}` : undefined
