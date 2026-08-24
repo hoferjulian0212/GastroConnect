@@ -12,6 +12,10 @@ import { generateToken, hashToken, INVITE_TTL_MS } from "./tokens";
 import { requireAuth } from "./middleware";
 import { getAuth } from "@clerk/express";
 import { sendEmail, renderNotificationEmail, isEmailConfigured } from "../emailService";
+import { geocodeAddress } from "../geocoding";
+import {
+  registrationCompletionSchema,
+} from "@shared/registrationValidation";
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -73,22 +77,47 @@ export function registerAuthRoutes(app: Express) {
     });
   });
 
+  app.post("/api/auth/registration/geocode", authLimiter, async (req, res) => {
+    const parsed = z.object({
+      address: z.string().trim().min(3).max(200),
+      city: z.string().trim().min(2).max(100),
+      postalCode: z.string().trim().min(3).max(20),
+    }).safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({
+        error: "invalid_address",
+        fields: parsed.error.flatten().fieldErrors,
+      });
+    }
+
+    try {
+      const coordinates = await geocodeAddress(parsed.data);
+      if (!coordinates) {
+        return res.status(422).json({
+          error: "address_not_found",
+          message: "Diese Adresse wurde nicht gefunden. Bitte prüfen Sie Straße, PLZ und Ort.",
+        });
+      }
+      return res.json({ coordinates });
+    } catch (error) {
+      console.error("[auth] registration geocoding error", error);
+      return res.status(502).json({
+        error: "geocoding_unavailable",
+        message: "Die Adresse konnte gerade nicht geprüft werden. Bitte versuchen Sie es erneut.",
+      });
+    }
+  });
+
   // Completes the GastroConnect-only public onboarding after Clerk has
   // verified the email with its code-based flow.
   app.post("/api/auth/registration/complete", authLimiter, async (req, res) => {
     try {
       const email = getClerkEmail(req);
       if (!email) return res.status(401).json({ error: "unauthenticated" });
-      const parsed = z.object({
-        role: z.enum(["restaurant", "supplier"]),
-        companyName: z.string().trim().min(2).max(120),
-        contactName: z.string().trim().min(2).max(120),
-        phone: z.string().trim().min(5).max(40),
-        address: z.string().trim().min(3).max(200),
-        city: z.string().trim().min(2).max(100),
-        postalCode: z.string().trim().min(3).max(20),
-        profile: z.string().trim().max(1000).optional().default(""),
-      }).safeParse(req.body);
+      if (!z.string().email().safeParse(email).success) {
+        return res.status(401).json({ error: "invalid_verified_email" });
+      }
+      const parsed = registrationCompletionSchema.safeParse(req.body);
       if (!parsed.success) return res.status(400).json({ error: "invalid_registration", fields: parsed.error.flatten().fieldErrors });
       const existing = await storage.getMemberByEmail(email);
       if (existing) {
@@ -100,6 +129,8 @@ export function registerAuthRoutes(app: Express) {
         org: {
           role: d.role, name: d.companyName, companyName: d.companyName, email,
           phone: d.phone, address: d.address, city: d.city, postalCode: d.postalCode,
+          latitude: String(d.latitude),
+          longitude: String(d.longitude),
           description: d.profile, verifiedAt: new Date(), approvalStatus: "pending",
         },
         admin: {
