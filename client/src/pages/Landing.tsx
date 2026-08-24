@@ -1620,7 +1620,7 @@ export default function Landing() {
                   role="tab"
                   aria-selected={mobileShotRole === "restaurant"}
                   onClick={() => setMobileShotRole("restaurant")}
-                  className={`px-4 py-1.5 rounded-full font-medium transition-colors ${
+                   className={`px-4 py-1.5 rounded-full text-base md:text-sm font-medium transition-colors ${
                     mobileShotRole === "restaurant"
                       ? "bg-background text-foreground shadow-sm"
                       : "text-muted-foreground hover:text-foreground"
@@ -1634,7 +1634,7 @@ export default function Landing() {
                   role="tab"
                   aria-selected={mobileShotRole === "supplier"}
                   onClick={() => setMobileShotRole("supplier")}
-                  className={`px-4 py-1.5 rounded-full font-medium transition-colors ${
+                   className={`px-4 py-1.5 rounded-full text-base md:text-sm font-medium transition-colors ${
                     mobileShotRole === "supplier"
                       ? "bg-background text-foreground shadow-sm"
                       : "text-muted-foreground hover:text-foreground"
