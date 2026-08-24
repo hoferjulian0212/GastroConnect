@@ -238,10 +238,10 @@ export function StatsStrip({ lang = "de" }: { lang?: Lang }) {
     : t.stats;
 
   return (
-    <section className="bg-black px-4 md:px-8 py-20 md:py-28">
+    <section className="bg-black px-4 md:px-8 py-12 md:py-28">
       <div className="mx-auto max-w-6xl">
         <motion.p
-          className="text-[11px] font-semibold uppercase tracking-[.2em] text-white/35 mb-14"
+          className="text-[11px] font-semibold uppercase tracking-[.2em] text-white/35 mb-8 md:mb-14"
           initial={reduce ? false : { opacity: 0 }}
           whileInView={{ opacity: 1 }}
           viewport={{ once: true }}
@@ -284,7 +284,7 @@ export function SavingsChart({ lang = "de" }: { lang?: Lang }) {
   const reduce = !!useReducedMotion();
 
   return (
-    <section className="px-4 md:px-8 py-20 md:py-28 border-t border-black/[0.07] bg-white">
+    <section className="px-4 md:px-8 py-12 md:py-28 border-t border-black/[0.07] bg-white">
       <div className="mx-auto max-w-6xl">
 
         {/* ── Row 1: bar chart ── */}

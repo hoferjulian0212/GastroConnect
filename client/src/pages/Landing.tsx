@@ -1276,7 +1276,7 @@ export default function Landing() {
             </p>
           </div>
           <div
-            className="flex snap-x snap-mandatory gap-4 overflow-x-auto scroll-smooth px-1 pb-3 scrollbar-hide md:grid md:grid-cols-2 md:gap-6 md:overflow-visible md:px-0 md:pb-0"
+            className="-mx-4 flex w-[calc(100%+2rem)] snap-x snap-mandatory gap-4 overflow-x-auto scroll-smooth px-4 pb-3 scrollbar-hide md:mx-0 md:grid md:w-auto md:grid-cols-2 md:gap-6 md:overflow-visible md:px-0 md:pb-0"
             aria-label={t.eyebrowPillars}
           >
             {[
@@ -1304,10 +1304,10 @@ export default function Landing() {
               <MotionReveal
                 key={p.testid}
                 delay={pIdx * 120}
-                className="min-w-[calc(100vw-2.5rem)] shrink-0 snap-center md:min-w-0 md:shrink"
+                className="w-full min-w-full shrink-0 snap-start md:min-w-0 md:shrink"
               >
               <div
-                className="h-full rounded-3xl p-8 md:p-10 flex flex-col border bg-white dark:bg-neutral-900 border-neutral-200 dark:border-neutral-800"
+                className="h-full rounded-3xl p-6 md:p-10 flex flex-col border bg-white dark:bg-neutral-900 border-neutral-200 dark:border-neutral-800"
                 data-testid={p.testid}
               >
                 {/* Icon */}
@@ -1373,7 +1373,7 @@ export default function Landing() {
       {/* STEPS — So funktioniert es */}
       <section
         id="so-funktioniert"
-        className="scroll-mt-20 px-4 md:px-8 py-24 md:py-32"
+        className="scroll-mt-20 px-4 md:px-8 py-12 md:py-32"
       >
         <div className="mx-auto max-w-5xl">
           <div className="mx-auto max-w-2xl text-center mb-12 md:mb-16">
@@ -1418,7 +1418,7 @@ export default function Landing() {
       {/* FEATURES — Funktionen */}
       <section
         id="funktionen"
-        className="scroll-mt-20 px-4 md:px-8 py-24 md:py-32"
+        className="scroll-mt-20 px-4 md:px-8 py-12 md:py-32"
       >
         <div className="mx-auto max-w-6xl">
           <div className="mx-auto max-w-2xl text-center mb-12 md:mb-16">
@@ -1516,7 +1516,7 @@ export default function Landing() {
       <section
         id="mobile"
         ref={phoneFrameRef}
-        className="relative scroll-mt-20 px-4 md:px-8 py-24 md:py-32"
+        className="relative scroll-mt-20 px-4 md:px-8 py-12 md:py-32"
       >
         <div className="mx-auto max-w-6xl">
           <div className="grid gap-12 lg:grid-cols-2 items-center">
@@ -1636,7 +1636,7 @@ export default function Landing() {
       </section>
 
       {/* FAQ */}
-      <section id="faq" className="scroll-mt-20 px-4 md:px-8 py-24 md:py-32">
+      <section id="faq" className="scroll-mt-20 px-4 md:px-8 py-12 md:py-32">
         <div className="mx-auto max-w-3xl">
           <div className="text-center mb-12 md:mb-16">
             <span className="inline-block mb-3 text-xs font-semibold uppercase tracking-widest text-primary">
@@ -1697,7 +1697,7 @@ export default function Landing() {
       </section>
 
       {/* FINAL CTA */}
-      <section className="landing-final-cta px-4 md:px-8 py-24 md:py-32">
+      <section className="landing-final-cta px-4 md:px-8 py-12 md:py-32">
         <div className="mx-auto max-w-3xl text-center">
           <span className="inline-block mb-3 text-xs font-semibold uppercase tracking-widest text-primary">
             {t.eyebrowCta}
