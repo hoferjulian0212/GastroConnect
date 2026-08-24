@@ -15,7 +15,7 @@
  * and the check must be safe to run from a release pipeline.
  */
 
-import { appendFile, copyFile, mkdir, readFile, rename } from "node:fs/promises";
+import { appendFile, copyFile, mkdir, open, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 
 const args = process.argv.slice(2);
@@ -257,35 +257,97 @@ async function retainHistory(operation) {
     return 0;
   }
 
-  if (operation === "restore") {
-    try {
-      await mkdir(dirname(historyFile), { recursive: true });
-      await copyFile(artifactPath, historyFile);
-      console.log(`RELEASE_HEALTH_HISTORY_RESTORE source=${artifactPath} path=${historyFile} retained=true`);
-    } catch (error) {
-      if (error?.code === "ENOENT") {
-        console.log(`RELEASE_HEALTH_HISTORY_RESTORE source=${artifactPath} path=${historyFile} retained=false reason=not_found`);
-        return 0;
-      }
-      console.error(`Unable to restore release health history from ${artifactPath}: ${errorMessage(error)}`);
-      return 1;
-    }
-    return 0;
+  await mkdir(dirname(artifactPath), { recursive: true });
+  let releaseLock;
+  try {
+    releaseLock = await acquireHistoryLock(artifactPath);
+  } catch (error) {
+    console.error(
+      `Unable to ${operation} release health history: ${errorMessage(error)}`,
+    );
+    return 1;
   }
 
   try {
-    await mkdir(dirname(artifactPath), { recursive: true });
+    if (operation === "restore") {
+      try {
+        await mkdir(dirname(historyFile), { recursive: true });
+        await copyFile(artifactPath, historyFile);
+        console.log(`RELEASE_HEALTH_HISTORY_RESTORE source=${artifactPath} path=${historyFile} retained=true`);
+      } catch (error) {
+        if (error?.code === "ENOENT") {
+          console.log(`RELEASE_HEALTH_HISTORY_RESTORE source=${artifactPath} path=${historyFile} retained=false reason=not_found`);
+          return 0;
+        }
+        console.error(`Unable to restore release health history from ${artifactPath}: ${errorMessage(error)}`);
+        return 1;
+      }
+      return 0;
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, Number(process.env.RELEASE_HEALTH_PUBLISH_DELAY_MS ?? 0)));
+    const localContent = await readFile(historyFile, "utf8");
+    let artifactContent = "";
+    try {
+      artifactContent = await readFile(artifactPath, "utf8");
+    } catch (error) {
+      if (error?.code !== "ENOENT") throw error;
+    }
+
+    // Each release restores a snapshot before it runs. Merge the snapshot
+    // back into the artifact while locked instead of replacing newer records.
+    const records = [...artifactContent.split(/\r?\n/), ...localContent.split(/\r?\n/)]
+      .filter(Boolean);
+    const mergedContent = `${[...new Set(records)].join("\n")}\n`;
     const temporaryPath = `${artifactPath}.tmp-${process.pid}`;
-    await copyFile(historyFile, temporaryPath);
-    await rename(temporaryPath, artifactPath);
+    try {
+      await writeFile(temporaryPath, mergedContent, "utf8");
+      await rename(temporaryPath, artifactPath);
+    } finally {
+      await rm(temporaryPath, { force: true });
+    }
     console.log(`RELEASE_HEALTH_HISTORY_PUBLISH path=${artifactPath} retained=true`);
     return 0;
   } catch (error) {
-    console.error(`Unable to publish release health history to ${artifactPath}: ${errorMessage(error)}`);
+    console.error(
+      `Unable to ${operation} release health history${operation === "publish" ? ` to ${artifactPath}` : ` from ${artifactPath}`}: ${errorMessage(error)}`,
+    );
     return 1;
+  } finally {
+    await releaseLock();
   }
 }
 
 function errorMessage(error) {
   return error instanceof Error ? error.message : String(error);
+}
+
+async function acquireHistoryLock(artifactPath) {
+  const lockPath = `${artifactPath}.lock`;
+  const configuredTimeout = Number(process.env.RELEASE_HEALTH_LOCK_TIMEOUT_MS ?? 30_000);
+  const timeoutMs = Number.isFinite(configuredTimeout) && configuredTimeout >= 0
+    ? configuredTimeout
+    : 30_000;
+  const startedAt = Date.now();
+  let handle;
+  while (!handle) {
+    try {
+      handle = await open(lockPath, "wx");
+      await handle.writeFile(`${process.pid}\n`);
+    } catch (error) {
+      if (error?.code !== "EEXIST") {
+        throw new Error(`unable to create publication lock ${lockPath}: ${errorMessage(error)}`);
+      }
+      if (Date.now() - startedAt >= timeoutMs) {
+        throw new Error(
+          `publication lock conflict at ${lockPath}; another release may still be publishing (waited ${Date.now() - startedAt}ms)`,
+        );
+      }
+      await new Promise((resolve) => setTimeout(resolve, 25));
+    }
+  }
+  return async () => {
+    await handle.close();
+    await rm(lockPath, { force: true });
+  };
 }

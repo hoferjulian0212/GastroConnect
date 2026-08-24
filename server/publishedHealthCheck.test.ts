@@ -288,6 +288,51 @@ describe("published health contract checker", () => {
     }
   });
 
+  test("preserves both records when publication attempts overlap", async () => {
+    const directory = await mkdtemp(resolve(projectRoot, "published-health-test-"));
+    const artifact = resolve(directory, "artifact", "history.jsonl");
+    const workspaceOne = resolve(directory, "workspace-one", "history.jsonl");
+    const workspaceTwo = resolve(directory, "workspace-two", "history.jsonl");
+    const priorRecord = {
+      checkedAt: "2026-08-23T12:00:00.000Z",
+      deployment: { id: "prior" },
+      endpoints: [{ path: "/health/live", result: "PASS" }],
+    };
+    const makeRecord = (id: string, checkedAt: string) => ({
+      ...priorRecord,
+      checkedAt,
+      deployment: { id },
+    });
+
+    try {
+      await mkdir(resolve(directory, "artifact"), { recursive: true });
+      await mkdir(resolve(directory, "workspace-one"), { recursive: true });
+      await mkdir(resolve(directory, "workspace-two"), { recursive: true });
+      await writeFile(artifact, `${JSON.stringify(priorRecord)}\n`);
+      await writeFile(workspaceOne, `${JSON.stringify(priorRecord)}\n${JSON.stringify(makeRecord("release-one", "2026-08-24T12:01:00.000Z"))}\n`);
+      await writeFile(workspaceTwo, `${JSON.stringify(priorRecord)}\n${JSON.stringify(makeRecord("release-two", "2026-08-24T12:02:00.000Z"))}\n`);
+
+      const [publishOne, publishTwo] = await Promise.all([
+        runHistoryCommand("--publish-history", {
+          RELEASE_HEALTH_HISTORY_ARTIFACT: artifact,
+          RELEASE_HEALTH_HISTORY_FILE: workspaceOne,
+          RELEASE_HEALTH_PUBLISH_DELAY_MS: "100",
+        }),
+        runHistoryCommand("--publish-history", {
+          RELEASE_HEALTH_HISTORY_ARTIFACT: artifact,
+          RELEASE_HEALTH_HISTORY_FILE: workspaceTwo,
+          RELEASE_HEALTH_PUBLISH_DELAY_MS: "100",
+        }),
+      ]);
+      assert.equal(publishOne.exitCode, 0, publishOne.stdout + publishOne.stderr);
+      assert.equal(publishTwo.exitCode, 0, publishTwo.stdout + publishTwo.stderr);
+      const records = (await readFile(artifact, "utf8")).trim().split("\n").map((line) => JSON.parse(line));
+      assert.deepEqual(records.map((record) => record.deployment.id), ["prior", "release-one", "release-two"]);
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+
   test("rejects an unreachable deployment and identifies the affected endpoint", async () => {
     const server = await startFixtureServer({});
     const unreachableUrl = server.url;
