@@ -68,7 +68,6 @@ import {
   Store,
   Menu,
   CheckCircle2,
-  Mail,
   UserPlus,
 } from "lucide-react";
 
@@ -672,68 +671,42 @@ function RegistrationGuide({
   t,
   reduceMotion,
   onStart,
+  onRegister,
 }: {
   t: (typeof translations)[Lang];
   reduceMotion: boolean | null;
   onStart: (role: "restaurant" | "supplier") => void;
+  onRegister: () => void;
 }) {
-  const steps = [
-    { icon: Mail,         title: t.guideStep1Title, desc: t.guideStep1Desc },
-    { icon: Shield,       title: t.guideStep2Title, desc: t.guideStep2Desc },
-    { icon: CheckCircle2, title: t.guideStep3Title, desc: t.guideStep3Desc },
-  ];
-
   return (
     <motion.div
-      className="mx-auto w-full max-w-3xl"
+      className="mx-auto w-full max-w-sm"
       initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, delay: 0.05 }}
       data-testid="registration-guide"
     >
-      <div className="px-0 md:rounded-3xl md:border md:border-border md:bg-card/60 md:px-8 md:py-7 md:shadow-sm md:backdrop-blur-sm">
-        <p className="mb-5 hidden text-xs font-semibold uppercase tracking-wider text-primary md:block" data-testid="text-guide-eyebrow">
-          {t.guideEyebrow}
-        </p>
-
-        {/* Invite-flow steps — keep the detailed version for larger screens. */}
-        <div className="hidden gap-3 sm:grid-cols-3 md:grid">
-          {steps.map((step, i) => {
-            const Icon = step.icon;
-            return (
-              <motion.div
-                key={`${i}-${step.title}`}
-                className="relative flex flex-col items-center text-center rounded-2xl bg-muted/30 px-3 py-4"
-                initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 12 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.4, delay: reduceMotion ? 0 : 0.1 + i * 0.1 }}
-                data-testid={`guide-step-${i + 1}`}
-              >
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary mb-2">
-                  <Icon className="h-5 w-5" />
-                </div>
-                <span className="absolute top-2 right-3 text-xs font-semibold text-muted-foreground/50">{i + 1}</span>
-                <h3 className="text-sm font-semibold">{step.title}</h3>
-                <p className="mt-1 text-xs text-muted-foreground leading-snug">{step.desc}</p>
-              </motion.div>
-            );
-          })}
-        </div>
-
-        <div className="mt-5 hidden flex-col items-center gap-3 sm:flex-row md:flex">
+      <div className="px-0">
+        <div className="hidden w-full flex-col gap-3 md:flex">
           <Button
             size="lg"
-            className="w-full sm:w-auto h-10 gap-1.5 rounded-full bg-black px-5 text-sm font-medium text-white shadow-none hover:bg-black/85 dark:bg-white dark:text-black dark:hover:bg-white/90"
+            className="h-12 w-full gap-2 rounded-full bg-black px-6 text-sm font-semibold text-white shadow-none hover:bg-black/85"
             onClick={() => onStart("restaurant")}
             data-testid="button-guide-cta"
           >
             {t.guideCta}
             <ArrowUpRight className="h-4 w-4" />
           </Button>
-          <p className="text-xs text-muted-foreground text-center sm:text-left" data-testid="text-guide-notice">
-            {t.guideNotice}
-          </p>
+          <Button
+            size="lg"
+            variant="outline"
+            className="h-12 w-full gap-2 rounded-full border-black/15 bg-white px-6 text-sm font-semibold text-black shadow-none hover:bg-black/[0.04] hover:text-black"
+            onClick={onRegister}
+            data-testid="button-guide-register"
+          >
+            {t.guideMobileCta}
+            <ArrowUpRight className="h-4 w-4" />
+          </Button>
         </div>
 
         {/* Mobile keeps this area intentionally minimal: one clear path into
@@ -1112,7 +1085,12 @@ export default function Landing() {
 
           {/* Invite-only guide — grouped directly below headline */}
           <MotionReveal delay={600} y={16} blur={false}>
-            <RegistrationGuide t={t} reduceMotion={reduceMotion} onStart={handleStart} />
+             <RegistrationGuide
+               t={t}
+               reduceMotion={reduceMotion}
+               onStart={handleStart}
+               onRegister={() => setLocation("/register")}
+             />
           </MotionReveal>
         </div>
       </section>
