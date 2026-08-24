@@ -32,7 +32,7 @@ import {
 } from "@/pages/About";
 import shotChefPhone from "@assets/iStock-1277816551_1781732715128.jpg";
 import shotOfficePhone from "@assets/sk_art-corporate-training-10046033_1920_1781806207063.jpg";
-import shotOrderingProcessLoop from "@assets/landing-ordering-process-loop.webp";
+import shotOrderingProcess from "@assets/landing-ordering-process-clean.mp4";
 import shotOrderingProcessPoster from "@assets/landing-ordering-process-clean-poster.jpg";
 import shotMobileHome from "@assets/landing-mobile-home.png";
 import shotMobileProducts from "@assets/landing-mobile-products.png";
@@ -728,6 +728,145 @@ function RegistrationGuide({
   );
 }
 
+function OrderingProcessCanvas({
+  src,
+  poster,
+  label,
+  reduceMotion,
+}: {
+  src: string;
+  poster: string;
+  label: string;
+  reduceMotion: boolean | null;
+}) {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    const context = canvas?.getContext("2d");
+    if (!video || !canvas || !context || reduceMotion) return;
+
+    let isNearViewport = false;
+    let animationFrame: number | null = null;
+
+    const drawFrame = () => {
+      animationFrame = null;
+      if (!isNearViewport) return;
+
+      if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA && video.videoWidth > 0) {
+        if (canvas.width !== video.videoWidth || canvas.height !== video.videoHeight) {
+          canvas.width = video.videoWidth;
+          canvas.height = video.videoHeight;
+        }
+        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+      }
+
+      animationFrame = window.requestAnimationFrame(drawFrame);
+    };
+
+    const renderFrames = () => {
+      if (animationFrame === null) {
+        animationFrame = window.requestAnimationFrame(drawFrame);
+      }
+    };
+
+    const tryPlay = () => {
+      if (document.hidden) return;
+      video.muted = true;
+      video.defaultMuted = true;
+      void video.play().then(renderFrames).catch(() => {
+        // The next scroll or visibility event retries after the browser is ready.
+      });
+    };
+
+    const setNearViewport = (nearViewport: boolean) => {
+      isNearViewport = nearViewport;
+      if (nearViewport) {
+        renderFrames();
+        tryPlay();
+      } else {
+        video.pause();
+        if (animationFrame !== null) {
+          window.cancelAnimationFrame(animationFrame);
+          animationFrame = null;
+        }
+      }
+    };
+
+    const observer = "IntersectionObserver" in window
+      ? new IntersectionObserver(
+          ([entry]) => setNearViewport(entry.isIntersecting),
+          { rootMargin: "180px 0px", threshold: 0.01 },
+        )
+      : null;
+
+    observer?.observe(canvas);
+    if (!observer) setNearViewport(true);
+
+    const onScroll = () => {
+      const bounds = canvas.getBoundingClientRect();
+      if (bounds.bottom > 0 && bounds.top < window.innerHeight) {
+        setNearViewport(true);
+      }
+    };
+    const onVisibilityChange = () => {
+      if (document.hidden) {
+        video.pause();
+      } else if (isNearViewport) {
+        tryPlay();
+      }
+    };
+
+    video.addEventListener("loadedmetadata", renderFrames);
+    video.addEventListener("loadeddata", renderFrames);
+    video.addEventListener("play", renderFrames);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    video.load();
+    tryPlay();
+
+    return () => {
+      observer?.disconnect();
+      video.removeEventListener("loadedmetadata", renderFrames);
+      video.removeEventListener("loadeddata", renderFrames);
+      video.removeEventListener("play", renderFrames);
+      window.removeEventListener("scroll", onScroll);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+      if (animationFrame !== null) window.cancelAnimationFrame(animationFrame);
+      video.pause();
+    };
+  }, [reduceMotion]);
+
+  return (
+    <>
+      <canvas
+        ref={canvasRef}
+        aria-label={label}
+        className="absolute inset-0 h-full w-full object-cover object-top"
+        style={{
+          backgroundImage: `url(${poster})`,
+          backgroundPosition: "top",
+          backgroundSize: "cover",
+        }}
+      />
+      <video
+        ref={videoRef}
+        src={src}
+        muted
+        loop
+        playsInline
+        autoPlay={!reduceMotion}
+        preload={reduceMotion ? "none" : "auto"}
+        aria-hidden="true"
+        tabIndex={-1}
+        className="pointer-events-none absolute left-0 top-0 h-px w-px opacity-0"
+      />
+    </>
+  );
+}
+
 const pillarRestaurantIcons = [Search, BarChart3, Wallet, Eye];
 const pillarSupplierIcons = [Package, Eye, FileText, BarChart3];
 const featureIcons = [
@@ -1120,12 +1259,11 @@ export default function Landing() {
                 <div className="absolute left-3 sm:left-6 md:left-8 top-1/2 -translate-y-1/2">
                   <div className="rounded-[2.25rem] md:rounded-[2.75rem] border border-border bg-card p-2.5 md:p-3 shadow-2xl shadow-black/50">
                     <div className="relative rounded-[1.75rem] md:rounded-[2.25rem] overflow-hidden border border-border w-[150px] sm:w-[185px] md:w-[230px] aspect-[9/19] bg-card">
-                      <img
-                        src={reduceMotion ? shotOrderingProcessPoster : shotOrderingProcessLoop}
-                        alt={t.mobileAltRestaurant}
-                        className="absolute inset-0 w-full h-full object-cover object-top"
-                        loading="eager"
-                        data-testid="img-lifestyle-phone"
+                      <OrderingProcessCanvas
+                        src={shotOrderingProcess}
+                        poster={shotOrderingProcessPoster}
+                        label={t.mobileAltRestaurant}
+                        reduceMotion={reduceMotion}
                       />
                     </div>
                   </div>
