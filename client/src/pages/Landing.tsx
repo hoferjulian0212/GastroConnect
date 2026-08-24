@@ -1000,7 +1000,7 @@ export default function Landing() {
                             setMobileNavOpen(false);
                             window.setTimeout(() => smoothScrollTo(item.id), 80);
                           }}
-                          className="flex min-h-14 w-full items-center justify-between border-b border-border/70 px-1 text-left text-xl font-medium tracking-tight text-foreground transition-colors hover:text-muted-foreground"
+                           className="flex min-h-14 w-full items-center justify-between border-b border-border/70 px-1 text-left text-xl font-medium tracking-tight text-foreground transition-colors hover:text-muted-foreground focus:outline-none focus-visible:outline-none focus-visible:ring-0"
                           data-testid={`nav-mobile-${item.id}`}
                         >
                           {item.label}
