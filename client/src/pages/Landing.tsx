@@ -65,7 +65,6 @@ import {
   ArrowUpRight,
   Utensils,
   Store,
-  Menu,
   CheckCircle2,
   Mail,
   UserPlus,
@@ -149,6 +148,7 @@ const translations = {
     navAnchorFaq: "FAQ",
     navLogin: "Anmelden",
     navStart: "Jetzt starten",
+    navMenu: "Entdecken",
 
     heroH1: "Händler und Betriebe. Alles auf einer Plattform.",
     heroDiscover: "Über uns",
@@ -167,6 +167,7 @@ const translations = {
     guideStep3Desc: "Nach der Anmeldung stehen alle Funktionen sofort bereit.",
     guideCta: "Anmelden",
     guideNotice: "Der Zugang wird vom Administrator Ihres Unternehmens eingerichtet.",
+    guideMobileCopy: "Sie möchten GastroConnect kennenlernen? Buchen Sie eine Demo und sehen Sie, wie Ihr Betrieb einfacher bestellt.",
 
     pillarsHeadline: "Für wen GastroConnect gebaut ist",
     pillarsSub:
@@ -352,6 +353,7 @@ const translations = {
     navAnchorFaq: "FAQ",
     navLogin: "Accedi",
     navStart: "Inizia ora",
+    navMenu: "Scopri",
 
     heroH1: "Commercianti e aziende. Finalmente su un'unica piattaforma.",
     heroDiscover: "Chi siamo",
@@ -370,6 +372,7 @@ const translations = {
     guideStep3Desc: "Dopo l'accesso tutte le funzioni sono disponibili immediatamente.",
     guideCta: "Accedi",
     guideNotice: "L'accesso viene creato dall'amministratore della tua azienda.",
+    guideMobileCopy: "Vuoi conoscere GastroConnect? Prenota una demo e scopri come semplificare i tuoi ordini.",
 
     pillarsHeadline: "Per chi è pensato GastroConnect",
     pillarsSub:
@@ -495,6 +498,7 @@ const translations = {
     navAnchorFaq: "FAQ",
     navLogin: "Sign in",
     navStart: "Get started",
+    navMenu: "Explore",
 
     heroH1: "Suppliers and restaurants. Finally on one platform.",
     heroDiscover: "About us",
@@ -513,6 +517,7 @@ const translations = {
     guideStep3Desc: "Once signed in, all features are available immediately.",
     guideCta: "Sign in",
     guideNotice: "Access is set up by your company's administrator.",
+    guideMobileCopy: "Want to see GastroConnect in action? Book a demo and discover a simpler way to manage orders.",
 
     pillarsHeadline: "Who GastroConnect is built for",
     pillarsSub:
@@ -683,8 +688,8 @@ function RegistrationGuide({
           {t.guideEyebrow}
         </p>
 
-        {/* Invite-flow steps */}
-        <div className="grid gap-3 sm:grid-cols-3">
+        {/* Invite-flow steps — keep the detailed version for larger screens. */}
+        <div className="hidden gap-3 sm:grid-cols-3 md:grid">
           {steps.map((step, i) => {
             const Icon = step.icon;
             return (
@@ -708,7 +713,7 @@ function RegistrationGuide({
           })}
         </div>
 
-        <div className="mt-5 flex flex-col sm:flex-row items-center gap-3">
+        <div className="mt-5 hidden flex-col items-center gap-3 sm:flex-row md:flex">
           <Button
             size="lg"
             className="w-full sm:w-auto h-10 gap-1.5 rounded-full bg-black px-5 text-sm font-medium text-white shadow-none hover:bg-black/85 dark:bg-white dark:text-black dark:hover:bg-white/90"
@@ -721,6 +726,23 @@ function RegistrationGuide({
           <p className="text-xs text-muted-foreground text-center sm:text-left" data-testid="text-guide-notice">
             {t.guideNotice}
           </p>
+        </div>
+
+        {/* On mobile, make the access action feel like an invitation instead
+            of a dense three-step information card. */}
+        <div className="mt-1 flex items-center justify-between gap-4 border-t border-border/70 pt-5 md:hidden">
+          <p className="max-w-[15rem] text-xs leading-relaxed text-muted-foreground">
+            {t.guideMobileCopy}
+          </p>
+          <Button
+            size="lg"
+            className="h-10 shrink-0 gap-1.5 rounded-full bg-black px-4 text-sm font-medium text-white shadow-none hover:bg-black/85 dark:bg-white dark:text-black dark:hover:bg-white/90"
+            onClick={() => onStart("restaurant")}
+            data-testid="button-guide-mobile-cta"
+          >
+            {t.guideCta}
+            <ArrowUpRight className="h-4 w-4" />
+          </Button>
         </div>
       </div>
     </motion.div>
@@ -910,7 +932,7 @@ export default function Landing() {
 
            {/* Right: language + one prominent auth action */}
           <div className="flex items-center gap-2 shrink-0 ml-auto lg:ml-0">
-             <PublicLanguageSwitcher lang={lang} onChange={changeLang} />
+             <PublicLanguageSwitcher lang={lang} onChange={changeLang} compact />
             <Button
                variant="default"
                className="hidden md:inline-flex h-10 rounded-full bg-black px-5 text-sm font-medium text-white shadow-none hover:bg-black/85 dark:bg-white dark:text-black dark:hover:bg-white/90"
@@ -925,19 +947,23 @@ export default function Landing() {
             <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
               <SheetTrigger asChild>
                 <button
-                  className="lg:hidden flex h-9 w-9 items-center justify-center rounded-full border border-black/[0.06] dark:border-white/10 bg-black/[0.04] dark:bg-white/[0.06] backdrop-blur-sm text-foreground"
-                  aria-label="Menu"
+                  className="lg:hidden inline-flex h-9 items-center gap-1.5 rounded-full border border-black/[0.08] bg-black/[0.04] px-3 text-xs font-semibold text-foreground backdrop-blur-sm dark:border-white/10 dark:bg-white/[0.06]"
+                  aria-label={t.navMenu}
                   data-testid="button-mobile-menu"
                 >
-                  <Menu className="h-4 w-4" />
+                  <span>{t.navMenu}</span>
+                  <ArrowUpRight className="h-3.5 w-3.5" />
                 </button>
               </SheetTrigger>
-              <SheetContent side="right" className="w-[280px] p-0">
-                <div className="flex flex-col h-full">
-                  <div className="px-5 py-4 border-b border-border flex items-center">
+              <SheetContent side="bottom" className="h-auto max-h-[78vh] rounded-t-[2rem] border-border bg-background p-0">
+                <div className="flex max-h-[78vh] flex-col">
+                  <div className="flex items-center justify-between border-b border-border px-5 py-4">
                     <Logo size="nav" variant="dark" thick data-testid="logo-landing-mobile" />
+                    <span className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                      {t.navMenu}
+                    </span>
                   </div>
-                  <div className="flex-1 px-3 py-4 flex flex-col">
+                  <div className="grid gap-1 px-4 py-4 sm:grid-cols-2">
                     {anchors.map((item) => (
                       <button
                         key={item.id}
@@ -945,16 +971,17 @@ export default function Landing() {
                           setMobileNavOpen(false);
                           setTimeout(() => smoothScrollTo(item.id), 60);
                         }}
-                        className="text-left px-3 py-3 rounded-xl text-sm font-medium text-foreground hover:bg-muted/60"
+                        className="flex min-h-12 items-center justify-between rounded-2xl px-4 py-3 text-left text-sm font-medium text-foreground transition-colors hover:bg-muted/60"
                         data-testid={`nav-mobile-${item.id}`}
                       >
                         {item.label}
+                        <ArrowUpRight className="h-4 w-4 text-muted-foreground" />
                       </button>
                     ))}
                   </div>
-                  <div className="border-t border-border p-4 space-y-3">
+                  <div className="grid gap-3 border-t border-border p-4 sm:grid-cols-2">
                     <div
-                      className="flex items-center justify-center rounded-full border border-border bg-card p-0.5 text-xs font-medium"
+                      className="flex min-h-11 items-center justify-center rounded-full border border-border bg-card p-0.5 text-xs font-medium"
                       data-testid="lang-switcher-mobile"
                     >
                       {(["de", "it", "en"] as const).map((code) => (
@@ -973,8 +1000,7 @@ export default function Landing() {
                       ))}
                     </div>
                     <Button
-                      variant="outline"
-                      className="w-full"
+                      className="h-11 w-full rounded-full bg-black text-white shadow-none hover:bg-black/85 dark:bg-white dark:text-black dark:hover:bg-white/90"
                       onClick={() => {
                         setMobileNavOpen(false);
                         handleLogin();
@@ -994,7 +1020,7 @@ export default function Landing() {
       <div id="top" />
 
       {/* HERO */}
-      <section className="landing-hero relative px-4 md:px-8 pt-24 md:pt-28 pb-6 md:pb-8">
+      <section className="landing-hero relative px-4 pb-6 pt-32 md:px-8 md:pb-8 md:pt-28">
         <div className="mx-auto max-w-5xl text-center flex flex-col justify-center gap-10 md:gap-14 min-h-[calc(100svh-5rem)]">
           {/* Headline + subtitle */}
           <div>
@@ -1006,7 +1032,7 @@ export default function Landing() {
               <HeadlineReveal
                 key={`hero-${lang}`}
                 text={t.heroH1}
-                 className="text-5xl md:text-8xl font-semibold tracking-tight leading-[.98] max-w-6xl mx-auto"
+                 className="mx-auto max-w-[21rem] text-[2.6rem] font-semibold leading-[.98] tracking-tight md:max-w-6xl md:text-8xl"
                 testId="text-hero-headline"
               />
             </HeadlineCta>

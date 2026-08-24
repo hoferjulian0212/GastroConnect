@@ -50,26 +50,28 @@ export function persistPublicLanguage(lang: PublicLang) {
 export function PublicLanguageSwitcher({
   lang,
   onChange,
+  compact = false,
 }: {
   lang: PublicLang;
   onChange: (lang: PublicLang) => void;
+  compact?: boolean;
 }) {
   const selected = publicLanguageOptions.find((o) => o.code === lang) ?? publicLanguageOptions[0];
   return (
-    <label className="relative flex h-10 items-center gap-1.5 pl-1 text-xs font-medium text-black/55 transition-colors hover:text-black">
-      <span aria-hidden="true" className="text-base leading-none">{selected.flag}</span>
+    <label className={`relative flex items-center gap-1.5 pl-1 text-xs font-medium text-black/55 transition-colors hover:text-black ${compact ? "h-8" : "h-10"}`}>
+      <span aria-hidden="true" className={`${compact ? "text-sm" : "text-base"} leading-none`}>{selected.flag}</span>
       <span className="sr-only">{selected.label}</span>
       <select
         value={lang}
         onChange={(e) => onChange(e.target.value as PublicLang)}
         aria-label="Language / Sprache / Lingua"
-        className="cursor-pointer appearance-none bg-transparent pr-4 text-[11px] font-semibold uppercase tracking-[0.12em] outline-none"
+        className={`cursor-pointer appearance-none bg-transparent font-semibold uppercase outline-none ${compact ? "pr-3 text-[10px] tracking-[0.1em]" : "pr-4 text-[11px] tracking-[0.12em]"}`}
       >
         {publicLanguageOptions.map((o) => (
           <option key={o.code} value={o.code}>{o.code.toUpperCase()}</option>
         ))}
       </select>
-      <ChevronDown aria-hidden="true" className="pointer-events-none absolute right-0 h-3 w-3 text-black/35" />
+      <ChevronDown aria-hidden="true" className={`pointer-events-none absolute right-0 text-black/35 ${compact ? "h-2.5 w-2.5" : "h-3 w-3"}`} />
     </label>
   );
 }
