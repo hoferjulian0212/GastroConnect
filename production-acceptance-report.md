@@ -34,6 +34,22 @@ provider delivery, or deployment rollback.
 | Monitoring and alert routing | **Configured in development; production route check failed** | Development endpoints are pollable without session state; metrics are rate-limited, time-bounded, short-cached, fail closed on outbox-query/schema errors, and include five-minute API 5xx rate, retry-outbox backlog/recent terminal failures, oldest pending age, process uptime, and PostgreSQL pool exhaustion. At 2026-08-24T10:56:57Z the published URL returned SPA HTML, not health JSON, for all three health paths. |
 | Deployment rollback | **Not verified / blocked** | Requires a deployed server release exposing the health contract, then an operator-owned canary/rollback drill with attached deployment evidence |
 
+### Published health contract release check
+
+Run this check against the exact published deployment URL before enabling
+external monitoring or approving a canary:
+
+```sh
+npm run check:published-health -- https://your-published-deployment.example
+```
+
+The URL may also be supplied as `PUBLISHED_URL`. The check sends unauthenticated
+`GET` requests to `/health/live`, `/health/ready`, and `/health/metrics`, and
+fails unless each response has a 2xx status, an `application/json` content type,
+and the required health-contract fields. In particular, a 200 SPA HTML
+fallback fails immediately rather than being mistaken for a healthy deployment.
+No credentials are embedded or sent by this check.
+
 ## Role-path acceptance coverage
 
 The automated acceptance fixtures use separate restaurant, supplier, unrelated
