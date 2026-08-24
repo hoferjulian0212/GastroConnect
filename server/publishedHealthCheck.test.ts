@@ -602,6 +602,67 @@ describe("published health contract checker", () => {
     }
   });
 
+  test("recovers an expired interrupted claim while protecting the recovered publisher", async () => {
+    const directory = await mkdtemp(resolve(projectRoot, "published-health-test-"));
+    const artifact = resolve(directory, "artifact", "history.jsonl");
+    const firstHistory = resolve(directory, "workspace-one", "history.jsonl");
+    const secondHistory = resolve(directory, "workspace-two", "history.jsonl");
+    const claimPath = `${artifact}.lock.claim`;
+    const makeRecord = (id: string) => ({
+      checkedAt: "2026-08-24T12:09:00.000Z",
+      deployment: { id },
+      endpoints: [{ path: "/health/live", result: "PASS" }],
+    });
+
+    try {
+      await mkdir(resolve(directory, "artifact"), { recursive: true });
+      await mkdir(resolve(directory, "workspace-one"), { recursive: true });
+      await mkdir(resolve(directory, "workspace-two"), { recursive: true });
+      await writeFile(artifact, "");
+      await writeFile(firstHistory, JSON.stringify(makeRecord("recovered")) + "\n");
+      await writeFile(secondHistory, JSON.stringify(makeRecord("blocked")) + "\n");
+      await mkdir(claimPath);
+      const expiredAt = new Date(Date.now() - 1_000);
+      await utimes(claimPath, expiredAt, expiredAt);
+
+      const firstPromise = runLockedHistoryCommand("publish", {
+        RELEASE_HEALTH_HISTORY_ARTIFACT: artifact,
+        RELEASE_HEALTH_HISTORY_FILE: firstHistory,
+        RELEASE_HEALTH_LOCK_HOSTNAME: "recovery-builder-a",
+        RELEASE_HEALTH_LOCK_STALE_MS: "500",
+        RELEASE_HEALTH_PUBLISH_DELAY_MS: "200",
+      });
+      await waitFor(async () => {
+        try {
+          return JSON.parse(await readFile(`${artifact}.lock`, "utf8")).hostname === "recovery-builder-a";
+        } catch {
+          return false;
+        }
+      });
+      const secondPromise = runLockedHistoryCommand("publish", {
+        RELEASE_HEALTH_HISTORY_ARTIFACT: artifact,
+        RELEASE_HEALTH_HISTORY_FILE: secondHistory,
+        RELEASE_HEALTH_LOCK_HOSTNAME: "recovery-builder-b",
+        RELEASE_HEALTH_LOCK_STALE_MS: "500",
+        RELEASE_HEALTH_PUBLISH_DELAY_MS: "200",
+      });
+      const [first, second] = await Promise.all([firstPromise, secondPromise]);
+
+      assert.equal(first.exitCode, 0, first.stdout + first.stderr);
+      assert.notEqual(second.exitCode, 0, second.stdout + second.stderr);
+      assert.match(
+        second.stderr,
+        /another publisher is claiming the lock|publication lock conflict/,
+      );
+      const records = (await readFile(artifact, "utf8")).trim().split("\n").map((line) => JSON.parse(line));
+      assert.equal(records.length, 1);
+      assert.equal(records[0].deployment.id, "recovered");
+      await assert.rejects(readFile(claimPath, "utf8"), { code: "ENOENT" });
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+
   test("keeps an active publisher serialized behind the advisory gate", async () => {
     const directory = await mkdtemp(resolve(projectRoot, "published-health-test-"));
     const artifact = resolve(directory, "artifact", "history.jsonl");

@@ -15,7 +15,7 @@
  * and the check must be safe to run from a release pipeline.
  */
 
-import { appendFile, copyFile, mkdir, open, readFile, rename, rm, writeFile } from "node:fs/promises";
+import { appendFile, copyFile, mkdir, open, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
 import { spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { hostname } from "node:os";
@@ -404,23 +404,36 @@ async function acquireHistoryMarker(artifactPath) {
       } catch (readError) {
         if (readError?.code !== "ENOENT") throw readError;
       }
-      if (!claimOwner) {
+      let claimLeaseUntil;
+      if (claimOwner) {
+        claimLeaseUntil = Date.parse(claimOwner.leaseUntil ?? claimOwner.startedAt);
+      } else {
+        // A process may be terminated after mkdir but before its owner marker
+        // is written. The directory mtime is the only durable lease signal in
+        // that window, so keep a recent empty claim protected.
+        try {
+          claimLeaseUntil = (await stat(claimPath)).mtimeMs + staleMs;
+        } catch (statError) {
+          if (statError?.code === "ENOENT") continue;
+          throw statError;
+        }
+      }
+      if (!Number.isFinite(claimLeaseUntil) || claimLeaseUntil > Date.now()) {
         throw new Error(
           `publication lock conflict at ${lockPath}; another publisher is claiming the lock`,
         );
       }
-      const claimLeaseUntil = claimOwner
-        ? Date.parse(claimOwner.leaseUntil ?? claimOwner.startedAt)
-        : NaN;
-      if (claimOwner && Number.isFinite(claimLeaseUntil) && claimLeaseUntil > Date.now()) {
-        throw new Error(
-          `publication lock conflict at ${lockPath}; another publisher is claiming the lock`,
-        );
+      // Rename is the atomic ownership handoff for stale claims. Recursive
+      // removal followed by mkdir would let two reclaimers delete each
+      // other's newly-created claim and both publish.
+      const reclaimPath = `${claimPath}.reclaim-${randomUUID()}`;
+      try {
+        await rename(claimPath, reclaimPath);
+      } catch (renameError) {
+        if (renameError?.code === "ENOENT") continue;
+        throw renameError;
       }
-      // A process can be terminated between mkdir and writing its owner, or
-      // after its lease expires. Reclaim only the claim directory, then retry
-      // the atomic mkdir rather than writing over an unknown owner's marker.
-      await rm(claimPath, { recursive: true, force: true });
+      await rm(reclaimPath, { recursive: true, force: true });
     }
   }
 
