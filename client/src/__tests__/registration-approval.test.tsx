@@ -4,7 +4,10 @@ vi.mock("@clerk/react", async () => {
   const React = await import("react");
   return {
     ClerkProvider: ({ children }: { children: React.ReactNode }) => React.createElement(React.Fragment, null, children),
-    SignIn: () => null,
+    SignIn: ({ forceRedirectUrl }: { forceRedirectUrl?: string }) => React.createElement("div", {
+      "data-testid": "clerk-sign-in",
+      "data-redirect-url": forceRedirectUrl,
+    }),
     SignUp: () => null,
     useAuth: () => ({ isLoaded: true, isSignedIn: true }),
     useClerk: () => ({ signOut: vi.fn(async () => {}), addListener: () => () => {} }),
@@ -127,5 +130,15 @@ describe("public registration approval UI", () => {
     render(<App />);
 
     await waitFor(() => expect(window.location.pathname).toBe("/sign-in"));
+  });
+
+  test("normal sign-in always returns through the registration status route", () => {
+    window.history.replaceState({}, "", "/sign-in");
+    render(<App />);
+
+    expect(screen.getByTestId("clerk-sign-in")).toHaveAttribute(
+      "data-redirect-url",
+      "/registration-status",
+    );
   });
 });

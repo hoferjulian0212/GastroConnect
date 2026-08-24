@@ -1263,7 +1263,12 @@ function SignInPage() {
                 Melden Sie sich mit Ihrem GastroConnect-Konto an.
               </p>
             </div>
-            <SignIn routing="path" path={`${basePath}/sign-in`} signUpUrl={`${basePath}/sign-up`} />
+            <SignIn
+              routing="path"
+              path={`${basePath}/sign-in`}
+              signUpUrl={`${basePath}/sign-up`}
+              forceRedirectUrl={`${basePath}/registration-status`}
+            />
           </section>
 
           <div className="grid gap-4">
