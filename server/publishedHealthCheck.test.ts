@@ -4,10 +4,13 @@ import { once } from "node:events";
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { describe, test } from "node:test";
+import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 
 const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const checkerPath = resolve(projectRoot, "scripts/check-published-health.mjs");
+const packageJsonPath = resolve(projectRoot, "package.json");
+const replitConfigPath = resolve(projectRoot, ".replit");
 
 const validResponses: Record<string, unknown> = {
   "/health/live": { status: "ok" },
@@ -147,5 +150,42 @@ describe("published health contract checker", () => {
     const result = await runChecker(unreachableUrl);
     assert.notEqual(result.exitCode, 0, result.stdout + result.stderr);
     assert.match(result.stderr, /FAIL \/health\/live:/);
+  });
+
+  test("release build invokes the published health checker without credentials", () => {
+    const packageJson = JSON.parse(readFileSync(packageJsonPath, "utf8")) as {
+      scripts?: Record<string, string>;
+    };
+    const releaseBuild = packageJson.scripts?.["release:build"];
+    assert.ok(
+      releaseBuild,
+      "Release wiring is missing: package.json must define a release:build script.",
+    );
+    assert.match(
+      releaseBuild,
+      /(?:^|&&\s*)npm run check:published-health(?:\s|$)/,
+      "Release wiring is missing: release:build must invoke npm run check:published-health.",
+    );
+
+    const deploymentConfig = readFileSync(replitConfigPath, "utf8");
+    const deploymentBuild = deploymentConfig.match(
+      /^\s*build\s*=\s*\[([^\n]*)\]\s*$/m,
+    )?.[1];
+    assert.ok(
+      deploymentBuild,
+      "Release wiring is missing: .replit must define a deployment build command.",
+    );
+    assert.match(
+      deploymentBuild,
+      /["']npm["']\s*,\s*["']run["']\s*,\s*["']release:build["']/,
+      "Release wiring is missing: the deployment build must invoke npm run release:build.",
+    );
+
+    const releaseWiring = `${releaseBuild}\n${deploymentBuild}`;
+    assert.doesNotMatch(
+      releaseWiring,
+      /(?:--?(?:api[-_]?key|auth(?:orization)?|credential|password|secret|token)|\b(?:API_KEY|AUTHORIZATION|PASSWORD|SECRET|TOKEN)\s*=)/i,
+      "Release wiring must not pass credentials to the published health checker.",
+    );
   });
 });
