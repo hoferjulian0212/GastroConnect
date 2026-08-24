@@ -1258,7 +1258,7 @@ export default function Landing() {
       {/* PILLARS — Für wen */}
       <section
         id="fuer-wen"
-        className="scroll-mt-20 px-4 md:px-8 py-24 md:py-32"
+        className="scroll-mt-20 px-4 md:px-8 py-12 md:py-32"
       >
         <div className="mx-auto max-w-6xl">
           <div className="mx-auto max-w-2xl text-center mb-12 md:mb-16">
@@ -1275,7 +1275,10 @@ export default function Landing() {
               {t.pillarsSub}
             </p>
           </div>
-          <div className="grid gap-6 lg:grid-cols-2">
+          <div
+            className="flex snap-x snap-mandatory gap-4 overflow-x-auto scroll-smooth px-1 pb-3 scrollbar-hide md:grid md:grid-cols-2 md:gap-6 md:overflow-visible md:px-0 md:pb-0"
+            aria-label={t.eyebrowPillars}
+          >
             {[
               {
                 title: t.pillarRestaurantTitle,
@@ -1298,7 +1301,11 @@ export default function Landing() {
                 accent: "blue",
               },
             ].map((p, pIdx) => (
-              <MotionReveal key={p.testid} delay={pIdx * 120}>
+              <MotionReveal
+                key={p.testid}
+                delay={pIdx * 120}
+                className="min-w-[calc(100vw-2.5rem)] shrink-0 snap-center md:min-w-0 md:shrink"
+              >
               <div
                 className="h-full rounded-3xl p-8 md:p-10 flex flex-col border bg-white dark:bg-neutral-900 border-neutral-200 dark:border-neutral-800"
                 data-testid={p.testid}
