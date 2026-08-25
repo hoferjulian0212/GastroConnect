@@ -45,6 +45,9 @@ export const users = pgTable("users", {
   address: text("address"),
   city: text("city"),
   postalCode: text("postal_code"),
+  // IANA zone used for delivery promises and availability. Delivery schedules
+  // are interpreted in the receiving restaurant's local business time.
+  timeZone: varchar("time_zone", { length: 64 }).default("Europe/Rome").notNull(),
   latitude: decimal("latitude", { precision: 10, scale: 7 }),
   longitude: decimal("longitude", { precision: 10, scale: 7 }),
   companyName: text("company_name"),
@@ -480,6 +483,16 @@ export const deliverySchedules = pgTable("delivery_schedules", {
   index("idx_delivery_schedules_supplier_restaurant").on(table.supplierId, table.restaurantId),
 ]);
 
+export const restaurantAvailability = pgTable("restaurant_availability", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  restaurantId: varchar("restaurant_id", { length: 36 }).notNull().references(() => users.id, { onDelete: "cascade" }),
+  dayOfWeek: integer("day_of_week").notNull(),
+  opensAt: varchar("opens_at", { length: 5 }).notNull(),
+  closesAt: varchar("closes_at", { length: 5 }).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_restaurant_availability_restaurant_day").on(table.restaurantId, table.dayOfWeek),
+]);
 export const promotions = pgTable("promotions", {
   id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
   productId: varchar("product_id", { length: 36 }).notNull().references(() => products.id),
@@ -677,8 +690,8 @@ export const insertDocumentSchema = createInsertSchema(documents).omit({ id: tru
 export const insertOrderStatusHistorySchema = createInsertSchema(orderStatusHistory).omit({ id: true, createdAt: true });
 export const insertComplaintStatusHistorySchema = createInsertSchema(complaintStatusHistory).omit({ id: true, createdAt: true });
 export const insertDeliveryScheduleSchema = createInsertSchema(deliverySchedules).omit({ id: true, createdAt: true });
-// Public/generic promotion input deliberately excludes all Rescue metadata.
-// Rescue offers are constructed by the server from an authenticated risk row.
+
+export const insertRestaurantAvailabilitySchema = createInsertSchema(restaurantAvailability).omit({ id: true, createdAt: true });
 export const insertPromotionSchema = createInsertSchema(promotions).omit({
   id: true,
   createdAt: true,
@@ -1083,6 +1096,8 @@ export type InsertComplaintStatusHistory = z.infer<typeof insertComplaintStatusH
 export type ComplaintStatusHistory = typeof complaintStatusHistory.$inferSelect;
 export type InsertDeliverySchedule = z.infer<typeof insertDeliveryScheduleSchema>;
 export type DeliverySchedule = typeof deliverySchedules.$inferSelect;
+
+export type RestaurantAvailability = typeof restaurantAvailability.$inferSelect;
 export type InsertPromotion = z.infer<typeof insertPromotionSchema>;
 export type Promotion = typeof promotions.$inferSelect;
 export type PromotionAllocation = typeof promotionAllocations.$inferSelect;
@@ -1759,3 +1774,35 @@ export function formatComplaintNumber(complaint: { complaintNumber?: string | nu
   if (complaint.complaintNumber && complaint.complaintNumber.length > 0) return complaint.complaintNumber;
   return "R-" + complaint.id.slice(0, 6).toUpperCase();
 }
+
+export const restaurantAvailabilityExceptions = pgTable("restaurant_availability_exceptions", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  restaurantId: varchar("restaurant_id", { length: 36 }).notNull().references(() => users.id, { onDelete: "cascade" }),
+  date: varchar("date", { length: 10 }).notNull(),
+  isClosed: boolean("is_closed").default(true).notNull(),
+  opensAt: varchar("opens_at", { length: 5 }),
+  closesAt: varchar("closes_at", { length: 5 }),
+  note: text("note"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex("uniq_restaurant_availability_exception_date").on(table.restaurantId, table.date),
+]);
+
+export type RestaurantAvailabilityException = typeof restaurantAvailabilityExceptions.$inferSelect;
+export const insertRestaurantAvailabilityExceptionSchema = createInsertSchema(restaurantAvailabilityExceptions).omit({ id: true, createdAt: true });
+
+export const supplierDeliveryZones = pgTable("supplier_delivery_zones", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  supplierId: varchar("supplier_id", { length: 36 }).notNull().references(() => users.id, { onDelete: "cascade" }),
+  postalCodePrefix: varchar("postal_code_prefix", { length: 12 }).notNull(),
+  label: text("label"),
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex("uniq_supplier_delivery_zone_prefix").on(table.supplierId, table.postalCodePrefix),
+  index("idx_supplier_delivery_zones_supplier").on(table.supplierId, table.isActive),
+]);
+
+export type SupplierDeliveryZone = typeof supplierDeliveryZones.$inferSelect;
+
+export const insertSupplierDeliveryZoneSchema = createInsertSchema(supplierDeliveryZones).omit({ id: true, createdAt: true });

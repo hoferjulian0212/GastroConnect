@@ -5,7 +5,7 @@ import path from "path";
 import { storage } from "./storage";
 import { db } from "./db";
 import { applyBucketMovement, getReservedRemainingByProduct, InsufficientStockError } from "./stockBuckets";
-import { orders, messages, orderStatusHistory, complaints, orderItems, users, overnightStays, costSettings, minimumOrderValues, products, stockMovements, conversations, documents, promotions, priceChangeLog, deliveryAssignments, formatOrderNumber, formatComplaintNumber, dateChangeReasonLabel } from "@shared/schema";
+import { orders, messages, orderStatusHistory, complaints, orderItems, users, overnightStays, costSettings, minimumOrderValues, products, stockMovements, conversations, documents, promotions, priceChangeLog, deliveryAssignments, restaurantAvailability, restaurantAvailabilityExceptions, supplierDeliveryZones, formatOrderNumber, formatComplaintNumber, dateChangeReasonLabel } from "@shared/schema";
 import { eq, and, desc, asc, sql, or, ilike, gte, lte, ne, inArray, isNull } from "drizzle-orm";
 import { foldedIlike } from "./searchSql";
 import { insertProductSchema as _insertProductSchema, insertCartItemSchema as _insertCartItemSchema, insertMessageSchema, insertComplaintSchema as _insertComplaintSchema, updateComplaintSchema as _updateComplaintSchema, insertComplaintCommentSchema as _insertComplaintCommentSchema, insertNotificationSchema as _insertNotificationSchema, insertPromotionSchema as _insertPromotionSchema, confirmOrderSchema, insertCustomMinOrderQuantitySchema as _insertCustomMinOrderQuantitySchema, insertCustomPriceSchema as _insertCustomPriceSchema, dashboardLayoutSchema, dashboardWidgetsSchema, dashboardTemplatesPayloadSchema, insertSupplierRatingSchema, updateSupplierRatingSchema, notificationPrefsSchema, DEFAULT_NOTIFICATION_PREFS, type NotificationPrefs, insertMemberSchema, insertVertreterAssignmentSchema, MEMBER_ROLES, clientErrorReportSchema, insertInventoryRiskRecordSchema, INVENTORY_RISK_STATUSES, INVENTORY_RISK_QUALITY, INVENTORY_RISK_REASONS } from "@shared/schema";
@@ -26,6 +26,7 @@ import { assertOrderTransition, canAdvanceDriverStatus, canCompleteDelivery, Lif
 import { geocodeAddress, backfillMissingCoordinates, isGeocodingConfigured } from "./geocoding";
 import { summarizeLocalImpact, unavailableLocalImpact } from "@shared/localImpact";
 import { calculateLocalImpact } from "./localImpact";
+import { getDeliveryCandidates, isValidDeliveryDate, isValidTimeZone, validateDeliveryPromise } from "./deliveryConstraints";
 
 // Sentinel used inside the atomic order-edit transaction to signal the order
 // is no longer pending (detected after taking the row lock) so we can roll back
@@ -771,6 +772,7 @@ const directOrderSchema = z.object({
   supplierId: uuidField,
   items: z.array(directOrderItemSchema).min(1).max(200),
   notes: safeString.optional().nullable(),
+  requestedDeliveryDate: safeShortString.optional().nullable(),
   createdByUserId: uuidField.optional().nullable(),
   actingMemberId: uuidField.optional().nullable(),
 }).strict();
@@ -987,6 +989,7 @@ export async function registerRoutes(
   await storage.runAdminMigration();
   // Driver module tables/enums (delivery assignments, live locations, internal chat)
   await storage.runDriverMigration();
+  await storage.runDeliveryConstraintsMigration();
   // Central AI knowledge base (learns from user feedback on assistant answers)
   await runAiKnowledgeMigration();
   // Provision the owner platform-admin from PLATFORM_ADMIN_EMAIL/PASSWORD (idempotent)
@@ -3139,6 +3142,126 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/delivery-constraints/candidates", async (req, res) => {
+    try {
+      if (!req.auth) return res.status(401).json({ error: "unauthenticated" });
+      const supplierId = typeof req.query.supplierId === "string" ? req.query.supplierId : "";
+      if (!supplierId) return res.status(400).json({ error: "supplier_id_required" });
+      let restaurantId: string;
+      if (req.auth.org.role === "restaurant") {
+        restaurantId = req.auth.organizationId;
+      } else if (req.auth.org.role === "supplier") {
+        const orderId = typeof req.query.orderId === "string" ? req.query.orderId : "";
+        if (!orderId) return res.status(400).json({ error: "order_id_required" });
+        const order = await storage.getOrder(orderId);
+        if (!order || order.supplierId !== req.auth.organizationId || order.supplierId !== supplierId) {
+          return res.status(403).json({ error: "forbidden" });
+        }
+        restaurantId = order.restaurantId;
+      } else return res.status(403).json({ error: "forbidden" });
+      return res.json({ candidates: await getDeliveryCandidates(supplierId, restaurantId) });
+    } catch (error) {
+      console.error("Delivery candidate lookup failed:", error);
+      return res.status(500).json({ error: "delivery_candidates_unavailable" });
+    }
+  });
+
+  const clockTimeSchema = z.string().regex(/^\d{2}:\d{2}$/).refine((value) => {
+    const [hours, minutes] = value.split(":").map(Number);
+    return hours <= 23 && minutes <= 59;
+  }, "Invalid clock time");
+  const availabilityWindowsSchema = z.object({
+    timeZone: z.string().min(1).refine(isValidTimeZone, "Invalid IANA time zone"),
+    windows: z.array(z.object({
+      dayOfWeek: z.number().int().min(0).max(6), opensAt: clockTimeSchema, closesAt: clockTimeSchema,
+    })).max(21),
+  }).strict();
+  const availabilityExceptionSchema = z.object({
+    date: z.string().refine(isValidDeliveryDate, "Invalid calendar date"),
+    isClosed: z.boolean(), opensAt: clockTimeSchema.optional().nullable(), closesAt: clockTimeSchema.optional().nullable(),
+    note: safeShortString.optional().nullable(),
+  }).strict().refine((value) => value.isClosed || (!!value.opensAt && !!value.closesAt), "An open exception needs a time window");
+  const deliveryZoneSchema = z.object({
+    postalCodePrefix: z.string().trim().min(1).max(12).regex(/^[A-Za-z0-9 -]+$/),
+    label: safeShortString.optional().nullable(),
+  }).strict();
+
+  app.get("/api/restaurant/delivery-availability", async (req, res) => {
+    if (!req.auth) return res.status(401).json({ error: "unauthenticated" });
+    if (req.auth.org.role !== "restaurant") return res.status(403).json({ error: "forbidden" });
+    const [restaurant] = await db.select({ timeZone: users.timeZone }).from(users).where(eq(users.id, req.auth.organizationId)).limit(1);
+    const windows = await db.select().from(restaurantAvailability).where(eq(restaurantAvailability.restaurantId, req.auth.organizationId));
+    const exceptions = await db.select().from(restaurantAvailabilityExceptions)
+      .where(eq(restaurantAvailabilityExceptions.restaurantId, req.auth.organizationId)).orderBy(restaurantAvailabilityExceptions.date);
+    return res.json({ timeZone: restaurant?.timeZone ?? "Europe/Rome", windows, exceptions });
+  });
+  app.put("/api/restaurant/delivery-availability", async (req, res) => {
+    try {
+      if (!req.auth) return res.status(401).json({ error: "unauthenticated" });
+      const denied = checkActingCapability(req, req.auth.organizationId, "org.edit");
+      if (denied) return res.status(denied.status).json(denied.body);
+      const parsed = availabilityWindowsSchema.parse(req.body);
+      if (parsed.windows.some((window) => window.opensAt >= window.closesAt)) return res.status(400).json({ error: "invalid_opening_window" });
+      await db.transaction(async (tx) => {
+        await tx.update(users).set({ timeZone: parsed.timeZone }).where(eq(users.id, req.auth!.organizationId));
+        await tx.delete(restaurantAvailability).where(eq(restaurantAvailability.restaurantId, req.auth!.organizationId));
+        if (parsed.windows.length) await tx.insert(restaurantAvailability).values(parsed.windows.map((window) => ({ restaurantId: req.auth!.organizationId, ...window })));
+      });
+      return res.json({ success: true });
+    } catch (error) {
+      if (error instanceof z.ZodError) return res.status(400).json({ error: "invalid_availability", details: error.errors });
+      return res.status(500).json({ error: "availability_update_failed" });
+    }
+  });
+  app.post("/api/restaurant/delivery-availability/exceptions", async (req, res) => {
+    try {
+      if (!req.auth) return res.status(401).json({ error: "unauthenticated" });
+      const denied = checkActingCapability(req, req.auth.organizationId, "org.edit");
+      if (denied) return res.status(denied.status).json(denied.body);
+      const parsed = availabilityExceptionSchema.parse(req.body);
+      const [exception] = await db.insert(restaurantAvailabilityExceptions).values({ restaurantId: req.auth.organizationId, ...parsed })
+        .onConflictDoUpdate({ target: [restaurantAvailabilityExceptions.restaurantId, restaurantAvailabilityExceptions.date], set: { isClosed: parsed.isClosed, opensAt: parsed.opensAt ?? null, closesAt: parsed.closesAt ?? null, note: parsed.note ?? null } }).returning();
+      return res.status(201).json(exception);
+    } catch (error) {
+      if (error instanceof z.ZodError) return res.status(400).json({ error: "invalid_exception", details: error.errors });
+      return res.status(500).json({ error: "exception_update_failed" });
+    }
+  });
+  app.delete("/api/restaurant/delivery-availability/exceptions/:id", async (req, res) => {
+    if (!req.auth) return res.status(401).json({ error: "unauthenticated" });
+    const denied = checkActingCapability(req, req.auth.organizationId, "org.edit");
+    if (denied) return res.status(denied.status).json(denied.body);
+    await db.delete(restaurantAvailabilityExceptions).where(and(eq(restaurantAvailabilityExceptions.id, req.params.id), eq(restaurantAvailabilityExceptions.restaurantId, req.auth.organizationId)));
+    return res.status(204).end();
+  });
+  app.get("/api/supplier/delivery-zones", async (req, res) => {
+    if (!req.auth) return res.status(401).json({ error: "unauthenticated" });
+    if (req.auth.org.role !== "supplier") return res.status(403).json({ error: "forbidden" });
+    return res.json(await db.select().from(supplierDeliveryZones).where(eq(supplierDeliveryZones.supplierId, req.auth.organizationId)));
+  });
+  app.post("/api/supplier/delivery-zones", async (req, res) => {
+    try {
+      if (!req.auth) return res.status(401).json({ error: "unauthenticated" });
+      const denied = checkActingCapability(req, req.auth.organizationId, "products.manage");
+      if (denied) return res.status(denied.status).json(denied.body);
+      const parsed = deliveryZoneSchema.parse(req.body);
+      const [zone] = await db.insert(supplierDeliveryZones).values({
+        supplierId: req.auth.organizationId, postalCodePrefix: parsed.postalCodePrefix.replace(/\s/g, "").toUpperCase(), label: parsed.label ?? null,
+      }).onConflictDoUpdate({ target: [supplierDeliveryZones.supplierId, supplierDeliveryZones.postalCodePrefix], set: { label: parsed.label ?? null, isActive: true } }).returning();
+      return res.status(201).json(zone);
+    } catch (error) {
+      if (error instanceof z.ZodError) return res.status(400).json({ error: "invalid_zone", details: error.errors });
+      return res.status(500).json({ error: "zone_update_failed" });
+    }
+  });
+  app.delete("/api/supplier/delivery-zones/:id", async (req, res) => {
+    if (!req.auth) return res.status(401).json({ error: "unauthenticated" });
+    const denied = checkActingCapability(req, req.auth.organizationId, "products.manage");
+    if (denied) return res.status(denied.status).json(denied.body);
+    await db.delete(supplierDeliveryZones).where(and(eq(supplierDeliveryZones.id, req.params.id), eq(supplierDeliveryZones.supplierId, req.auth.organizationId)));
+    return res.status(204).end();
+  });
+
   app.put("/api/delivery-schedules", async (req, res) => {
     try {
       const validated = deliveryScheduleSchema.parse(req.body);
@@ -3773,6 +3896,14 @@ export async function registerRoutes(
         acc[item.supplierId].push(item);
         return acc;
       }, {} as Record<string, typeof cartItems>);
+      for (const supplierId of Object.keys(bySupplier)) {
+        const requestedDate = deliveryDates?.[supplierId] ?? requestedDeliveryDate;
+        if (!requestedDate) continue; // ASAP has no promise to validate.
+        const constraint = await validateDeliveryPromise(supplierId, restaurantId, requestedDate);
+        if (!constraint.valid) {
+          return res.status(400).json({ error: "delivery_constraint_failed", code: constraint.code, message: constraint.message });
+        }
+      }
 
       // Fetch active promotions for discounted pricing
       const activePromotions = await storage.getActivePromotions(restaurantId);
@@ -3990,13 +4121,19 @@ export async function registerRoutes(
     try {
       if (!req.auth) return res.status(401).json({ error: "unauthenticated" });
       const validated = directOrderSchema.parse(req.body);
-      const { supplierId, items, notes, createdByUserId } = validated;
+      const { supplierId, items, notes, requestedDeliveryDate, createdByUserId } = validated;
       restaurantId = req.auth.organizationId;
       const actingMemberId = req.auth.memberId;
 
       const directDenied = checkActingCapability(req, restaurantId, "orders.create");
       if (directDenied) {
         return res.status(directDenied.status).json(directDenied.body);
+      }
+      if (requestedDeliveryDate) {
+        const constraint = await validateDeliveryPromise(supplierId, restaurantId, requestedDeliveryDate);
+        if (!constraint.valid) {
+          return res.status(400).json({ error: "delivery_constraint_failed", code: constraint.code, message: constraint.message });
+        }
       }
 
       if (idempotencyKey) {
@@ -4325,6 +4462,10 @@ export async function registerRoutes(
         return res.status(statusDenied.status).json(statusDenied.body);
       }
       if (!req.auth) return res.status(401).json({ error: "unauthenticated" });
+      if (requestedDeliveryDate && requestedDeliveryDate !== order.requestedDeliveryDate) {
+        const constraint = await validateDeliveryPromise(order.supplierId, order.restaurantId, requestedDeliveryDate);
+        if (!constraint.valid) return res.status(400).json({ error: "delivery_constraint_failed", code: constraint.code, message: constraint.message });
+      }
       // Actor attribution is derived from the session, never the request body,
       // so audit/history fields cannot be spoofed by the client.
       const changedBy = req.auth.organizationId;
@@ -4457,6 +4598,10 @@ export async function registerRoutes(
 
       // Delivery-date change during confirmation: allowed, but a reason is mandatory.
       const newDeliveryDate = validated.deliveryDate;
+      if (newDeliveryDate) {
+        const constraint = await validateDeliveryPromise(order.supplierId, order.restaurantId, newDeliveryDate);
+        if (!constraint.valid) return res.status(400).json({ error: "delivery_constraint_failed", code: constraint.code, message: constraint.message });
+      }
       const deliveryDateChanged = !!newDeliveryDate && !!order.requestedDeliveryDate && newDeliveryDate !== order.requestedDeliveryDate;
       const dateChangeReason = (validated.dateChangeReason ?? "").trim();
       if (deliveryDateChanged && !dateChangeReason) {
@@ -4723,6 +4868,8 @@ export async function registerRoutes(
       if (order.status === "delivered" || order.status === "cancelled") {
         return res.status(400).json({ error: "Can only set delivery date for active orders" });
       }
+      const constraint = await validateDeliveryPromise(order.supplierId, order.restaurantId, requestedDeliveryDate);
+      if (!constraint.valid) return res.status(400).json({ error: "delivery_constraint_failed", code: constraint.code, message: constraint.message });
       // Rescheduling is allowed for any active order (pending/confirmed/
       // partially_confirmed/scheduled/in_delivery). A date change always
       // requires a reason (enforced below); setting the same/first date does not.
@@ -4818,6 +4965,10 @@ export async function registerRoutes(
       const restaurantId = order.restaurantId;
       if (order.status !== "pending") {
         return res.status(400).json({ error: "Only pending orders can be edited" });
+      }
+      if (requestedDeliveryDate) {
+        const constraint = await validateDeliveryPromise(order.supplierId, restaurantId, requestedDeliveryDate);
+        if (!constraint.valid) return res.status(400).json({ error: "delivery_constraint_failed", code: constraint.code, message: constraint.message });
       }
       for (const item of order.items) {
         if (!item.promotionId) continue;
@@ -9097,6 +9248,11 @@ export async function registerRoutes(
         || (order.requestedDeliveryDate && /^\d{4}-\d{2}-\d{2}/.test(order.requestedDeliveryDate)
           ? order.requestedDeliveryDate.slice(0, 10)
           : romeToday());
+      const constraint = await validateDeliveryPromise(order.supplierId, order.restaurantId, deliveryDate);
+      if (!constraint.valid || !constraint.timeWindow) {
+        return res.status(400).json({ error: "delivery_constraint_failed", code: constraint.code, message: constraint.message });
+      }
+      const enforcedTimeWindow = `${constraint.timeWindow.from}-${constraint.timeWindow.to}`;
 
       const existing = await storage.getDeliveryAssignmentByOrder(order.id);
       let assignment;
@@ -9114,7 +9270,7 @@ export async function registerRoutes(
             ? existing.stopSequence
             : dayStops.filter((s) => s.id !== existing.id).length,
           status: "assigned" as const,
-          timeWindow: parsed.timeWindow ?? existing.timeWindow,
+          timeWindow: enforcedTimeWindow,
           priority: parsed.priority ?? existing.priority,
           packages: parsed.packages !== undefined ? parsed.packages : existing.packages,
           notes: parsed.notes !== undefined ? parsed.notes : existing.notes,
@@ -9158,7 +9314,7 @@ export async function registerRoutes(
           assignedByMemberId: req.auth!.memberId,
           deliveryDate,
           stopSequence: dayStops.length,
-          timeWindow: parsed.timeWindow ?? null,
+          timeWindow: enforcedTimeWindow,
           priority: parsed.priority ?? "normal",
           packages: parsed.packages ?? null,
           notes: parsed.notes ?? null,
@@ -10097,8 +10253,15 @@ export async function registerRoutes(
       const deliveries = await storage.getDeliveriesForDriver(req.auth!.memberId, date);
       const open = deliveries.filter((d) => !["delivered", "problem", "rejected"].includes(d.status));
       const done = deliveries.filter((d) => ["delivered", "problem", "rejected"].includes(d.status));
+      const validOpen: typeof open = [];
+      const excluded: Array<{ id: string; code?: string }> = [];
+      for (const delivery of open) {
+        const constraint = await validateDeliveryPromise(delivery.order.supplierId, delivery.order.restaurantId, date);
+        if (constraint.valid) validOpen.push(delivery);
+        else excluded.push({ id: delivery.id, code: constraint.code });
+      }
       const stops: OptimizableStop[] = [];
-      for (const d of open) {
+      for (const d of validOpen) {
         const lat = d.restaurant.latitude ? parseFloat(d.restaurant.latitude) : NaN;
         const lng = d.restaurant.longitude ? parseFloat(d.restaurant.longitude) : NaN;
         if (Number.isFinite(lat) && Number.isFinite(lng)) stops.push({ id: d.id, lat, lng });
@@ -10121,12 +10284,12 @@ export async function registerRoutes(
       const { orderedIds, trafficAware } = await optimizeStopOrder(stops, origin);
       // Stops without coordinates keep their relative order at the end; the
       // completed stops keep their sequence positions first (history stays put).
-      const noCoord = open.filter((d) => !orderedIds.includes(d.id)).map((d) => d.id);
-      const finalOrder = [...done.map((d) => d.id), ...orderedIds, ...noCoord];
+      const noCoord = validOpen.filter((d) => !orderedIds.includes(d.id)).map((d) => d.id);
+      const finalOrder = [...done.map((d) => d.id), ...orderedIds, ...noCoord, ...excluded.map((entry) => entry.id)];
       await storage.reorderDeliveryStops(req.auth!.memberId, date, finalOrder);
       await storage.upsertDriverRoute(req.auth!.memberId, req.auth!.organizationId, date, finalOrder);
       const rows = await storage.getDeliveriesForDriver(req.auth!.memberId, date);
-      res.json({ deliveries: rows, optimized: true, trafficAware });
+      res.json({ deliveries: rows, optimized: true, trafficAware, excluded });
     } catch (error) {
       console.error("Route optimize error:", error);
       res.status(500).json({ error: "Failed to optimize route" });
@@ -10141,6 +10304,12 @@ export async function registerRoutes(
       const deliveries = await storage.getDeliveriesForDriver(req.auth!.memberId, date);
       const open = deliveries.filter((d) => !["delivered", "problem", "rejected"].includes(d.status));
       if (open.length === 0) return res.status(400).json({ error: "empty_route", message: "Keine offenen Stopps vorhanden." });
+      for (const delivery of open) {
+        const constraint = await validateDeliveryPromise(delivery.order.supplierId, delivery.order.restaurantId, date);
+        if (!constraint.valid) return res.status(409).json({
+          error: "delivery_constraint_failed", stopId: delivery.id, code: constraint.code, message: constraint.message,
+        });
+      }
       const current = await storage.getDriverRoute(req.auth!.memberId, date);
       if (current?.status === "active" || current?.status === "completed") {
         return res.status(409).json({ error: "route_locked", message: "Eine aktive Route kann nicht erneut bestätigt werden." });
@@ -10170,6 +10339,13 @@ export async function registerRoutes(
       const denied = requireDriver(req);
       if (denied) return res.status(denied.status).json(denied.body);
       const date = typeof req.body?.deliveryDate === "string" && /^\d{4}-\d{2}-\d{2}$/.test(req.body.deliveryDate) ? req.body.deliveryDate : romeToday();
+      const deliveries = await storage.getDeliveriesForDriver(req.auth!.memberId, date);
+      for (const delivery of deliveries.filter((item) => !["delivered", "problem", "rejected"].includes(item.status))) {
+        const constraint = await validateDeliveryPromise(delivery.order.supplierId, delivery.order.restaurantId, date);
+        if (!constraint.valid) return res.status(409).json({
+          error: "delivery_constraint_failed", stopId: delivery.id, code: constraint.code, message: constraint.message,
+        });
+      }
       const started = await storage.startDriverRoute(req.auth!.memberId, date);
       if (!started) return res.status(409).json({ error: "route_not_ready", message: "Die Route muss zuerst bestätigt werden oder ist bereits gestartet." });
       const assignment = await storage.getDeliveryAssignment(started.activeStopId);

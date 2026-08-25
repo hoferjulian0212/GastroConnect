@@ -310,6 +310,7 @@ export interface IStorage {
 
   // Driver module: delivery assignments, live locations, internal company chat
   runDriverMigration(): Promise<void>;
+  runDeliveryConstraintsMigration(): Promise<void>;
   createDeliveryAssignment(data: InsertDeliveryAssignment): Promise<DeliveryAssignment>;
   getDeliveryAssignment(id: string): Promise<DeliveryAssignment | undefined>;
   getDeliveryAssignmentByOrder(orderId: string): Promise<DeliveryAssignment | undefined>;
@@ -5523,6 +5524,48 @@ export class DatabaseStorage implements IStorage {
     await db.execute(sql`DROP INDEX IF EXISTS uniq_internal_chat_reads_member`);
     await db.execute(sql`CREATE UNIQUE INDEX IF NOT EXISTS uniq_internal_chat_reads_pair ON internal_chat_reads (supplier_id, member_id, other_member_id)`);
     console.log("[driver] delivery tables ready");
+  }
+
+  // Constraint tables use idempotent DDL because older deployments do not have
+  // a dependable Drizzle migration baseline.
+  async runDeliveryConstraintsMigration(): Promise<void> {
+    await db.execute(sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS time_zone varchar(64) NOT NULL DEFAULT 'Europe/Rome'`);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS restaurant_availability (
+        id varchar(36) PRIMARY KEY DEFAULT gen_random_uuid(),
+        restaurant_id varchar(36) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        day_of_week integer NOT NULL CHECK (day_of_week BETWEEN 0 AND 6),
+        opens_at varchar(5) NOT NULL,
+        closes_at varchar(5) NOT NULL,
+        created_at timestamp NOT NULL DEFAULT now()
+      )
+    `);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_restaurant_availability_restaurant_day ON restaurant_availability (restaurant_id, day_of_week)`);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS restaurant_availability_exceptions (
+        id varchar(36) PRIMARY KEY DEFAULT gen_random_uuid(),
+        restaurant_id varchar(36) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        date varchar(10) NOT NULL,
+        is_closed boolean NOT NULL DEFAULT true,
+        opens_at varchar(5),
+        closes_at varchar(5),
+        note text,
+        created_at timestamp NOT NULL DEFAULT now(),
+        CONSTRAINT uniq_restaurant_availability_exception_date UNIQUE (restaurant_id, date)
+      )
+    `);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS supplier_delivery_zones (
+        id varchar(36) PRIMARY KEY DEFAULT gen_random_uuid(),
+        supplier_id varchar(36) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        postal_code_prefix varchar(12) NOT NULL,
+        label text,
+        is_active boolean NOT NULL DEFAULT true,
+        created_at timestamp NOT NULL DEFAULT now(),
+        CONSTRAINT uniq_supplier_delivery_zone_prefix UNIQUE (supplier_id, postal_code_prefix)
+      )
+    `);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_supplier_delivery_zones_supplier ON supplier_delivery_zones (supplier_id, is_active)`);
   }
 
   // Batch-hydrates assignments with order (incl. items+products), restaurant

@@ -22,6 +22,7 @@ import { useToast } from "@/hooks/use-toast";
 import type { User, Product, CustomMinOrderQuantity, DeliverySchedule, CustomPrice, MinimumOrderValue, Member, VertreterAssignment } from "@shared/schema";
 import { can, roleLabel } from "@shared/permissions";
 import { UserCog } from "lucide-react";
+import { SupplierDeliveryZonesCard } from "@/components/SupplierDeliveryZonesCard";
 
 type CustomPriceWithJoins = CustomPrice & { product: Product; restaurant: User };
 
@@ -450,6 +451,8 @@ function RestaurantDetail({
       </Card>
 
       <VertreterCard supplierId={supplierId} restaurantId={restaurant.id} lang={lang} toast={toast} />
+
+      <SupplierDeliveryZonesCard lang={lang} />
 
       <Card>
         <CardHeader className="p-3 md:p-6">

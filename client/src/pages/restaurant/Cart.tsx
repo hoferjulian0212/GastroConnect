@@ -14,7 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import QuantityInput from "@/components/QuantityInput";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { formatOrderNumber, type CartItemWithProduct, type DeliverySchedule, type Promotion } from "@shared/schema";
+import { formatOrderNumber, type CartItemWithProduct, type Promotion } from "@shared/schema";
 import type { LocalImpact } from "@shared/localImpact";
 import { summarizeLocalImpact, unavailableLocalImpact } from "@shared/localImpact";
 import { can } from "@shared/permissions";
@@ -358,16 +358,18 @@ export default function RestaurantCart() {
   }, [cartItems]);
 
   const supplierScheduleKey = supplierIds.sort().join(",");
-  const { data: allDeliverySchedules } = useQuery<Record<string, DeliverySchedule[]>>({
-    queryKey: ["/api/delivery-schedules/cart", currentUser?.id, supplierScheduleKey],
+  type DeliveryCandidate = { date: string; timeWindow: { from: string; to: string }; timeZone: string };
+  const { data: deliveryCandidatesBySupplier } = useQuery<Record<string, DeliveryCandidate[]>>({
+    queryKey: ["/api/delivery-constraints/candidates", supplierScheduleKey],
     queryFn: async () => {
       if (supplierIds.length === 0) return {};
-      const results: Record<string, DeliverySchedule[]> = {};
+      const results: Record<string, DeliveryCandidate[]> = {};
       await Promise.all(
         supplierIds.map(async (supplierId) => {
-          const res = await fetch(`/api/delivery-schedules/restaurant?supplierId=${supplierId}&restaurantId=${currentUser?.id}`);
+          const res = await fetch(`/api/delivery-constraints/candidates?supplierId=${supplierId}`);
           if (res.ok) {
-            results[supplierId] = await res.json();
+            const body = await res.json();
+            results[supplierId] = body.candidates ?? [];
           }
         })
       );
@@ -379,48 +381,16 @@ export default function RestaurantCart() {
   const dateLocale = lang === "it" ? it : de;
 
   const perSupplierDeliveryDates = useMemo(() => {
-    if (!allDeliverySchedules) return {};
+    if (!deliveryCandidatesBySupplier) return {};
     const result: Record<string, { value: string; label: string }[]> = {};
     for (const sid of supplierIds) {
-      const schedules = allDeliverySchedules[sid] || [];
-      const weekdays = schedules.map(s => s.dayOfWeek);
-      if (weekdays.length === 0) {
-        result[sid] = [];
-        continue;
-      }
-      const timeByDay: Record<number, { from: string; to: string }> = {};
-      for (const s of schedules) {
-        if (s.deliveryTimeFrom && s.deliveryTimeTo) {
-          timeByDay[s.dayOfWeek] = { from: s.deliveryTimeFrom, to: s.deliveryTimeTo };
-        }
-      }
-      const dates: { value: string; label: string }[] = [];
-      const today = startOfDay(new Date());
-      for (let i = 1; i <= 28; i++) {
-        const date = addDays(today, i);
-        if (weekdays.includes(date.getDay())) {
-          let label = format(date, "EEEE, dd. MMMM yyyy", { locale: dateLocale });
-          const tw = timeByDay[date.getDay()];
-          if (tw) {
-            label += ` (${tw.from} - ${tw.to})`;
-          }
-          dates.push({ value: format(date, "yyyy-MM-dd"), label });
-        }
-      }
-      result[sid] = dates;
+      result[sid] = (deliveryCandidatesBySupplier[sid] || []).map((candidate) => ({
+        value: candidate.date,
+        label: `${format(parse(candidate.date, "yyyy-MM-dd", new Date()), "EEEE, dd. MMMM yyyy", { locale: dateLocale })} (${candidate.timeWindow.from} - ${candidate.timeWindow.to})`,
+      }));
     }
     return result;
-  }, [allDeliverySchedules, supplierIds, dateLocale]);
-
-  const perSupplierAllowedWeekdays = useMemo(() => {
-    if (!allDeliverySchedules) return {};
-    const result: Record<string, number[]> = {};
-    for (const sid of supplierIds) {
-      const schedules = allDeliverySchedules[sid] || [];
-      result[sid] = schedules.map(s => s.dayOfWeek);
-    }
-    return result;
-  }, [allDeliverySchedules, supplierIds]);
+  }, [deliveryCandidatesBySupplier, supplierIds, dateLocale]);
 
   useEffect(() => {
     if (mobileStep !== "summary") return;
@@ -857,7 +827,7 @@ export default function RestaurantCart() {
                         </button>
                       </PopoverTrigger>
                       <PopoverContent className="w-auto p-0" align="center" sideOffset={8}>
-                        {(perSupplierAllowedWeekdays[supplierId] || []).length > 0 ? (
+                        {(perSupplierDeliveryDates[supplierId] || []).length > 0 ? (
                           <Calendar
                             mode="single"
                             selected={selectedDeliveryDates[supplierId] ? parse(selectedDeliveryDates[supplierId], "yyyy-MM-dd", new Date()) : undefined}
@@ -868,12 +838,8 @@ export default function RestaurantCart() {
                               }
                             }}
                             disabled={(date) => {
-                              const today = startOfDay(new Date());
-                              if (date <= today) return true;
-                              const maxDate = addDays(today, 28);
-                              if (date > maxDate) return true;
-                              const allowedDays = perSupplierAllowedWeekdays[supplierId] || [];
-                              return !allowedDays.includes(date.getDay());
+                              const allowedDates = new Set((perSupplierDeliveryDates[supplierId] || []).map((candidate) => candidate.value));
+                              return !allowedDates.has(format(date, "yyyy-MM-dd"));
                             }}
                             locale={dateLocale}
                             fromDate={addDays(new Date(), 1)}

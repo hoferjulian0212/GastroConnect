@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLanguage } from "@/context/LanguageContext";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -56,6 +56,14 @@ export function AssignDriverDialog({
     enabled: open && !!order?.id,
   });
   const existing = tracking?.assignment ?? null;
+  type DeliveryCandidate = { date: string; timeWindow: { from: string; to: string }; timeZone: string };
+  const { data: candidateData, isLoading: candidatesLoading } = useQuery<{ candidates: DeliveryCandidate[] }>({
+    queryKey: ["/api/delivery-constraints/candidates", order?.supplierId, order?.id],
+    queryFn: async () => (await fetch(`/api/delivery-constraints/candidates?supplierId=${order!.supplierId}&orderId=${order!.id}`)).json(),
+    enabled: open && !!order?.supplierId,
+  });
+  const candidates = candidateData?.candidates ?? [];
+  const candidateByDate = useMemo(() => new Map(candidates.map((candidate) => [candidate.date, candidate])), [candidates]);
 
   // Prefill from the order's requested date when the dialog opens.
   useEffect(() => {
@@ -71,6 +79,13 @@ export function AssignDriverDialog({
     setPriority("normal");
     setNotes("");
   }, [open, order?.id]);
+
+  useEffect(() => {
+    if (!open || candidates.length === 0) return;
+    const candidate = candidateByDate.get(deliveryDate) ?? candidates[0];
+    if (candidate.date !== deliveryDate) setDeliveryDate(candidate.date);
+    setTimeWindow(`${candidate.timeWindow.from}-${candidate.timeWindow.to}`);
+  }, [open, candidates, candidateByDate, deliveryDate]);
 
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
@@ -196,21 +211,34 @@ export function AssignDriverDialog({
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label htmlFor="assign-date">{lang === "de" ? "Lieferdatum" : "Data consegna"}</Label>
-              <Input
+              <select
                 id="assign-date"
-                type="date"
                 value={deliveryDate}
-                onChange={(e) => setDeliveryDate(e.target.value)}
+                onChange={(e) => {
+                  const candidate = candidateByDate.get(e.target.value);
+                  setDeliveryDate(e.target.value);
+                  if (candidate) setTimeWindow(`${candidate.timeWindow.from}-${candidate.timeWindow.to}`);
+                }}
+                disabled={candidatesLoading || candidates.length === 0}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                 data-testid="input-assign-date"
-              />
+              >
+                {candidates.length === 0 ? (
+                  <option value="">{lang === "de" ? "Keine gültigen Termine" : "Nessuna data valida"}</option>
+                ) : candidates.map((candidate) => (
+                  <option key={candidate.date} value={candidate.date}>
+                    {candidate.date} · {candidate.timeWindow.from}-{candidate.timeWindow.to}
+                  </option>
+                ))}
+              </select>
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="assign-window">{lang === "de" ? "Zeitfenster" : "Fascia oraria"}</Label>
               <Input
                 id="assign-window"
                 value={timeWindow}
-                onChange={(e) => setTimeWindow(e.target.value)}
-                placeholder="08:00–10:00"
+                readOnly
+                placeholder="—"
                 data-testid="input-assign-window"
               />
             </div>
@@ -277,7 +305,7 @@ export function AssignDriverDialog({
             {lang === "de" ? "Abbrechen" : "Annulla"}
           </Button>
           <Button
-            disabled={!driverId || !deliveryDate || assignMutation.isPending}
+            disabled={!driverId || !candidateByDate.has(deliveryDate) || assignMutation.isPending}
             onClick={() => assignMutation.mutate()}
             data-testid="button-confirm-assign"
           >

@@ -33,6 +33,8 @@ import {
   conversations,
   deliveryAssignments,
   driverRoutes,
+  deliverySchedules,
+  restaurantAvailability,
   platformAdmins,
 } from "../shared/schema";
 
@@ -84,6 +86,7 @@ const sessionSids: string[] = [];
 before(async () => {
   // 1. Seed test data ──────────────────────────────────────────────────────
   await storage.runDriverMigration();
+  await storage.runDeliveryConstraintsMigration();
 
   const [supplier] = await db
     .insert(users)
@@ -106,6 +109,17 @@ before(async () => {
     })
     .returning();
   restaurantId = restaurant.id;
+
+  await db.insert(restaurantAvailability).values(
+    Array.from({ length: 7 }, (_, dayOfWeek) => ({
+      restaurantId, dayOfWeek, opensAt: "08:00", closesAt: "18:00",
+    })),
+  );
+  await db.insert(deliverySchedules).values(
+    Array.from({ length: 7 }, (_, dayOfWeek) => ({
+      supplierId, restaurantId, dayOfWeek, deliveryTimeFrom: "09:00", deliveryTimeTo: "12:00",
+    })),
+  );
 
   const [driver] = await db
     .insert(members)
@@ -274,6 +288,11 @@ after(async () => {
           sql`, `,
         )})`,
       );
+      await db.delete(deliverySchedules).where(
+        sql`${deliverySchedules.supplierId} IN (${sql.join(orgIds.map((id) => sql`${id}`), sql`, `)})
+          OR ${deliverySchedules.restaurantId} IN (${sql.join(orgIds.map((id) => sql`${id}`), sql`, `)})`,
+      );
+      await db.delete(restaurantAvailability).where(inArray(restaurantAvailability.restaurantId, orgIds));
       await db.delete(users).where(inArray(users.id, orgIds));
     }
   } finally {

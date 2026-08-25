@@ -44,6 +44,10 @@ const checkoutMigrations = [
     name: "0013_order_local_impact_snapshot",
     file: path.join(migrationFolder, "0013_order_local_impact_snapshot.sql"),
   },
+  {
+    name: "0014_delivery_constraints",
+    file: path.join(migrationFolder, "0014_delivery_constraints.sql"),
+  },
 ] as const;
 
 function parsePositiveTimeout(value: string | undefined, fallback: number): number {
@@ -230,6 +234,30 @@ const expectedIndexes: Record<string, ExpectedIndex> = {
     unique: false,
     predicate: null,
   },
+  idx_restaurant_availability_restaurant_day: {
+    table: "restaurant_availability",
+    columns: ["restaurant_id", "day_of_week"],
+    unique: false,
+    predicate: null,
+  },
+  uniq_restaurant_availability_exception_date: {
+    table: "restaurant_availability_exceptions",
+    columns: ["restaurant_id", "date"],
+    unique: true,
+    predicate: null,
+  },
+  idx_supplier_delivery_zones_supplier: {
+    table: "supplier_delivery_zones",
+    columns: ["supplier_id", "is_active"],
+    unique: false,
+    predicate: null,
+  },
+  uniq_supplier_delivery_zone_prefix: {
+    table: "supplier_delivery_zones",
+    columns: ["supplier_id", "postal_code_prefix"],
+    unique: true,
+    predicate: null,
+  },
 };
 
 function normalizePredicate(predicate: string | null): string | null {
@@ -242,6 +270,14 @@ function normalizePredicate(predicate: string | null): string | null {
 
 export async function verifyCheckoutMigration(client: Queryable = pool): Promise<void> {
   const missingColumns = [];
+  if (!(await columnExists(client, "users", "time_zone"))) missingColumns.push("users.time_zone");
+  for (const relation of [
+    "restaurant_availability",
+    "restaurant_availability_exceptions",
+    "supplier_delivery_zones",
+  ]) {
+    if (!(await relationExists(client, relation))) missingColumns.push(relation);
+  }
   for (const column of ["idempotency_key", "idempotency_fingerprint"]) {
     if (!(await columnExists(client, "orders", column))) {
       missingColumns.push(`orders.${column}`);

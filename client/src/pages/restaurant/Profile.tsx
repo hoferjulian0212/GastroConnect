@@ -17,6 +17,7 @@ import { useRef, useState } from "react";
 import { useLanguage } from "@/context/LanguageContext";
 import { useT } from "@/lib/translations";
 import { can } from "@shared/permissions";
+import { RestaurantDeliveryAvailabilityCard } from "@/components/RestaurantDeliveryAvailabilityCard";
 
 const profileSchema = z.object({
   name: z.string().min(1, "Name ist erforderlich"),
@@ -313,6 +314,9 @@ export default function RestaurantProfile() {
               </Form>
             </CardContent>
           </Card>
+          <div className="mt-3 md:mt-6">
+            <RestaurantDeliveryAvailabilityCard lang={lang} disabled={!canEditOrg} />
+          </div>
         </div>
 
         <div>
