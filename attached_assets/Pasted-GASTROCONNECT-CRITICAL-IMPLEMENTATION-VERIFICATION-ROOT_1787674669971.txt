@@ -1,0 +1,686 @@
+GASTROCONNECT — CRITICAL IMPLEMENTATION VERIFICATION / ROOT-CAUSE ANALYSIS
+
+STOP IMPLEMENTING NEW FEATURES FOR NOW.
+
+I need you to perform a forensic audit of the CURRENT running application and codebase.
+
+There is a serious discrepancy:
+
+The Local / Sustainability / Zero-Waste / Nachhaltigkeits-Badges / Emoji / Local Score features were supposedly implemented, but I cannot see ANY meaningful difference in the application.
+
+The UI looks essentially 1:1 like the old version.
+
+I cannot find a single one of the requested emojis.
+
+Product data such as packaging, sustainability, local origin, etc. also appears completely empty.
+
+The demo data that was supposedly seeded does not appear to exist.
+
+This means we may have a much more fundamental problem than "missing demo data".
+
+DO NOT FIX ANYTHING YET.
+
+DO NOT SEED MORE DATA YET.
+
+DO NOT MODIFY THE DATABASE YET.
+
+DO NOT TELL ME THAT THE FEATURE EXISTS JUST BECAUSE SOME COMPONENT OR TYPE EXISTS IN THE CODE.
+
+I want you to FIND THE ACTUAL ROOT CAUSE.
+
+==================================================
+1. FIRST: VERIFY WHETHER THE FEATURES ACTUALLY EXIST
+==================================================
+
+Search the entire codebase for every feature from the recent implementation:
+
+- Local Score
+- Nachhaltigkeits-Badges
+- sustainability badges
+- Local badges
+- seasonal badges
+- waste badges
+- Rescue badges
+- 📍
+- 🌱
+- ♻️
+- 🚚
+- 📦
+- 💶
+- ⚡
+- sustainability
+- local
+- regional
+- seasonal
+- packaging
+- waste
+- CO2
+- local spend
+- local impact
+- order impact
+- rescue
+- risk stock
+- delivery efficiency
+- route sustainability
+- smart quantity recommendation
+
+For EACH feature tell me:
+
+A. Does actual implementation code exist?
+B. Where exactly does it exist?
+C. Is it imported anywhere?
+D. Is it actually rendered anywhere?
+E. Which page/component renders it?
+F. Which user roles can see it?
+G. Which database fields does it depend on?
+H. Which API/query provides its data?
+I. Is that API/query actually called?
+J. Is the returned data non-empty?
+K. Is there any condition preventing it from rendering?
+
+I want file names and component names.
+
+==================================================
+2. EMOJI FORENSIC CHECK
+==================================================
+
+This is especially important.
+
+I cannot see a SINGLE emoji in the application.
+
+Search the entire codebase for the literal emoji characters:
+
+📍
+🌱
+♻️
+🚚
+📦
+💶
+⚡
+
+Also search for:
+
+emoji
+icon
+badge
+sustainability
+local badge
+seasonal badge
+
+Tell me:
+
+- Are the actual emoji characters present anywhere?
+- If yes, in which files?
+- Are they inside unused components?
+- Are those components imported?
+- Are they actually rendered?
+- Are they hidden by conditions?
+- Are they only present in documentation/comments?
+- Were they perhaps described in prompts but never implemented?
+
+IMPORTANT:
+
+Do not tell me "emoji support exists" because there is a type called `emoji`.
+
+I need to know whether the actual running UI can render the emojis.
+
+==================================================
+3. PRODUCT DATA FORENSIC CHECK
+==================================================
+
+Pick at least 10 REAL products from the CURRENT database.
+
+Inspect their actual database records.
+
+For every product inspect all relevant fields, including whatever exists for:
+
+- origin
+- local/regional status
+- supplier
+- supplier location
+- distance
+- seasonality
+- packaging
+- packaging type
+- reusable packaging
+- sustainability
+- waste
+- Local Score
+- badges
+- CO2
+- rescue eligibility
+- any sustainability metadata
+
+Report the ACTUAL values.
+
+For example:
+
+Product: Apples
+origin = ?
+local = ?
+seasonal = ?
+packaging = ?
+sustainability = ?
+Local Score = ?
+badges = ?
+
+Do this for at least 10 products.
+
+If these fields are all NULL / empty / false / missing, explicitly say so.
+
+==================================================
+4. CHECK WHETHER DATA WAS ONLY ADDED TO SOME USER TYPES
+==================================================
+
+Investigate whether demo data exists for:
+
+Restaurant users
+Restaurant managers
+Restaurant warehouse users
+Supplier users
+Supplier warehouse users
+Drivers
+Admin
+
+Do not assume that because one user has data, the whole application has data.
+
+For EACH role determine:
+
+- demo user exists?
+- restaurant/supplier assigned?
+- products visible?
+- orders visible?
+- sustainability data visible?
+- dashboard data visible?
+- new features visible?
+
+It is possible that data was only created for one user type while the accounts I am using remain untouched.
+
+Find out.
+
+==================================================
+5. DATABASE VS FRONTEND CHECK
+==================================================
+
+This is critical.
+
+Compare:
+
+DATABASE
+
+vs
+
+FRONTEND
+
+For the new sustainability/local fields.
+
+Determine:
+
+Does the database actually contain the data?
+
+If YES:
+Why does the frontend not display it?
+
+If NO:
+Why was it never seeded?
+
+Do not assume the frontend is broken before verifying the database.
+
+==================================================
+6. TRACE ONE PRODUCT END-TO-END
+==================================================
+
+Pick ONE actual product.
+
+Trace:
+
+DATABASE PRODUCT
+↓
+API
+↓
+QUERY
+↓
+BACKEND RESPONSE
+↓
+FRONTEND STATE
+↓
+PRODUCT CARD
+↓
+PRODUCT DETAIL
+↓
+CART
+↓
+ORDER
+
+For each step tell me whether the new Local/Sustainability data exists.
+
+Example:
+
+Database:
+packaging = null
+
+API:
+returns null
+
+Frontend:
+receives null
+
+UI:
+correctly hides packaging
+
+If this is what happens, then the UI may actually be working and the real problem is missing data.
+
+OR:
+
+Database:
+packaging = "reusable"
+
+API:
+returns it
+
+Frontend:
+receives it
+
+Product Detail:
+doesn't render it
+
+Then the frontend implementation is incomplete.
+
+I want the exact answer.
+
+==================================================
+7. TRACE ONE DASHBOARD END-TO-END
+==================================================
+
+Pick the Restaurant Manager Dashboard.
+
+Trace one new metric, for example Local Spend or Local Score:
+
+Database
+↓
+Query
+↓
+API
+↓
+calculation
+↓
+frontend state
+↓
+dashboard component
+↓
+actual rendered UI
+
+Tell me exactly where the chain breaks.
+
+Repeat for at least:
+
+- Local Score
+- sustainability
+- waste
+- Local Spend
+- monthly statistics
+
+==================================================
+8. CHECK IF THE NEW COMPONENTS ARE ACTUALLY USED
+==================================================
+
+Search for all newly created components related to:
+
+- badges
+- sustainability
+- Local Score
+- product sustainability
+- product impact
+- local indicators
+- emoji indicators
+- dashboard statistics
+
+For each component tell me:
+
+- file
+- purpose
+- imports
+- where used
+- whether rendered
+- whether reachable from the current navigation
+
+I strongly suspect that some implementation may exist as unused components.
+
+Find out.
+
+==================================================
+9. CHECK NAVIGATION / ROUTING
+==================================================
+
+Check whether any newly implemented pages/features are actually accessible.
+
+Look at:
+
+- routes
+- navigation
+- dashboard tabs
+- menu items
+- role-specific navigation
+- conditional rendering
+
+Determine if features exist but are inaccessible.
+
+Again:
+
+DO NOT change anything yet.
+
+Just report.
+
+==================================================
+10. CHECK FEATURE FLAGS / CONDITIONS
+==================================================
+
+Search for conditions such as:
+
+if (...)
+&&
+||
+feature flags
+role checks
+permissions
+empty-state conditions
+data existence checks
+
+that could prevent the new features from appearing.
+
+Especially investigate logic such as:
+
+if (!product.sustainability) return null
+
+if (!localScore) return null
+
+if (!packaging) hide
+
+if (!data.length) hide
+
+etc.
+
+Determine whether the UI is invisible simply because the underlying demo data is empty.
+
+==================================================
+11. CHECK DATABASE SEEDING
+==================================================
+
+Find every seed/demo/mock data mechanism in the project.
+
+Search for:
+
+seed
+demo
+mock
+fixture
+sample
+initial data
+development data
+
+Determine:
+
+- Was a seed script actually created?
+- Was it actually executed?
+- When was it last executed?
+- Which database/environment did it modify?
+- Which users/entities did it modify?
+- Does the CURRENT running application use that same database?
+- Did the seed script fail silently?
+- Does it only create users but not product metadata?
+- Does it only affect one restaurant/supplier?
+
+Do NOT run it yet.
+
+First determine what happened.
+
+==================================================
+12. CHECK FOR MULTIPLE DATABASES / ENVIRONMENTS
+==================================================
+
+Investigate whether the project has:
+
+- local database
+- development database
+- production database
+- preview database
+- seeded database
+- another database connection
+
+Determine which database the CURRENT running application is using.
+
+This is extremely important.
+
+It is possible that data was seeded into one database while the running application reads from another.
+
+Report:
+
+CURRENT APP DATABASE
+SEED DATABASE
+ARE THEY THE SAME? YES/NO
+
+==================================================
+13. CHECK DATA MODEL MISMATCHES
+==================================================
+
+Look for situations where the implementation expects:
+
+localScore
+
+but database contains:
+
+local_score
+
+or:
+
+packagingType
+
+vs
+
+packaging_type
+
+etc.
+
+Find:
+
+- renamed fields
+- obsolete fields
+- old schema references
+- frontend fields that don't exist anymore
+- backend fields that frontend doesn't request
+- duplicate fields representing the same concept
+
+Do not create new fields.
+
+Identify the canonical existing field.
+
+==================================================
+14. CHECK WHETHER THE "NEW VERSION" IS ACTUALLY DEPLOYED
+==================================================
+
+Determine whether the running application is actually using the latest code.
+
+Check:
+
+- current branch
+- latest commit
+- build
+- deployment
+- cached frontend
+- dev server
+- production/preview environment
+
+I want you to determine whether it is possible that:
+
+NEW CODE EXISTS IN REPOSITORY
+
+but
+
+RUNNING APPLICATION IS STILL USING OLD BUILD.
+
+If this is possible, identify the evidence.
+
+==================================================
+15. CHECK ALL USER ACCOUNTS I CAN CURRENTLY USE
+==================================================
+
+Find the existing demo/test accounts.
+
+For each:
+
+- role
+- user ID
+- restaurant/supplier relationship
+- relevant data
+- whether new features should be visible
+
+Do NOT create new accounts yet.
+
+I want to know whether I may simply be testing the wrong account.
+
+==================================================
+16. DO NOT MODIFY ANYTHING
+==================================================
+
+During this audit:
+
+DO NOT:
+
+- seed data
+- delete data
+- modify database schema
+- redesign UI
+- add new features
+- change business logic
+- refactor unrelated code
+
+This is a forensic investigation.
+
+I want the diagnosis BEFORE implementation.
+
+==================================================
+17. FINAL REPORT
+==================================================
+
+Give me a clear report in this exact structure:
+
+# 1. ROOT CAUSE
+
+What is actually wrong?
+
+Be specific.
+
+Example:
+
+"80% of the new features are implemented in code, but the current database contains no sustainability metadata."
+
+OR:
+
+"The features were implemented in unused components and are not connected to the current ProductCard/ProductDetail components."
+
+OR:
+
+"The seed data was inserted into the development database while the running app uses another database."
+
+OR:
+
+"The frontend is running an older build."
+
+OR:
+
+"Multiple issues exist."
+
+Do not give me generic explanations.
+
+# 2. EMOJI STATUS
+
+Tell me exactly why I cannot see a single emoji.
+
+# 3. DATABASE STATUS
+
+Show actual examples from at least 10 products.
+
+# 4. USER/ROLE STATUS
+
+Show which roles have data and which don't.
+
+# 5. FEATURE STATUS
+
+Create a table:
+
+| Feature | Code exists | Connected | Data exists | UI renders | Visible to me | Problem |
+|---|---|---|---|---|---|---|
+
+Include:
+
+Local Score
+Local badges
+Seasonal badges
+Sustainability badges
+Waste
+Packaging
+Local origin
+CO2
+Rescue
+Risk Stock
+Local Spend
+Monthly statistics
+Route sustainability
+etc.
+
+# 6. SEED STATUS
+
+Was demo data actually seeded?
+
+If yes:
+where and for whom?
+
+If no:
+why?
+
+# 7. DATABASE / ENVIRONMENT
+
+Which database does the running app use?
+
+Which database did the seed process use?
+
+# 8. DEPLOYMENT STATUS
+
+Is the current running application definitely using the latest implementation?
+
+# 9. EXACT ROOT-CAUSE FIX PLAN
+
+Only after the investigation, give me the exact steps needed to make the new functionality actually visible.
+
+Separate:
+
+CRITICAL
+HIGH
+MEDIUM
+
+Do NOT implement these fixes yet.
+
+==================================================
+MOST IMPORTANT
+
+I do NOT want another assumption that "the features are implemented".
+
+Prove it.
+
+I want evidence from:
+
+CODE
+DATABASE
+API
+FRONTEND
+ROUTING
+USER ROLES
+RUNNING APPLICATION
+
+The central question is:
+
+WHY CAN I OPEN GASTROCONNECT RIGHT NOW AND SEE ALMOST EXACTLY THE SAME APPLICATION AS BEFORE THE SUSTAINABILITY/LOCAL UPDATE?
+
+Find the answer.
+
+DO NOT FIX ANYTHING UNTIL YOU HAVE IDENTIFIED THE ROOT CAUSE.

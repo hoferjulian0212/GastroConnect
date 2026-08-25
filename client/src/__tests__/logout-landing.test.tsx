@@ -2,6 +2,7 @@ import { describe, test, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, fireEvent, waitFor, cleanup } from "@testing-library/react";
 import { UserProvider, useUser } from "@/context/UserContext";
 import { queryClient } from "@/lib/queryClient";
+import { QueryClientProvider } from "@tanstack/react-query";
 
 const signOut = vi.fn(async () => {});
 
@@ -38,9 +39,11 @@ afterEach(() => {
 describe("logout landing boundary", () => {
   test("stale authenticated me data cannot keep the app authenticated after logout starts", async () => {
     render(
-      <UserProvider>
-        <Probe />
-      </UserProvider>,
+      <QueryClientProvider client={queryClient}>
+        <UserProvider>
+          <Probe />
+        </UserProvider>
+      </QueryClientProvider>,
     );
 
     await waitFor(() => expect(screen.getByTestId("auth-state")).toHaveTextContent("true"));
