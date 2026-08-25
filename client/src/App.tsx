@@ -802,7 +802,7 @@ function AppLayout() {
 
   // Clerk sign-in / sign-up (sub-paths like /sign-in/sso-callback included).
   if (pathOnly === "/demo-login") {
-    return <DemoLoginPage />;
+    return demoLoginEnabled ? <DemoLoginPage /> : <Redirect to="/sign-in" />;
   }
   if (pathOnly.startsWith("/sign-in")) {
     return <SignInPage />;
@@ -1174,6 +1174,7 @@ function AccessDeniedScreen() {
 }
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
+const demoLoginEnabled = import.meta.env.DEV;
 
 const clerkAppearance = {
   theme: shadcn,
@@ -1291,6 +1292,7 @@ function SignInPage() {
               </Link>
             </section>
 
+            {demoLoginEnabled && (
             <section className="rounded-3xl border border-white/10 bg-white/[0.03] p-5 md:p-6" aria-labelledby="demo-choice-heading">
               <h2 id="demo-choice-heading" className="text-base font-semibold text-white">
                 Demo-Benutzer ausprobieren?
@@ -1307,6 +1309,7 @@ function SignInPage() {
                 Demo-Zugang auswählen
               </Link>
             </section>
+            )}
           </div>
         </div>
       </main>

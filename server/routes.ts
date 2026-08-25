@@ -21,6 +21,8 @@ import { sendEmail, renderNotificationEmail } from "./emailService";
 import { registerAuthRoutes } from "./auth/routes";
 import { createClerkClient } from "@clerk/express";
 import { registerAdminAuthRoutes, bootstrapPlatformAdmin, bootstrapDemoWarehouseMember, bootstrapDemoDriverMembers, bootstrapDemoRoleMembers, DEMO_ROLE_LOGINS, DEMO_WAREHOUSE_EMAIL, DEMO_DRIVER_EMAIL, DEMO_DRIVER_PASSWORD, DEMO_WAREHOUSE_PASSWORD } from "./auth/adminAuth";
+import { resetSessionForDemoLogin } from "./auth/demoSession";
+import { assertOrderTransition, canAdvanceDriverStatus, canCompleteDelivery, LifecycleTransitionError } from "@shared/deliveryLifecycle";
 import { geocodeAddress, backfillMissingCoordinates, isGeocodingConfigured } from "./geocoding";
 import { summarizeLocalImpact, unavailableLocalImpact } from "@shared/localImpact";
 import { calculateLocalImpact } from "./localImpact";
@@ -562,6 +564,7 @@ async function transitionOrderWithStock(opts: TransitionOpts) {
     if (actualStatus !== opts.previousStatus) {
       throw new OrderTransitionConflictError(actualStatus, opts.previousStatus);
     }
+    assertOrderTransition(opts.previousStatus, opts.newStatus);
 
     const setData: Partial<typeof orders.$inferInsert> = {
       status: opts.newStatus as typeof orders.$inferInsert.status,
@@ -899,6 +902,12 @@ export async function registerRoutes(
   // The explicit demo email list is the whitelist; ordinary accounts never
   // reach this path and continue to use Clerk's normal verification flow.
   app.post("/api/demo-login", async (req, res) => {
+    // Demo accounts are a local development convenience, never a production
+    // authentication path. The UI is hidden in production too, but this guard
+    // protects direct requests.
+    if (process.env.NODE_ENV === "production") {
+      return res.status(404).json({ error: "not_found" });
+    }
     const { email } = req.body ?? {};
     if (typeof email !== "string") {
       return res.status(400).json({ error: "email_required" });
@@ -924,6 +933,10 @@ export async function registerRoutes(
         userId: users[0].id,
         expiresInSeconds: 60,
       });
+      // Admin impersonation uses this express-session while normal members use
+      // Clerk. Its precedence would otherwise make the old impersonated member
+      // win even after Clerk activates the selected demo account.
+      await resetSessionForDemoLogin(req.session);
       return res.json({ token: token.token });
     } catch (err: any) {
       console.error("[demo-login] failed:", err?.errors ?? err?.message ?? err);
@@ -4402,6 +4415,12 @@ export async function registerRoutes(
 
       res.json(updated);
     } catch (error: any) {
+      if (error instanceof LifecycleTransitionError) {
+        return res.status(400).json({
+          error: "invalid_transition",
+          message: "Dieser Statuswechsel ist im Bestellablauf nicht erlaubt.",
+        });
+      }
       if (error instanceof OrderTransitionConflictError) {
         return res.status(409).json({
           error: "status_conflict",
@@ -8994,10 +9013,18 @@ export async function registerRoutes(
     if (!advanced?.activeStopId) return advanced;
     const next = await storage.getDeliveryAssignment(advanced.activeStopId);
     if (!next) return advanced;
-    const updated = await storage.updateDeliveryAssignmentIfStatus(next.id, next.status, { status: "en_route", enRouteAt: new Date() });
-    if (!updated && ["en_route", "arriving"].includes(next.status)) return advanced;
+    // Route automation can start an assigned/picked-up stop, but must never
+    // regress a driver who already advanced it manually (e.g. to arriving).
+    const updated = canAdvanceDriverStatus(next.status, "en_route")
+      ? await storage.updateDeliveryAssignmentIfStatus(next.id, next.status, { status: "en_route", enRouteAt: new Date() })
+      : undefined;
+    if (!updated && !["en_route", "arriving"].includes(next.status)) return advanced;
     await refreshRouteEtas(driverMemberId, deliveryDate);
-    const order = await notifyRouteDeparture(updated ?? next, actorName);
+    // A manually advanced stop still needs its commercial bridge, but it has
+    // already emitted its driver-facing status notification.
+    const order = updated
+      ? await notifyRouteDeparture(updated, actorName)
+      : await storage.getOrder(next.orderId);
     if (order && ["confirmed", "partially_confirmed", "scheduled"].includes(order.status)) {
       try {
         await transitionOrderWithStock({ order, newStatus: "in_delivery", previousStatus: order.status, changedByMemberId: driverMemberId, actorName, movementType: null });
@@ -9500,17 +9527,13 @@ export async function registerRoutes(
       if (assignment.status === status) {
         return res.json(assignment);
       }
-      // Forward-only status flow: assigned → picked_up → en_route → arriving.
-      // A reported problem may only resume after office authorization.
-      const STATUS_RANK: Record<string, number> = { assigned: 0, picked_up: 1, en_route: 2, arriving: 3 };
-      if (assignment.status !== "problem") {
-        const currentRank = STATUS_RANK[assignment.status] ?? 0;
-        if (STATUS_RANK[status] <= currentRank) {
-          return res.status(400).json({
-            error: "invalid_transition",
-            message: `Statuswechsel von "${assignment.status}" zu "${status}" ist nicht erlaubt.`,
-          });
-        }
+      // `problem` cannot be progressed here; supplier resolution restores the
+      // saved operational state before the driver can continue.
+      if (!canAdvanceDriverStatus(assignment.status, status)) {
+        return res.status(400).json({
+          error: "invalid_transition",
+          message: `Statuswechsel von "${assignment.status}" zu "${status}" ist nicht erlaubt.`,
+        });
       }
       const patch: Record<string, unknown> = { status };
       if (status === "en_route" && !assignment.enRouteAt) patch.enRouteAt = new Date();
@@ -9627,17 +9650,53 @@ export async function registerRoutes(
       }
       // Completion is only valid after the driver has reported arrival. This
       // prevents a stop from being completed while it is merely en route.
-      if (assignment.status !== "arriving") {
+      if (!canCompleteDelivery(assignment.status)) {
         return res.status(400).json({
           error: "invalid_transition",
           message: "Die Lieferung kann erst nach der Ankunft als zugestellt markiert werden.",
         });
       }
 
-      const order = await storage.getOrder(assignment.orderId);
+      let order = await storage.getOrder(assignment.orderId);
       // Order transition happens FIRST (it can fail on insufficient state) so
       // the assignment never says delivered while the order does not.
-      if (order && !["delivered", "cancelled"].includes(order.status)) {
+      if (order?.status === "cancelled") {
+        return res.status(409).json({
+          error: "order_cancelled",
+          message: "Die Bestellung wurde storniert und kann nicht mehr zugestellt werden.",
+        });
+      }
+      // Driver recovery can fast-forward a stop to arriving. Preserve the same
+      // commercial bridge as a normal en_route update before completing it.
+      if (order && ["confirmed", "partially_confirmed", "scheduled"].includes(order.status)) {
+        try {
+          await transitionOrderWithStock({
+            order,
+            newStatus: "in_delivery",
+            previousStatus: order.status,
+            changedByMemberId: req.auth!.memberId,
+            actorName: req.auth!.member.name,
+            movementType: null,
+          });
+          order = { ...order, status: "in_delivery" };
+        } catch (err) {
+          if (!(err instanceof OrderTransitionConflictError)) throw err;
+          order = await storage.getOrder(assignment.orderId);
+          if (!order || !["in_delivery", "delivered"].includes(order.status)) {
+            return res.status(409).json({
+              error: "order_changed",
+              message: "Die Bestellung wurde gerade geändert. Bitte Route aktualisieren.",
+            });
+          }
+        }
+      }
+      if (order && order.status !== "delivered") {
+        if (order.status !== "in_delivery") {
+          return res.status(409).json({
+            error: "order_not_in_delivery",
+            message: "Die Bestellung muss zuerst als unterwegs markiert werden.",
+          });
+        }
         try {
           await transitionOrderWithStock({
             order,
@@ -9650,17 +9709,45 @@ export async function registerRoutes(
           });
         } catch (err) {
           if (!(err instanceof OrderTransitionConflictError)) throw err;
+          const fresh = await storage.getOrder(assignment.orderId);
+          if (!fresh || fresh.status !== "delivered") {
+            return res.status(409).json({
+              error: "order_changed",
+              message: "Die Bestellung wurde gerade geändert. Bitte Route aktualisieren.",
+            });
+          }
+          order = fresh;
         }
       }
 
-      const updated = await storage.updateDeliveryAssignmentIfStatus(assignment.id, assignment.status, {
-        status: "delivered",
-        deliveredAt: new Date(),
-        podNote: parsed.podNote ?? null,
-        podPhotoUrl: parsed.podPhotoUrl ?? null,
-        podRecipient: parsed.podRecipient ?? null,
+      // Lock the commercial row while finalizing the operational stop. Once
+      // delivered it is terminal, so a concurrent cancellation cannot leave a
+      // delivered assignment attached to a cancelled order.
+      const updated = await db.transaction(async (tx) => {
+        const locked = await tx.execute<{ status: string | null }>(
+          sql`SELECT status FROM ${orders} WHERE id = ${assignment.orderId} FOR UPDATE`,
+        );
+        if (locked.rows[0]?.status !== "delivered") return undefined;
+        const [completed] = await tx.update(deliveryAssignments).set({
+          status: "delivered",
+          deliveredAt: new Date(),
+          podNote: parsed.podNote ?? null,
+          podPhotoUrl: parsed.podPhotoUrl ?? null,
+          podRecipient: parsed.podRecipient ?? null,
+        }).where(and(
+          eq(deliveryAssignments.id, assignment.id),
+          eq(deliveryAssignments.status, assignment.status),
+        )).returning();
+        return completed;
       });
-      if (!updated) return res.json(await storage.getDeliveryAssignment(assignment.id));
+      if (!updated) {
+        const current = await storage.getDeliveryAssignment(assignment.id);
+        if (current?.status === "delivered") return res.json(current);
+        return res.status(409).json({
+          error: "delivery_changed",
+          message: "Die Lieferung wurde gerade geändert. Bitte Route aktualisieren.",
+        });
+      }
 
       if (order) {
         await createNotificationWithPush({
@@ -10088,7 +10175,23 @@ export async function registerRoutes(
       const assignment = await storage.getDeliveryAssignment(started.activeStopId);
       if (!assignment) return res.status(404).json({ error: "stop_not_found" });
       if (started.route.status === "active" && ["en_route", "arriving"].includes(assignment.status)) {
+        const order = await storage.getOrder(assignment.orderId);
+        if (order && ["confirmed", "partially_confirmed", "scheduled"].includes(order.status)) {
+          try {
+            await transitionOrderWithStock({
+              order,
+              newStatus: "in_delivery",
+              previousStatus: order.status,
+              changedByMemberId: req.auth!.memberId,
+              actorName: req.auth!.member.name,
+              movementType: null,
+            });
+          } catch (err) { if (!(err instanceof OrderTransitionConflictError)) throw err; }
+        }
         return res.json({ route: started.route, activeStop: assignment, idempotent: true });
+      }
+      if (!canAdvanceDriverStatus(assignment.status, "en_route")) {
+        return res.status(409).json({ error: "stop_not_ready", message: "Der aktive Stopp kann nicht gestartet werden." });
       }
       const updated = await storage.updateDeliveryAssignmentIfStatus(assignment.id, assignment.status, { status: "en_route", enRouteAt: new Date() });
       if (!updated) return res.json({ route: started.route, activeStop: await storage.getDeliveryAssignment(assignment.id), idempotent: true });

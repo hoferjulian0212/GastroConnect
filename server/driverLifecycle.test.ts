@@ -69,6 +69,7 @@ const FUTURE_DATE = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 1
 const FUTURE_DATE_2 = new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10);
 const ROUTE_DATE = new Date(Date.now() + 21 * 86400000).toISOString().slice(0, 10);
 const ROUTE_DATE_2 = new Date(Date.now() + 28 * 86400000).toISOString().slice(0, 10);
+const ROUTE_DATE_3 = new Date(Date.now() + 35 * 86400000).toISOString().slice(0, 10);
 
 let supplierId = "";
 let restaurantId = "";
@@ -761,6 +762,54 @@ describe("driver lifecycle: exception resolution", () => {
     assert.equal((await apiFetch("POST", `/api/driver/deliveries/${first.assignmentId}/complete`, {}, driverCookie)).status, 200);
 
     assert.equal((await getAssignment(second.assignmentId))?.status, "en_route", "Active route must advance to the approved next stop");
+  });
+
+  test("fast-forwarding to arrival still bridges the order before completion", async () => {
+    const { orderId, assignmentId } = await seedOrderWithAssignment({
+      orderStatus: "scheduled",
+      assignmentStatus: "assigned",
+    });
+    const driverCookie = await seedSessionCookie(driverMemberId);
+    assert.equal((await apiFetch("PATCH", `/api/driver/deliveries/${assignmentId}/status`, { status: "arriving" }, driverCookie)).status, 200);
+    assert.equal((await apiFetch("POST", `/api/driver/deliveries/${assignmentId}/complete`, {}, driverCookie)).status, 200);
+    const [order] = await db.select({ status: orders.status }).from(orders).where(eq(orders.id, orderId));
+    assert.equal(order.status, "delivered");
+  });
+
+  test("an arriving stop cannot complete after the commercial order was cancelled", async () => {
+    const { orderId, assignmentId } = await seedOrderWithAssignment({
+      orderStatus: "in_delivery",
+      assignmentStatus: "arriving",
+    });
+    await db.update(orders).set({ status: "cancelled" }).where(eq(orders.id, orderId));
+    const driverCookie = await seedSessionCookie(driverMemberId);
+    const completed = await apiFetch("POST", `/api/driver/deliveries/${assignmentId}/complete`, {}, driverCookie);
+    assert.equal(completed.status, 409);
+    assert.equal((await getAssignment(assignmentId))?.status, "arriving");
+  });
+
+  test("route advancement never regresses an already-arriving next stop", async () => {
+    const first = await seedOrderWithAssignment({
+      requestedDeliveryDate: ROUTE_DATE_3,
+      orderStatus: "confirmed",
+      assignmentStatus: "assigned",
+      stopSequence: 0,
+    });
+    const second = await seedOrderWithAssignment({
+      requestedDeliveryDate: ROUTE_DATE_3,
+      orderStatus: "confirmed",
+      assignmentStatus: "arriving",
+      stopSequence: 1,
+    });
+    const driverCookie = await seedSessionCookie(driverMemberId);
+    await storage.syncDraftDriverRoute(driverMemberId, supplierId, ROUTE_DATE_3);
+    await storage.confirmDriverRoute(driverMemberId, ROUTE_DATE_3);
+    assert.equal((await apiFetch("POST", "/api/driver/route/start", { deliveryDate: ROUTE_DATE_3 }, driverCookie)).status, 200);
+    assert.equal((await apiFetch("PATCH", `/api/driver/deliveries/${first.assignmentId}/status`, { status: "arriving" }, driverCookie)).status, 200);
+    assert.equal((await apiFetch("POST", `/api/driver/deliveries/${first.assignmentId}/complete`, {}, driverCookie)).status, 200);
+    assert.equal((await getAssignment(second.assignmentId))?.status, "arriving");
+    const [secondOrder] = await db.select({ status: orders.status }).from(orders).where(eq(orders.id, second.orderId));
+    assert.equal(secondOrder.status, "in_delivery", "Preserving the next stop must still bridge its order to in_delivery");
   });
 
   test("only supplier delivery managers can return a problem to office review", async () => {
