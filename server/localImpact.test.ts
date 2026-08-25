@@ -38,6 +38,44 @@ test("explicit metadata produces one compact signal and an evidence score", () =
   assert.ok(impact.score !== null && impact.score > 0);
 });
 
+test("demo-quality scenarios produce distinct high and low scores without changing unknown behavior", () => {
+  const snapshot = new Date("2026-08-15T00:00:00Z");
+  const high = calculateLocalImpact({
+    originCountryCode: "IT",
+    originPostalCode: "39012",
+    originLocality: "Meran",
+    originRegion: "South Tyrol",
+    seasonMonths: [8, 9, 10],
+    packagingType: "returnable",
+    sustainabilitySource: "admin",
+    sustainabilityEvidenceNote: "Curated demo/test fixture",
+    sustainabilityVerifiedAt: new Date("2026-08-01T00:00:00Z"),
+  }, {}, snapshot);
+  const low = calculateLocalImpact({
+    originCountryCode: "ES",
+    originPostalCode: "29001",
+    originLocality: "Málaga",
+    originRegion: "Andalusia",
+    seasonMonths: [1, 2, 3],
+    packagingType: "single_use",
+    sustainabilitySource: "admin",
+    sustainabilityEvidenceNote: "Curated demo/test fixture",
+    sustainabilityVerifiedAt: new Date("2026-08-01T00:00:00Z"),
+  }, {}, snapshot);
+  const unknown = calculateLocalImpact({}, {}, snapshot);
+
+  assert.equal(high.score, 100);
+  assert.equal(high.isLocal, true);
+  assert.equal(high.isSeasonal, true);
+  assert.equal(high.lowWaste, true);
+  assert.equal(low.score, 0);
+  assert.equal(low.isLocal, false);
+  assert.equal(low.isSeasonal, false);
+  assert.equal(low.lowWaste, false);
+  assert.equal(unknown.score, null);
+  assert.equal(unknown.classification, "unknown");
+});
+
 test("stale evidence cannot produce a verified Local signal", () => {
   const stale = calculateLocalImpact({
     originCountryCode: "IT",
