@@ -62,9 +62,51 @@ const productSchema = z.object({
  lowStockThreshold: z.preprocess((v) => (v === undefined || v === null || v === "" ? 0 : v), z.number().int().min(0)).optional(),
  minOrderQuantity: z.preprocess((v) => (v === undefined || v === null || v === "" ? undefined : v), z.number().int().min(1, "Min. 1")).default(1),
  imageUrl: z.string().optional(),
+ originCountryCode: z.string().trim().refine((value) => value === "" || /^[A-Za-z]{2}$/.test(value), "ISO-Ländercode mit 2 Buchstaben").optional(),
+ originRegion: z.string().max(120, "Max 120 Zeichen").optional(),
+ originLocality: z.string().max(120, "Max 120 Zeichen").optional(),
+ originPostalCode: z.string().max(20, "Max 20 Zeichen").optional(),
+ seasonMonths: z.array(z.number().int().min(1).max(12)).refine((months) => new Set(months).size === months.length).default([]),
+ packagingType: z.enum(["none", "returnable", "recyclable", "compostable", "single_use", "mixed"]).nullable().default(null),
+ sustainabilityEvidenceUrl: z.string().trim().refine((value) => {
+ if (value === "") return true;
+ try {
+ new URL(value);
+ return true;
+ } catch {
+ return false;
+ }
+ }, "Ungültige URL").optional(),
+ sustainabilityEvidenceNote: z.string().max(2000, "Max 2000 Zeichen").optional(),
 });
 
 type ProductFormData = z.infer<typeof productSchema>;
+type SustainabilityProduct = Product & {
+ originCountryCode?: string | null;
+ originRegion?: string | null;
+ originLocality?: string | null;
+ originPostalCode?: string | null;
+ seasonMonths?: number[] | null;
+ packagingType?: ProductFormData["packagingType"];
+ sustainabilityEvidenceUrl?: string | null;
+ sustainabilityEvidenceNote?: string | null;
+};
+
+type ProductSubmitData = Omit<ProductFormData,
+ "gtin" | "originCountryCode" | "originRegion" | "originLocality" |
+ "originPostalCode" | "seasonMonths" | "packagingType" | "sustainabilityEvidenceUrl" |
+ "sustainabilityEvidenceNote"
+> & {
+ gtin: string | null;
+ originCountryCode?: string | null;
+ originRegion?: string | null;
+ originLocality?: string | null;
+ originPostalCode?: string | null;
+ seasonMonths?: number[] | null;
+ packagingType?: ProductFormData["packagingType"];
+ sustainabilityEvidenceUrl?: string | null;
+ sustainabilityEvidenceNote?: string | null;
+};
 
 export function InventoryView({ products, lang, t }: { products: Product[]; lang: string; t: ReturnType<typeof useT> }) {
  const { currentUser } = useUser();
@@ -1106,6 +1148,9 @@ function PromotionsView({ lang, t }: { lang: string; t: ReturnType<typeof useT> 
 export default function SupplierProducts() {
  const { currentUser, currentMember } = useUser();
  const canManageProducts = !currentMember || can(currentMember.role, "products.manage");
+ const canManageSustainability = canManageProducts && (
+ !currentMember || can(currentMember.role, "sustainability.manage")
+ );
  const { toast } = useToast();
  const { lang } = useLanguage();
  const t = useT(lang);
@@ -1147,6 +1192,14 @@ export default function SupplierProducts() {
  lowStockThreshold: 0,
  minOrderQuantity: 1,
  imageUrl: "",
+ originCountryCode: "",
+ originRegion: "",
+ originLocality: "",
+ originPostalCode: "",
+ seasonMonths: [],
+ packagingType: null,
+ sustainabilityEvidenceUrl: "",
+ sustainabilityEvidenceNote: "",
  },
  });
 
@@ -1156,7 +1209,7 @@ export default function SupplierProducts() {
  });
 
  const createProductMutation = useMutation({
- mutationFn: async (data: Omit<ProductFormData, "gtin"> & { gtin: string | null }) => {
+ mutationFn: async (data: ProductSubmitData) => {
  return apiRequest("POST", "/api/products", {
  ...data,
  supplierId: currentUser?.id,
@@ -1184,7 +1237,7 @@ export default function SupplierProducts() {
  });
 
  const updateProductMutation = useMutation({
- mutationFn: async (data: Omit<ProductFormData, "gtin"> & { id: string; gtin: string | null }) => {
+ mutationFn: async (data: ProductSubmitData & { id: string }) => {
  const { id, ...body } = data;
  return apiRequest("PATCH", `/api/products/${id}`, body);
  },
@@ -1239,6 +1292,7 @@ export default function SupplierProducts() {
  );
 
  const openEditDialog = (product: Product) => {
+ const sustainability = product as SustainabilityProduct;
  setEditingProduct(product);
  form.reset({
  articleNumber: product.articleNumber || "",
@@ -1253,6 +1307,14 @@ export default function SupplierProducts() {
  lowStockThreshold: product.lowStockThreshold || 0,
  minOrderQuantity: product.minOrderQuantity || 1,
  imageUrl: product.imageUrl || "",
+ originCountryCode: sustainability.originCountryCode || "",
+ originRegion: sustainability.originRegion || "",
+ originLocality: sustainability.originLocality || "",
+ originPostalCode: sustainability.originPostalCode || "",
+ seasonMonths: sustainability.seasonMonths || [],
+ packagingType: sustainability.packagingType || null,
+ sustainabilityEvidenceUrl: sustainability.sustainabilityEvidenceUrl || "",
+ sustainabilityEvidenceNote: sustainability.sustainabilityEvidenceNote || "",
  });
  setPreviewImage(product.imageUrl || null);
  setIsDialogOpen(true);
@@ -1340,7 +1402,31 @@ export default function SupplierProducts() {
  };
 
  const onSubmit = (data: ProductFormData) => {
- const cleaned = { ...data, gtin: data.gtin?.trim() ? data.gtin.trim() : null };
+ const {
+ originCountryCode,
+ originRegion,
+ originLocality,
+ originPostalCode,
+ seasonMonths,
+ packagingType,
+ sustainabilityEvidenceUrl,
+ sustainabilityEvidenceNote,
+ ...commercialData
+ } = data;
+ const cleaned: ProductSubmitData = {
+ ...commercialData,
+ gtin: data.gtin?.trim() ? data.gtin.trim() : null,
+ ...(canManageSustainability ? {
+ originCountryCode: originCountryCode?.trim() ? originCountryCode.trim().toUpperCase() : null,
+ originRegion: originRegion?.trim() || null,
+ originLocality: originLocality?.trim() || null,
+ originPostalCode: originPostalCode?.trim() || null,
+ seasonMonths: seasonMonths.length > 0 ? [...seasonMonths].sort((a, b) => a - b) : null,
+ packagingType,
+ sustainabilityEvidenceUrl: sustainabilityEvidenceUrl?.trim() || null,
+ sustainabilityEvidenceNote: sustainabilityEvidenceNote?.trim() || null,
+ } : {}),
+ };
  if (editingProduct) {
  // Stock quantity is managed on the Inventory page via audited stock
  // movements, so never overwrite it directly from the product editor.
@@ -1819,6 +1905,173 @@ export default function SupplierProducts() {
  )}
  />
  </div>
+
+ {canManageSustainability && (
+ <section className="space-y-4 rounded-xl border bg-muted/15 p-4" data-testid="section-product-sustainability">
+ <div>
+ <h4 className="text-sm font-semibold">{t("supplierProducts", "sustainabilityTitle")}</h4>
+ <p className="mt-0.5 text-xs text-muted-foreground">
+ {t("supplierProducts", "sustainabilityHelper")}
+ </p>
+ </div>
+
+ <div className="grid gap-3 sm:grid-cols-2">
+ <FormField
+ control={form.control}
+ name="originCountryCode"
+ render={({ field }) => (
+ <FormItem>
+ <FormLabel>{t("supplierProducts", "originCountry")}</FormLabel>
+ <FormControl>
+ <Input
+ {...field}
+ value={field.value ?? ""}
+ maxLength={2}
+ autoComplete="off"
+ placeholder={t("supplierProducts", "unknownValue")}
+ onChange={(event) => field.onChange(event.target.value.toUpperCase())}
+ data-testid="input-product-origin-country"
+ />
+ </FormControl>
+ <FormMessage />
+ </FormItem>
+ )}
+ />
+ <FormField
+ control={form.control}
+ name="originRegion"
+ render={({ field }) => (
+ <FormItem>
+ <FormLabel>{t("supplierProducts", "originRegion")}</FormLabel>
+ <FormControl>
+ <Input {...field} value={field.value ?? ""} autoComplete="off" placeholder={t("supplierProducts", "unknownValue")} data-testid="input-product-origin-region" />
+ </FormControl>
+ <FormMessage />
+ </FormItem>
+ )}
+ />
+ <FormField
+ control={form.control}
+ name="originLocality"
+ render={({ field }) => (
+ <FormItem>
+ <FormLabel>{t("supplierProducts", "originLocality")}</FormLabel>
+ <FormControl>
+ <Input {...field} value={field.value ?? ""} autoComplete="off" placeholder={t("supplierProducts", "unknownValue")} data-testid="input-product-origin-locality" />
+ </FormControl>
+ <FormMessage />
+ </FormItem>
+ )}
+ />
+ <FormField
+ control={form.control}
+ name="originPostalCode"
+ render={({ field }) => (
+ <FormItem>
+ <FormLabel>{t("supplierProducts", "originPostalCode")}</FormLabel>
+ <FormControl>
+ <Input {...field} value={field.value ?? ""} autoComplete="off" placeholder={t("supplierProducts", "unknownValue")} data-testid="input-product-origin-postal-code" />
+ </FormControl>
+ <FormMessage />
+ </FormItem>
+ )}
+ />
+ </div>
+
+ <FormField
+ control={form.control}
+ name="seasonMonths"
+ render={({ field }) => (
+ <FormItem>
+ <FormLabel>{t("supplierProducts", "seasonMonths")}</FormLabel>
+ <div className="flex flex-wrap gap-1.5" role="group" aria-label={t("supplierProducts", "seasonMonths")}>
+ {([
+ "monthJan", "monthFeb", "monthMar", "monthApr", "monthMay", "monthJun",
+ "monthJul", "monthAug", "monthSep", "monthOct", "monthNov", "monthDec",
+ ] as const).map((key, index) => {
+ const month = index + 1;
+ const selected = field.value.includes(month);
+ return (
+ <Button
+ key={key}
+ type="button"
+ size="sm"
+ variant={selected ? "default" : "outline"}
+ className="h-7 min-w-10 rounded-full px-2 text-xs"
+ aria-pressed={selected}
+ onClick={() => field.onChange(
+ selected ? field.value.filter((value) => value !== month) : [...field.value, month].sort((a, b) => a - b),
+ )}
+ data-testid={`button-season-month-${month}`}
+ >
+ {t("supplierProducts", key)}
+ </Button>
+ );
+ })}
+ </div>
+ {field.value.length === 0 && <p className="text-xs text-muted-foreground">{t("supplierProducts", "unknownValue")}</p>}
+ <FormMessage />
+ </FormItem>
+ )}
+ />
+
+ <FormField
+ control={form.control}
+ name="packagingType"
+ render={({ field }) => (
+ <FormItem>
+ <FormLabel>{t("supplierProducts", "packagingType")}</FormLabel>
+ <Select value={field.value ?? "unknown"} onValueChange={(value) => field.onChange(value === "unknown" ? null : value)}>
+ <FormControl>
+ <SelectTrigger data-testid="select-product-packaging">
+ <SelectValue />
+ </SelectTrigger>
+ </FormControl>
+ <SelectContent>
+ <SelectItem value="unknown">{t("supplierProducts", "unknownValue")}</SelectItem>
+ <SelectItem value="none">{t("supplierProducts", "packagingNone")}</SelectItem>
+ <SelectItem value="returnable">{t("supplierProducts", "packagingReturnable")}</SelectItem>
+ <SelectItem value="recyclable">{t("supplierProducts", "packagingRecyclable")}</SelectItem>
+ <SelectItem value="compostable">{t("supplierProducts", "packagingCompostable")}</SelectItem>
+ <SelectItem value="single_use">{t("supplierProducts", "packagingSingleUse")}</SelectItem>
+ <SelectItem value="mixed">{t("supplierProducts", "packagingMixed")}</SelectItem>
+ </SelectContent>
+ </Select>
+ <FormMessage />
+ </FormItem>
+ )}
+ />
+
+ <div className="grid gap-3 sm:grid-cols-2">
+ <FormField
+ control={form.control}
+ name="sustainabilityEvidenceUrl"
+ render={({ field }) => (
+ <FormItem>
+ <FormLabel>{t("supplierProducts", "evidenceUrl")}</FormLabel>
+ <FormControl>
+ <Input {...field} value={field.value ?? ""} type="url" autoComplete="off" placeholder={t("supplierProducts", "unknownValue")} data-testid="input-product-evidence-url" />
+ </FormControl>
+ <FormMessage />
+ </FormItem>
+ )}
+ />
+ <FormField
+ control={form.control}
+ name="sustainabilityEvidenceNote"
+ render={({ field }) => (
+ <FormItem>
+ <FormLabel>{t("supplierProducts", "evidenceNote")}</FormLabel>
+ <FormControl>
+ <Textarea {...field} value={field.value ?? ""} className="min-h-20 resize-none" placeholder={t("supplierProducts", "unknownValue")} data-testid="textarea-product-evidence-note" />
+ </FormControl>
+ <FormMessage />
+ </FormItem>
+ )}
+ />
+ </div>
+ </section>
+ )}
 
  <FormField
  control={form.control}

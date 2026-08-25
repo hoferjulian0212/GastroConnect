@@ -36,6 +36,10 @@ const checkoutMigrations = [
     name: "0011_rescue_promotion_allocations",
     file: path.join(migrationFolder, "0011_rescue_promotion_allocations.sql"),
   },
+  {
+    name: "0012_product_sustainability_metadata",
+    file: path.join(migrationFolder, "0012_product_sustainability_metadata.sql"),
+  },
 ] as const;
 
 function parsePositiveTimeout(value: string | undefined, fallback: number): number {
@@ -261,6 +265,33 @@ export async function verifyCheckoutMigration(client: Queryable = pool): Promise
   }
   if (!(await relationExists(client, "promotion_allocations"))) {
     missingColumns.push("promotion_allocations");
+  }
+  for (const column of [
+    "origin_country_code", "origin_region", "origin_locality", "origin_postal_code",
+    "season_months", "packaging_type", "sustainability_source",
+    "sustainability_evidence_url", "sustainability_evidence_note",
+    "sustainability_verified_at", "sustainability_updated_at",
+  ]) {
+    if (!(await columnExists(client, "products", column))) missingColumns.push(`products.${column}`);
+  }
+
+  const expectedProductConstraints = [
+    "chk_products_origin_country_code",
+    "chk_products_season_months",
+    "chk_products_packaging_type",
+    "chk_products_sustainability_source",
+  ];
+  const constraintResult = await client.query(
+    `SELECT constraint_name
+       FROM information_schema.table_constraints
+      WHERE table_schema = 'public'
+        AND table_name = 'products'
+        AND constraint_name = ANY($1::text[])`,
+    [expectedProductConstraints],
+  );
+  const presentConstraints = new Set(constraintResult.rows.map((row) => String(row.constraint_name)));
+  for (const constraint of expectedProductConstraints) {
+    if (!presentConstraints.has(constraint)) missingColumns.push(`products.${constraint}`);
   }
 
   const indexNames = Object.keys(expectedIndexes);

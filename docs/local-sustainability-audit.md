@@ -1,7 +1,7 @@
 # GastroConnect Local, Sustainability, Zero-Waste & Logistics Audit
 
 Stand: 25. August 2026  
-Status: Architektur- und Produkt-Audit; keine Feature-, API- oder Schemaänderungen
+Status: Architektur- und Produkt-Audit; Produkt-Local-Grundlage aus Task 276 beschlossen und umgesetzt
 
 ## 1. Executive Summary
 
@@ -181,7 +181,7 @@ Statusdefinition:
 | Neues Feature | Bestehende Quelle | Bestehende Oberfläche/API | Empfohlene Integration |
 |---|---|---|---|
 | Local Metadata | `products`, Supplier-Stammdaten | Supplier Products, `/api/products` | bestehendes Produktmodell und Produktformular erweitern |
-| Herkunftsdistanz | Produkt-Herkunftskoordinaten + Restaurant-Koordinaten | Product API / Detail | zentral serverseitig berechnen; Supplier-Hauptsitz nur als ausdrücklich benannter Fallback |
+| Herkunftsdistanz | Produkt-Herkunftskoordinaten + Restaurant-Koordinaten | Product API / Detail | zentral serverseitig berechnen; Supplier-Hauptsitz niemals als Produktherkunft verwenden |
 | Local Score | Local Metadata + Distanz + Saison + Packaging | Product API, Catalog, Detail | ein gemeinsamer pure calculation module; Breakdown im Response |
 | Local/Seasonal Filter | Product API | Restaurant Catalog | bestehende Filter- und Search-Pipeline erweitern |
 | Local Alternative | Product Match + Local Score | Product Detail | bestehendes Alternative-Ranking ergänzen |
@@ -419,7 +419,37 @@ P2 wird erst geplant, wenn P0/P1 ausreichend historische, verifizierte Daten erz
 - `server/routes.ts:8585-9703` — Routing, Assignments, ETA, GPS und Tracking
 - `server/monthlyReportService.ts` — zentrale Monatsbericht-Berechnung und PDF
 
-## 12. Abschlussentscheidung
+## 12. Beschlossene Produkt-Local-Grundlage (Task 276)
+
+- Der bestehende Produktkatalog wird erweitert; es entsteht kein paralleler
+  Sustainability-Katalog. Herkunft (ISO-Land, Region, Ort, PLZ), eindeutige
+  Saisonmonate, Verpackung und optionale Evidenz sind nullable Produktmetadaten.
+  `null` bedeutet unbekannt. Quelle sowie Prüf-/Änderungszeitpunkte gehören dem
+  Server. ERP-verantwortete kommerzielle Felder bleiben davon unberührt.
+- Supplier Admin und Manager dürfen diese GastroConnect-Felder im vorhandenen
+  Produktworkflow pflegen. Jede solche Änderung erhält `source=supplier` und
+  einen neuen Änderungszeitpunkt; ein Prüfzeitpunkt wird nur mit Evidenz gesetzt.
+  Lesen und schreiben dürfen Supplier Admin und Manager. Schreiben verlangt serverseitig
+  sowohl `products.manage` als auch `sustainability.manage` und dieselbe
+  Supplier-Organisation.
+- Die feste Grenze für `local-product-v1.0.0` ist Südtirol: Nur Land `IT` plus
+  PLZ 39000–39999 ist verifiziert lokal. Die Regionsnamen Alto Adige, Südtirol
+  und South Tyrol liefern ohne PLZ höchstens eine Schätzung. Der Supplier-Sitz
+  wird nie als Produktherkunft verwendet.
+- Der Score gewichtet Herkunft mit 0,5, aktuelle Saison mit 0,3 und Verpackung
+  mit 0,2. Verpackung: unverpackt/Mehrweg 100, recycelbar/kompostierbar 75,
+  gemischt 40, Einweg 0. Unter 0,8 Coverage oder bei fehlender/veralteter Evidenz
+  wird kein Score ausgegeben.
+- Ergebnisse enthalten Faktoraufschlüsselung, Provenienz, Snapshot-Zeitraum,
+  Berechnungsversion, Coverage, fehlende Eingaben und
+  `verified | estimated | unknown`. Evidenz ist nach 365 Tagen veraltet. Das
+  Local-Badge erscheint ausschließlich für explizit verifiziert lokale Herkunft
+  mit frischer Evidenz und Quelle, nie für eine Regionsschätzung.
+- Die erste API-Erweiterung ist ein capability-geschützter, eigener
+  Sustainability-Read-Endpunkt. Berechnete Claims werden noch nicht automatisch
+  in Katalog-, Order- oder Report-Payloads aufgenommen.
+
+## 13. Abschlussentscheidung
 
 Die Erweiterung ist technisch sinnvoll, wenn sie als gemeinsame Intelligence-Schicht umgesetzt wird. Der bestehende Marketplace, Inventory-Risk-Workflow und Driver-Flow sollten nicht ersetzt werden.
 

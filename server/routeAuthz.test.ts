@@ -480,6 +480,11 @@ describe("public stats cache safety", () => {
 // tests send a structurally valid body to ensure the 401 path is reached.
 
 describe("route authz: unauthenticated requests → 401", () => {
+  test("GET /api/products/:id/sustainability — no cookie → 401", async () => {
+    const { status } = await api("GET", `/api/products/${productId}/sustainability`);
+    assert.equal(status, 401);
+  });
+
   test("PATCH /api/orders/:id/status — no cookie → 401", async () => {
     const { status } = await api("PATCH", `/api/orders/${confirmedOrderId}/status`, {
       status: "cancelled",
@@ -568,6 +573,23 @@ describe("route authz: unauthenticated requests → 401", () => {
 // org, must be rejected with HTTP 403.
 
 describe("route authz: cross-org / wrong-role requests → 403", () => {
+  test("GET /api/products/:id/sustainability — unrelated supplier cannot read another supplier's metadata", async () => {
+    const cookie = await seedSessionCookie(otherSupplierAdminId);
+    const { status } = await api("GET", `/api/products/${productId}/sustainability`, undefined, { cookie });
+    assert.equal(status, 403);
+  });
+
+  test("PATCH /api/products/:id — unrelated supplier cannot change sustainability metadata", async () => {
+    const cookie = await seedSessionCookie(otherSupplierAdminId);
+    const { status } = await api(
+      "PATCH",
+      `/api/products/${productId}`,
+      { originCountryCode: "IT", originPostalCode: "39100" },
+      { cookie },
+    );
+    assert.equal(status, 403);
+  });
+
   test("PATCH /api/orders/:id/status — unrelated supplier org cannot cancel", async () => {
     // otherSupplierId is not a party to the order (restaurantId ↔ supplierId).
     const cookie = await seedSessionCookie(otherSupplierAdminId);
@@ -685,6 +707,69 @@ describe("route authz: cross-org / wrong-role requests → 403", () => {
 // (pendingOrderId / confirmedOrderId) remain unmodified.
 
 describe("route authz: correct member → 2xx", () => {
+  test("sustainability routes allow approved viewers, stamp supplier provenance, and reject spoofing", async () => {
+    const supplierCookie = await seedSessionCookie(supplierAdminId);
+    const restaurantCookie = await seedSessionCookie(restaurantAdminId);
+
+    const spoofed = await api(
+      "PATCH",
+      `/api/products/${productId}`,
+      { sustainabilitySource: "admin", sustainabilityVerifiedAt: "2026-01-01T00:00:00.000Z" },
+      { cookie: supplierCookie },
+    );
+    assert.equal(spoofed.status, 400, "server-owned provenance must not be client-writable");
+
+    const updated = await api(
+      "PATCH",
+      `/api/products/${productId}`,
+      {
+        originCountryCode: "IT",
+        originRegion: "Südtirol",
+        originLocality: "Bozen",
+        originPostalCode: "39100",
+        seasonMonths: [8, 9],
+        packagingType: "returnable",
+        sustainabilityEvidenceNote: "Supplier origin certificate on file",
+      },
+      { cookie: supplierCookie },
+    );
+    assert.equal(updated.status, 200, JSON.stringify(updated.json));
+    const updatedProduct = updated.json as Record<string, unknown>;
+    assert.equal(updatedProduct.sustainabilitySource, "supplier");
+    assert.ok(updatedProduct.sustainabilityVerifiedAt);
+
+    const supplierView = await api("GET", `/api/products/${productId}/sustainability`, undefined, { cookie: supplierCookie });
+    assert.equal(supplierView.status, 200, JSON.stringify(supplierView.json));
+    const supplierCalculation = (supplierView.json as any).calculation;
+    assert.equal(supplierCalculation.calculationVersion, "local-product-v1.0.0");
+    assert.equal(supplierCalculation.badgeVisible, true);
+
+    const restaurantView = await api("GET", `/api/products/${productId}/sustainability`, undefined, { cookie: restaurantCookie });
+    assert.equal(restaurantView.status, 200, JSON.stringify(restaurantView.json));
+  });
+
+  test("commercial-only product edits do not renew sustainability evidence", async () => {
+    const supplierCookie = await seedSessionCookie(supplierAdminId);
+    const staleVerifiedAt = new Date("2024-01-01T00:00:00.000Z");
+    await db.update(products).set({
+      sustainabilityVerifiedAt: staleVerifiedAt,
+      sustainabilityUpdatedAt: staleVerifiedAt,
+    }).where(eq(products.id, productId));
+
+    const updated = await api(
+      "PATCH",
+      `/api/products/${productId}`,
+      { price: "10.25" },
+      { cookie: supplierCookie },
+    );
+    assert.equal(updated.status, 200, JSON.stringify(updated.json));
+    assert.equal(
+      new Date((updated.json as any).sustainabilityVerifiedAt).toISOString(),
+      staleVerifiedAt.toISOString(),
+    );
+    assert.equal((updated.json as any).price, "10.25");
+  });
+
   test("PATCH /api/orders/:id/status — supplier admin can cancel their own order", async () => {
     const cookie = await seedSessionCookie(supplierAdminId);
     // Fresh order so we don't touch confirmedOrderId.

@@ -49,6 +49,15 @@ import { runAiKnowledgeMigration } from "./aiKnowledge";
 import { objectStorageClient, ObjectStorageService } from "./replit_integrations/object_storage/objectStorage";
 import { parseIdempotencyFingerprint, parseIdempotencyKey } from "./resilience";
 import { wouldIntroduceRescuePromotion } from "./rescuePromotion";
+import {
+  calculateLocalSustainability,
+  canManageProductSustainability,
+  canReadProductSustainability,
+  hasSustainabilityWrite,
+  stampSupplierSustainability,
+  sustainabilityMetadataFromProduct,
+  sustainabilityWriteSchema,
+} from "./localSustainability";
 import PDFDocument from "pdfkit";
 import { randomUUID, timingSafeEqual } from "crypto";
 import { z } from "zod";
@@ -645,7 +654,7 @@ const updateProductSchema = z.object({
   lowStockThreshold: z.number().int().min(0).max(999999).optional(),
   minOrderQuantity: z.number().int().min(1).max(999999).optional(),
   imageUrl: safeString.optional().nullable(),
-}).strict();
+}).merge(sustainabilityWriteSchema);
 
 const stockMovementSchema = z.object({
   productId: uuidField,
@@ -2125,6 +2134,35 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/products/:id/sustainability", async (req, res) => {
+    try {
+      if (!req.auth) return res.status(401).json({ error: "unauthenticated" });
+      if (!can(req.auth.role, "sustainability.view")) {
+        return res.status(403).json({ error: "forbidden", message: "Keine Berechtigung für Nachhaltigkeitsdaten." });
+      }
+      const product = await storage.getProduct(req.params.id);
+      if (!product) return res.status(404).json({ error: "Product not found" });
+      const allowed = canReadProductSustainability({
+        actorOrganizationId: req.auth.organizationId,
+        actorOrganizationType: req.auth.org.role,
+        productSupplierId: product.supplierId,
+        hasViewCapability: true,
+      });
+      if (!allowed) {
+        return res.status(403).json({ error: "forbidden", message: "Keine Berechtigung für dieses Produkt." });
+      }
+      const metadata = sustainabilityMetadataFromProduct(product);
+      return res.json({
+        productId: product.id,
+        metadata,
+        calculation: calculateLocalSustainability(product),
+      });
+    } catch (error) {
+      console.error("[sustainability] failed to read product sustainability:", error);
+      return res.status(500).json({ error: "Failed to fetch product sustainability" });
+    }
+  });
+
   app.get("/api/products/order-insights", async (req, res) => {
     try {
       if (!req.auth) return res.status(401).json({ error: "unauthenticated" });
@@ -2455,7 +2493,22 @@ export async function registerRoutes(
       const validated = insertProductSchema.parse(req.body);
       const denied = checkActingCapability(req, validated.supplierId, "products.manage");
       if (denied) return res.status(denied.status).json(denied.body);
-      const product = await storage.createProduct(validated);
+      const sustainabilityPresent = hasSustainabilityWrite(req.body);
+      if (sustainabilityPresent) {
+        if (!req.auth || !canManageProductSustainability({
+          actorOrganizationId: req.auth.organizationId,
+          actorOrganizationType: req.auth.org.role,
+          productSupplierId: validated.supplierId,
+          hasProductsManage: can(req.auth.role, "products.manage"),
+          hasSustainabilityManage: can(req.auth.role, "sustainability.manage"),
+        })) {
+          return res.status(403).json({ error: "forbidden", message: "Keine Berechtigung für Nachhaltigkeitsdaten." });
+        }
+      }
+      const values = sustainabilityPresent
+        ? stampSupplierSustainability(validated, null, new Date())
+        : validated;
+      const product = await storage.createProduct(values);
       res.status(201).json(product);
     } catch (error: any) {
       if (error?.code === "23505" && typeof error?.constraint === "string" && error.constraint.includes("article")) {
@@ -2473,7 +2526,20 @@ export async function registerRoutes(
       const denied = checkActingCapability(req, existing.supplierId, "products.manage");
       if (denied) return res.status(denied.status).json(denied.body);
       const validated = updateProductSchema.parse(req.body);
-      const updated = await storage.updateProduct(req.params.id, validated);
+      const sustainabilityPresent = hasSustainabilityWrite(req.body);
+      if (sustainabilityPresent && !canManageProductSustainability({
+        actorOrganizationId: req.auth.organizationId,
+        actorOrganizationType: req.auth.org.role,
+        productSupplierId: existing.supplierId,
+        hasProductsManage: can(req.auth.role, "products.manage"),
+        hasSustainabilityManage: can(req.auth.role, "sustainability.manage"),
+      })) {
+        return res.status(403).json({ error: "forbidden", message: "Keine Berechtigung für Nachhaltigkeitsdaten." });
+      }
+      const values = sustainabilityPresent
+        ? stampSupplierSustainability(validated, existing, new Date())
+        : validated;
+      const updated = await storage.updateProduct(req.params.id, values);
       if (!updated) {
         return res.status(404).json({ error: "Product not found" });
       }

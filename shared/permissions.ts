@@ -17,6 +17,8 @@ export type Capability =
   | "orders.create"         // place orders (restaurant) / create direct orders
   | "orders.manage"         // confirm / cancel / change status of orders
   | "products.manage"       // manage catalog, inventory, prices
+  | "sustainability.view"   // view product sustainability metadata and claims
+  | "sustainability.manage" // manage product sustainability metadata
   | "promotions.manage"     // create / edit / delete promotions
   | "inventory_risk.create" // create a risk record + edit own
   | "inventory_risk.manage" // edit any record, change status, link promotions
@@ -36,6 +38,8 @@ const ROLE_CAPABILITIES: Record<MemberRole, Capability[]> = {
     "orders.create",
     "orders.manage",
     "products.manage",
+    "sustainability.view",
+    "sustainability.manage",
     "promotions.manage",
     "inventory_risk.create",
     "inventory_risk.manage",
@@ -48,6 +52,8 @@ const ROLE_CAPABILITIES: Record<MemberRole, Capability[]> = {
     "orders.create",
     "orders.manage",
     "products.manage",
+    "sustainability.view",
+    "sustainability.manage",
     "promotions.manage",
     "inventory_risk.create",
     "inventory_risk.manage",

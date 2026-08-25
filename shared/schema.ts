@@ -148,6 +148,13 @@ export type ProductNutrition = {
   protein?: number;
   salt?: number;
 };
+export const PRODUCT_PACKAGING_TYPES = ["none", "returnable", "recyclable", "compostable", "single_use", "mixed"] as const;
+export type ProductPackagingType = typeof PRODUCT_PACKAGING_TYPES[number];
+export const SUSTAINABILITY_SOURCES = ["supplier", "erp", "admin"] as const;
+export type SustainabilitySource = typeof SUSTAINABILITY_SOURCES[number];
+export const ISO_ALPHA_2_COUNTRY_CODES = new Set(
+  "AD AE AF AG AI AL AM AO AQ AR AS AT AU AW AX AZ BA BB BD BE BF BG BH BI BJ BL BM BN BO BQ BR BS BT BV BW BY BZ CA CC CD CF CG CH CI CK CL CM CN CO CR CU CV CW CX CY CZ DE DJ DK DM DO DZ EC EE EG EH ER ES ET FI FJ FK FM FO FR GA GB GD GE GF GG GH GI GL GM GN GP GQ GR GS GT GU GW GY HK HM HN HR HT HU ID IE IL IM IN IO IQ IR IS IT JE JM JO JP KE KG KH KI KM KN KP KR KW KY KZ LA LB LC LI LK LR LS LT LU LV LY MA MC MD ME MF MG MH MK ML MM MN MO MP MQ MR MS MT MU MV MW MX MY MZ NA NC NE NF NG NI NL NO NP NR NU NZ OM PA PE PF PG PH PK PL PM PN PR PS PT PW PY QA RE RO RS RU RW SA SB SC SD SE SG SH SI SJ SK SL SM SN SO SR SS ST SV SX SY SZ TC TD TF TG TH TJ TK TL TM TN TO TR TT TV TW TZ UA UG UM US UY UZ VA VC VE VG VI VN VU WF WS YE YT ZA ZM ZW".split(" "),
+);
 
 export const products = pgTable("products", {
   id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
@@ -183,6 +190,19 @@ export const products = pgTable("products", {
   // latest ERP feed. Never hard-deleted so order history stays intact.
   discontinued: boolean("discontinued").default(false).notNull(),
   lastErpSyncAt: timestamp("last_erp_sync_at"),
+  // GastroConnect-owned sustainability metadata. Null means unknown; source and
+  // timestamps are stamped by the server and cannot be supplied by clients.
+  originCountryCode: varchar("origin_country_code", { length: 2 }),
+  originRegion: text("origin_region"),
+  originLocality: text("origin_locality"),
+  originPostalCode: varchar("origin_postal_code", { length: 20 }),
+  seasonMonths: integer("season_months").array(),
+  packagingType: varchar("packaging_type", { length: 20 }).$type<ProductPackagingType>(),
+  sustainabilitySource: varchar("sustainability_source", { length: 16 }).$type<SustainabilitySource>(),
+  sustainabilityEvidenceUrl: text("sustainability_evidence_url"),
+  sustainabilityEvidenceNote: text("sustainability_evidence_note"),
+  sustainabilityVerifiedAt: timestamp("sustainability_verified_at"),
+  sustainabilityUpdatedAt: timestamp("sustainability_updated_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => [
   index("idx_products_supplier_id").on(table.supplierId),
@@ -190,6 +210,10 @@ export const products = pgTable("products", {
   index("idx_products_gtin").on(table.gtin),
   index("idx_products_erp_external").on(table.supplierId, table.erpExternalId),
   uniqueIndex("uniq_products_supplier_article").on(table.supplierId, table.articleNumber),
+  check("chk_products_origin_country_code", sql`${table.originCountryCode} IS NULL OR ${table.originCountryCode} ~ '^[A-Z]{2}$'`),
+  check("chk_products_season_months", sql`${table.seasonMonths} IS NULL OR ${table.seasonMonths} <@ ARRAY[1,2,3,4,5,6,7,8,9,10,11,12]::integer[]`),
+  check("chk_products_packaging_type", sql`${table.packagingType} IS NULL OR ${table.packagingType} IN ('none','returnable','recyclable','compostable','single_use','mixed')`),
+  check("chk_products_sustainability_source", sql`${table.sustainabilitySource} IS NULL OR ${table.sustainabilitySource} IN ('supplier','erp','admin')`),
 ]);
 
 export const customMinOrderQuantities = pgTable("custom_min_order_quantities", {
@@ -608,7 +632,32 @@ export const orderTemplateItems = pgTable("order_template_items", {
 
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true, dashboardLayouts: true, dashboardWidgets: true, onboardingCompletedAt: true, dismissedHelpTopics: true, seenPageIntros: true, skipAllPageIntros: true });
-export const insertProductSchema = createInsertSchema(products).omit({ id: true, createdAt: true, erpManaged: true, erpExternalId: true, discontinued: true, lastErpSyncAt: true });
+export const insertProductSchema = createInsertSchema(products).omit({
+  id: true,
+  createdAt: true,
+  erpManaged: true,
+  erpExternalId: true,
+  discontinued: true,
+  lastErpSyncAt: true,
+  sustainabilitySource: true,
+  sustainabilityVerifiedAt: true,
+  sustainabilityUpdatedAt: true,
+}).extend({
+  originCountryCode: z.string().regex(/^[A-Z]{2}$/, "Must be an uppercase ISO alpha-2 country code")
+    .refine((code) => ISO_ALPHA_2_COUNTRY_CODES.has(code), "Must be a valid ISO alpha-2 country code")
+    .nullable().optional(),
+  originRegion: z.string().trim().min(1).max(200).nullable().optional(),
+  originLocality: z.string().trim().min(1).max(200).nullable().optional(),
+  originPostalCode: z.string().trim().min(1).max(20).nullable().optional(),
+  seasonMonths: z.array(z.number().int().min(1).max(12)).max(12)
+    .refine((months) => new Set(months).size === months.length, "Season months must be unique")
+    .nullable().optional(),
+  packagingType: z.enum(["none", "returnable", "recyclable", "compostable", "single_use", "mixed"]).nullable().optional(),
+  sustainabilityEvidenceUrl: z.string().url().max(2000)
+    .refine((value) => value.startsWith("https://") || value.startsWith("http://"), "Evidence URL must use HTTP(S)")
+    .nullable().optional(),
+  sustainabilityEvidenceNote: z.string().trim().min(1).max(5000).nullable().optional(),
+});
 export const insertOrderSchema = createInsertSchema(orders).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertOrderItemSchema = createInsertSchema(orderItems).omit({ id: true });
 export const insertCartItemSchema = createInsertSchema(cartItems).omit({ id: true, createdAt: true });

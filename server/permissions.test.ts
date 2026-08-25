@@ -55,6 +55,17 @@ test("no role grants products.manage except admin and manager", () => {
   assert.deepEqual(allowed.sort(), ["admin", "manager"]);
 });
 
+test("sustainability capabilities follow the approved preset roles", () => {
+  assert.deepEqual(
+    MEMBER_ROLE_VALUES.filter((r) => can(r, "sustainability.view")).sort(),
+    ["admin", "manager"],
+  );
+  assert.deepEqual(
+    MEMBER_ROLE_VALUES.filter((r) => can(r, "sustainability.manage")).sort(),
+    ["admin", "manager"],
+  );
+});
+
 test("no role grants team.manage / org.edit except admin", () => {
   assert.deepEqual(
     MEMBER_ROLE_VALUES.filter((r) => can(r, "team.manage")),
