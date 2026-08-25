@@ -59,8 +59,12 @@ export const DELIVERY_STATUS_META: Record<
 
 export const PROBLEM_TYPE_LABELS: Record<string, { de: string; it: string }> = {
   not_reachable: { de: "Kunde nicht erreichbar", it: "Cliente non raggiungibile" },
+  unavailable: { de: "Ware oder Lieferung nicht verfügbar", it: "Merce o consegna non disponibile" },
   refused: { de: "Annahme verweigert", it: "Consegna rifiutata" },
+  partial_delivery: { de: "Teilweise Lieferung möglich", it: "Consegna parziale possibile" },
+  missing_items: { de: "Artikel fehlen", it: "Articoli mancanti" },
   damaged: { de: "Ware beschädigt", it: "Merce danneggiata" },
+  packaging_return: { de: "Mehrwegverpackung nicht zurückgegeben", it: "Imballaggi riutilizzabili non restituiti" },
   wrong_address: { de: "Falsche Adresse", it: "Indirizzo errato" },
   traffic: { de: "Verkehrsproblem", it: "Problema di traffico" },
   no_time: { de: "Zeitlich nicht machbar", it: "Non fattibile per tempo" },

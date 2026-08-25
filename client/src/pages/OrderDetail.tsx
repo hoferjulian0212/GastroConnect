@@ -1041,13 +1041,13 @@ export default function OrderDetail() {
                  Rendered for both restaurant and supplier once a driver may be
                  active. The component returns null when no assignment exists, so
                  this never adds empty space. Gated on the "updates" mobile tab. */}
-            {order && ["confirmed", "partially_confirmed", "scheduled", "in_delivery", "delivered"].includes(order.status) && (
+            {order && ["confirmed", "partially_confirmed", "scheduled", "in_delivery", "delivered", "to_review"].includes(order.status) && (
               <div className={`min-w-0 ${tabClsUpdates}`}>
                 <DeliveryTracking
                   orderId={order.id}
                   destinationLat={order.restaurant?.latitude}
                   destinationLng={order.restaurant?.longitude}
-                  active={["confirmed", "partially_confirmed", "scheduled", "in_delivery", "delivered"].includes(order.status)}
+                  active={["confirmed", "partially_confirmed", "scheduled", "in_delivery", "delivered", "to_review"].includes(order.status)}
                 />
               </div>
             )}

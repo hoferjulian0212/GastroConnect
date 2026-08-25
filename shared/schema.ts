@@ -1618,6 +1618,14 @@ export const deliveryAssignments = pgTable("delivery_assignments", {
   problemType: text("problem_type"),
   problemNote: text("problem_note"),
   problemReportedAt: timestamp("problem_reported_at"),
+  // A driver-reported issue must be reviewed by the supplier office before
+  // delivery can continue. These fields preserve that decision even if the
+  // stop is later reassigned or completed.
+  exceptionResolution: text("exception_resolution"),
+  exceptionResolutionNote: text("exception_resolution_note"),
+  exceptionResumeStatus: text("exception_resume_status"),
+  exceptionResolvedAt: timestamp("exception_resolved_at"),
+  exceptionResolvedByMemberId: varchar("exception_resolved_by_member_id", { length: 36 }).references(() => members.id),
   // Driver rejected the stop → order goes back to the office ("to_review").
   rejectedAt: timestamp("rejected_at"),
   // Info-only delay reported by the driver (minutes, cumulative for this stop).
@@ -1731,7 +1739,7 @@ export type DriverLocationWithDriver = DriverLocation & { driver: SafeMember };
 
 // Restaurant-facing live tracking payload for an order in delivery.
 export type OrderTrackingInfo = {
-  assignment: Pick<DeliveryAssignment, "id" | "status" | "assignedAt" | "enRouteAt" | "arrivingAt" | "deliveredAt" | "etaMinutes" | "distanceKm" | "routePolyline" | "problemType" | "problemNote" | "problemReportedAt"> | null;
+  assignment: Pick<DeliveryAssignment, "id" | "status" | "assignedAt" | "enRouteAt" | "arrivingAt" | "deliveredAt" | "etaMinutes" | "distanceKm" | "routePolyline" | "problemType" | "problemNote" | "problemReportedAt" | "exceptionResolution" | "exceptionResolutionNote" | "exceptionResolvedAt"> | null;
   driver: { name: string; phone: string | null; profileImageUrl: string | null } | null;
   location: { latitude: string; longitude: string; updatedAt: Date } | null;
 };

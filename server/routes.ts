@@ -5,8 +5,8 @@ import path from "path";
 import { storage } from "./storage";
 import { db } from "./db";
 import { applyBucketMovement, getReservedRemainingByProduct, InsufficientStockError } from "./stockBuckets";
-import { orders, messages, orderStatusHistory, complaints, orderItems, users, overnightStays, costSettings, minimumOrderValues, products, stockMovements, conversations, documents, promotions, priceChangeLog, formatOrderNumber, formatComplaintNumber, dateChangeReasonLabel } from "@shared/schema";
-import { eq, and, desc, asc, sql, or, ilike, gte, lte, ne, inArray } from "drizzle-orm";
+import { orders, messages, orderStatusHistory, complaints, orderItems, users, overnightStays, costSettings, minimumOrderValues, products, stockMovements, conversations, documents, promotions, priceChangeLog, deliveryAssignments, formatOrderNumber, formatComplaintNumber, dateChangeReasonLabel } from "@shared/schema";
+import { eq, and, desc, asc, sql, or, ilike, gte, lte, ne, inArray, isNull } from "drizzle-orm";
 import { foldedIlike } from "./searchSql";
 import { insertProductSchema as _insertProductSchema, insertCartItemSchema as _insertCartItemSchema, insertMessageSchema, insertComplaintSchema as _insertComplaintSchema, updateComplaintSchema as _updateComplaintSchema, insertComplaintCommentSchema as _insertComplaintCommentSchema, insertNotificationSchema as _insertNotificationSchema, insertPromotionSchema as _insertPromotionSchema, confirmOrderSchema, insertCustomMinOrderQuantitySchema as _insertCustomMinOrderQuantitySchema, insertCustomPriceSchema as _insertCustomPriceSchema, dashboardLayoutSchema, dashboardWidgetsSchema, dashboardTemplatesPayloadSchema, insertSupplierRatingSchema, updateSupplierRatingSchema, notificationPrefsSchema, DEFAULT_NOTIFICATION_PREFS, type NotificationPrefs, insertMemberSchema, insertVertreterAssignmentSchema, MEMBER_ROLES, clientErrorReportSchema, insertInventoryRiskRecordSchema, INVENTORY_RISK_STATUSES, INVENTORY_RISK_QUALITY, INVENTORY_RISK_REASONS } from "@shared/schema";
 import { can, isWarehousePathAllowed, isDriverPathAllowed, type Capability } from "@shared/permissions";
@@ -539,6 +539,13 @@ class OrderTransitionConflictError extends Error {
   constructor(public actualStatus: string | null, public expectedStatus: string) {
     super(`Order status changed concurrently: expected ${expectedStatus}, found ${actualStatus}`);
     this.name = "OrderTransitionConflictError";
+  }
+}
+
+class DeliveryResolutionConflictError extends Error {
+  constructor() {
+    super("Delivery exception was changed concurrently");
+    this.name = "DeliveryResolutionConflictError";
   }
 }
 
@@ -8772,7 +8779,7 @@ export async function registerRoutes(
   }).strict();
 
   const deliveryProblemSchema = z.object({
-    problemType: z.enum(["not_reachable", "refused", "damaged", "wrong_address", "traffic", "other"]),
+    problemType: z.enum(["not_reachable", "unavailable", "refused", "partial_delivery", "missing_items", "damaged", "packaging_return", "wrong_address", "traffic", "other"]),
     note: safeString.optional().nullable(),
   }).strict();
 
@@ -8785,6 +8792,11 @@ export async function registerRoutes(
     delayMinutes: z.number().int().min(5).max(240),
     note: safeString.optional().nullable(),
     requestKey: z.string().max(128).optional(),
+  }).strict();
+
+  const supplierDeliveryResolutionSchema = z.object({
+    action: z.enum(["continue_delivery", "return_to_review"]),
+    note: safeString.optional().nullable(),
   }).strict();
 
   const reorderRouteSchema = z.object({
@@ -9066,25 +9078,49 @@ export async function registerRoutes(
           return res.status(400).json({ error: "already_delivered", message: "Diese Lieferung wurde bereits zugestellt." });
         }
         const dayStops = await storage.getDeliveriesForDriver(parsed.driverMemberId, deliveryDate);
-        assignment = await storage.updateDeliveryAssignment(existing.id, {
+        const isExceptionRetry = ["problem", "rejected"].includes(existing.status);
+        const reassignmentPatch = {
           driverMemberId: parsed.driverMemberId,
           assignedByMemberId: req.auth!.memberId,
           deliveryDate,
           stopSequence: existing.driverMemberId === parsed.driverMemberId && existing.deliveryDate === deliveryDate
             ? existing.stopSequence
             : dayStops.filter((s) => s.id !== existing.id).length,
-          status: "assigned",
+          status: "assigned" as const,
           timeWindow: parsed.timeWindow ?? existing.timeWindow,
           priority: parsed.priority ?? existing.priority,
           packages: parsed.packages !== undefined ? parsed.packages : existing.packages,
           notes: parsed.notes !== undefined ? parsed.notes : existing.notes,
           enRouteAt: null,
           arrivingAt: null,
-          problemType: null,
-          problemNote: null,
-          problemReportedAt: null,
+          // Keep the original issue visible as a traceable event. A reassigned
+          // stop is a supplier resolution, not an erased driver report.
+          ...(isExceptionRetry ? {
+            exceptionResolution: "reassigned",
+            exceptionResolutionNote: parsed.notes ?? null,
+            exceptionResolvedAt: new Date(),
+            exceptionResolvedByMemberId: req.auth!.memberId,
+          } : {
+            problemType: null,
+            problemNote: null,
+            problemReportedAt: null,
+            exceptionResolution: null,
+            exceptionResolutionNote: null,
+            exceptionResumeStatus: null,
+            exceptionResolvedAt: null,
+            exceptionResolvedByMemberId: null,
+          }),
           rejectedAt: null,
-        });
+        };
+        assignment = existing.status === "problem"
+          ? await storage.updateDeliveryAssignmentIfUnresolvedProblem(existing.id, reassignmentPatch)
+          : await storage.updateDeliveryAssignmentIfStatus(existing.id, existing.status, reassignmentPatch);
+        if (!assignment) {
+          return res.status(409).json({
+            error: "delivery_changed",
+            message: "Die Lieferung wurde gerade geändert. Bitte aktualisieren Sie die Ansicht.",
+          });
+        }
       } else {
         const dayStops = await storage.getDeliveriesForDriver(parsed.driverMemberId, deliveryDate);
         assignment = await storage.createDeliveryAssignment({
@@ -9114,7 +9150,8 @@ export async function registerRoutes(
       // Assigning a driver plans the tour: the order becomes "scheduled"
       // (Geplant). It only moves to in_delivery when the driver actually
       // departs (en_route in the driver app). Conflicts are non-fatal.
-      if (["confirmed", "partially_confirmed", "to_review"].includes(order.status)) {
+      if (["confirmed", "partially_confirmed", "to_review"].includes(order.status)
+        || (existing && ["problem", "rejected"].includes(existing.status) && order.status === "in_delivery")) {
         try {
           await transitionOrderWithStock({
             order,
@@ -9214,6 +9251,153 @@ export async function registerRoutes(
     }
   });
 
+  // ── Office: resolve a driver-reported delivery exception ─────────────────
+  // A resolution only changes the delivery plan. Partial quantities, credits,
+  // stock, Rescue quota and packaging settlements require an explicit future
+  // business decision and must never be inferred from a driver report.
+  app.post("/api/supplier/deliveries/:id/resolve", async (req, res) => {
+    try {
+      const parsed = supplierDeliveryResolutionSchema.parse(req.body);
+      const assignment = await storage.getDeliveryAssignment(req.params.id);
+      if (!assignment) return res.status(404).json({ error: "Delivery not found" });
+      const denied = checkActingCapability(req, assignment.supplierId, "deliveries.manage");
+      if (denied) return res.status(denied.status).json(denied.body);
+      if (assignment.status !== "problem") {
+        return res.status(400).json({
+          error: "not_waiting_for_review",
+          message: "Diese Lieferung wartet nicht mehr auf eine Entscheidung des Büros.",
+        });
+      }
+
+      const order = await storage.getOrder(assignment.orderId);
+      if (!order || ["delivered", "cancelled"].includes(order.status)) {
+        return res.status(400).json({ error: "order_closed", message: "Diese Bestellung kann nicht mehr bearbeitet werden." });
+      }
+
+      let updatedAssignment: typeof assignment | undefined;
+      if (parsed.action === "continue_delivery") {
+        const resumeStatus = ["assigned", "picked_up", "en_route", "arriving"].includes(assignment.exceptionResumeStatus ?? "")
+          ? assignment.exceptionResumeStatus as "assigned" | "picked_up" | "en_route" | "arriving"
+          : assignment.arrivingAt
+            ? "arriving"
+            : assignment.enRouteAt
+              ? "en_route"
+              : "assigned";
+        updatedAssignment = await storage.updateDeliveryAssignmentIfUnresolvedProblem(assignment.id, {
+          status: resumeStatus,
+          exceptionResolution: "continue_delivery",
+          exceptionResolutionNote: parsed.note ?? null,
+          exceptionResolvedAt: new Date(),
+          exceptionResolvedByMemberId: req.auth!.memberId,
+        });
+      } else if (order.status === "to_review") {
+        try {
+          await db.transaction(async (tx) => {
+            const locked = await tx.execute<{ status: string | null }>(
+              sql`SELECT status FROM ${orders} WHERE id = ${order.id} FOR UPDATE`,
+            );
+            if (locked.rows[0]?.status !== "to_review") throw new DeliveryResolutionConflictError();
+            const [row] = await tx.update(deliveryAssignments).set({
+              status: "rejected",
+              rejectedAt: new Date(),
+              exceptionResolution: "return_to_review",
+              exceptionResolutionNote: parsed.note ?? null,
+              exceptionResolvedAt: new Date(),
+              exceptionResolvedByMemberId: req.auth!.memberId,
+              updatedAt: new Date(),
+            }).where(and(
+              eq(deliveryAssignments.id, assignment.id),
+              eq(deliveryAssignments.status, "problem"),
+              isNull(deliveryAssignments.exceptionResolvedAt),
+            )).returning();
+            if (!row) throw new DeliveryResolutionConflictError();
+            updatedAssignment = row;
+          });
+        } catch (error) {
+          if (error instanceof DeliveryResolutionConflictError) {
+            return res.status(409).json({
+              error: "delivery_changed",
+              message: "Die Lieferung wurde gerade geändert. Bitte aktualisieren Sie die Ansicht.",
+            });
+          }
+          throw error;
+        }
+      } else {
+        try {
+          await transitionOrderWithStock({
+            order,
+            newStatus: "to_review",
+            previousStatus: order.status,
+            changedByMemberId: req.auth!.memberId,
+            actorName: req.auth!.member.name,
+            movementType: null,
+            txExtra: async (tx) => {
+              const [row] = await tx.update(deliveryAssignments).set({
+                status: "rejected",
+                rejectedAt: new Date(),
+                exceptionResolution: "return_to_review",
+                exceptionResolutionNote: parsed.note ?? null,
+                exceptionResolvedAt: new Date(),
+                exceptionResolvedByMemberId: req.auth!.memberId,
+                updatedAt: new Date(),
+              }).where(and(
+                eq(deliveryAssignments.id, assignment.id),
+                eq(deliveryAssignments.status, "problem"),
+                isNull(deliveryAssignments.exceptionResolvedAt),
+              )).returning();
+              if (!row) throw new DeliveryResolutionConflictError();
+              updatedAssignment = row;
+            },
+          });
+        } catch (error) {
+          if (error instanceof OrderTransitionConflictError || error instanceof DeliveryResolutionConflictError) {
+            return res.status(409).json({
+              error: "delivery_changed",
+              message: "Die Lieferung wurde gerade geändert. Bitte aktualisieren Sie die Ansicht.",
+            });
+          }
+          throw error;
+        }
+      }
+
+      if (!updatedAssignment) {
+        return res.status(409).json({
+          error: "delivery_changed",
+          message: "Die Lieferung wurde gerade geändert. Bitte aktualisieren Sie die Ansicht.",
+        });
+      }
+
+      const copy = parsed.action === "continue_delivery"
+        ? {
+            de: "Der Lieferant hat die Fortsetzung der Lieferung freigegeben.",
+            it: "Il fornitore ha autorizzato il proseguimento della consegna.",
+          }
+        : {
+            de: "Der Lieferant prüft die Bestellung und plant die Lieferung neu.",
+            it: "Il fornitore sta verificando l'ordine e ripianificherà la consegna.",
+          };
+      await createNotificationWithPush({
+        userId: order.restaurantId,
+        type: "delivery_update",
+        title: parsed.action === "continue_delivery"
+          ? `Lieferung wird fortgesetzt #${formatOrderNumber(order)}`
+          : `Lieferung wird geprüft #${formatOrderNumber(order)}`,
+        message: copy.de,
+        referenceId: order.id,
+      }, "restaurant", {
+        title_it: parsed.action === "continue_delivery"
+          ? `Consegna riprende #${formatOrderNumber(order)}`
+          : `Consegna in verifica #${formatOrderNumber(order)}`,
+        message_it: copy.it,
+      });
+      res.json(updatedAssignment);
+    } catch (error: any) {
+      if (error?.name === "ZodError") return res.status(400).json({ error: "invalid_payload", details: error.errors });
+      console.error("Delivery resolution error:", error);
+      res.status(500).json({ error: "Failed to resolve delivery exception" });
+    }
+  });
+
   app.get("/api/supplier/drivers", async (req, res) => {
     try {
       if (!req.auth) return res.status(401).json({ error: "unauthenticated" });
@@ -9307,11 +9491,17 @@ export async function registerRoutes(
       if (assignment.status === "rejected") {
         return res.status(400).json({ error: "rejected", message: "Diese Lieferung wurde abgelehnt und liegt beim Büro zur Prüfung." });
       }
+      if (assignment.status === "problem" && assignment.exceptionResolution !== "continue_delivery") {
+        return res.status(400).json({
+          error: "waiting_for_office_review",
+          message: "Bitte warten Sie auf die Entscheidung des Büros, bevor Sie die Lieferung fortsetzen.",
+        });
+      }
       if (assignment.status === status) {
         return res.json(assignment);
       }
       // Forward-only status flow: assigned → picked_up → en_route → arriving.
-      // From "problem" the driver may resume at any active step.
+      // A reported problem may only resume after office authorization.
       const STATUS_RANK: Record<string, number> = { assigned: 0, picked_up: 1, en_route: 2, arriving: 3 };
       if (assignment.status !== "problem") {
         const currentRank = STATUS_RANK[assignment.status] ?? 0;
@@ -9469,8 +9659,6 @@ export async function registerRoutes(
         podNote: parsed.podNote ?? null,
         podPhotoUrl: parsed.podPhotoUrl ?? null,
         podRecipient: parsed.podRecipient ?? null,
-        problemType: null,
-        problemNote: null,
       });
       if (!updated) return res.json(await storage.getDeliveryAssignment(assignment.id));
 
@@ -9522,11 +9710,22 @@ export async function registerRoutes(
       if (assignment.status === "rejected") {
         return res.status(400).json({ error: "rejected", message: "Diese Lieferung wurde abgelehnt und liegt beim Büro zur Prüfung." });
       }
+      if (assignment.status === "problem") {
+        return res.status(400).json({
+          error: "waiting_for_office_review",
+          message: "Diese Lieferung wurde bereits gemeldet und wartet auf die Entscheidung des Büros.",
+        });
+      }
       const updated = await storage.updateDeliveryAssignmentIfStatus(assignment.id, assignment.status, {
         status: "problem",
         problemType: parsed.problemType,
         problemNote: parsed.note ?? null,
         problemReportedAt: new Date(),
+        exceptionResolution: null,
+        exceptionResolutionNote: null,
+        exceptionResumeStatus: assignment.status,
+        exceptionResolvedAt: null,
+        exceptionResolvedByMemberId: null,
       });
       if (!updated) return res.json(await storage.getDeliveryAssignment(assignment.id));
 
@@ -9534,16 +9733,24 @@ export async function registerRoutes(
       if (order) {
         const problemLabels: Record<string, string> = {
           not_reachable: "Kunde nicht erreichbar",
+          unavailable: "Ware oder Lieferung nicht verfügbar",
           refused: "Annahme verweigert",
+          partial_delivery: "Teilweise Lieferung möglich",
+          missing_items: "Artikel fehlen",
           damaged: "Ware beschädigt",
+          packaging_return: "Mehrwegverpackung nicht zurückgegeben",
           wrong_address: "Falsche Adresse",
           traffic: "Verkehrsproblem",
           other: "Sonstiges Problem",
         };
         const problemLabelsIT: Record<string, string> = {
           not_reachable: "Cliente non raggiungibile",
+          unavailable: "Merce o consegna non disponibile",
           refused: "Consegna rifiutata",
+          partial_delivery: "Consegna parziale possibile",
+          missing_items: "Articoli mancanti",
           damaged: "Merce danneggiata",
+          packaging_return: "Imballaggi riutilizzabili non restituiti",
           wrong_address: "Indirizzo errato",
           traffic: "Traffico",
           other: "Altro problema",
@@ -10008,6 +10215,9 @@ export async function registerRoutes(
           problemType: assignment.problemType ?? null,
           problemNote: assignment.problemNote ?? null,
           problemReportedAt: assignment.problemReportedAt ?? null,
+          exceptionResolution: assignment.exceptionResolution ?? null,
+          exceptionResolutionNote: assignment.exceptionResolutionNote ?? null,
+          exceptionResolvedAt: assignment.exceptionResolvedAt ?? null,
         },
         driver: driver ? { name: driver.name, phone: driver.phone ?? null, profileImageUrl: driver.profileImageUrl ?? null } : null,
         location,

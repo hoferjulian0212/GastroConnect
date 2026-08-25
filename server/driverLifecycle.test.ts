@@ -8,6 +8,7 @@
 //  4. Rescheduling an order (PATCH /reschedule) moves an existing stop to the new date.
 //  5. Confirming an order with a different delivery date moves the stop to that date.
 //  6. PATCH /status with a new requestedDeliveryDate moves the stop to that date.
+//  7. A reported exception needs supplier review before the driver may resume.
 //
 // The suite spawns the application server on a dedicated test port (TEST_PORT)
 // so tests run self-contained in CI without requiring `npm run dev` to be
@@ -31,6 +32,7 @@ import {
   messages,
   conversations,
   deliveryAssignments,
+  driverRoutes,
   platformAdmins,
 } from "../shared/schema";
 
@@ -65,11 +67,15 @@ const RUN = crypto.randomUUID().slice(0, 8);
 const TODAY = new Date().toISOString().slice(0, 10);
 const FUTURE_DATE = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
 const FUTURE_DATE_2 = new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10);
+const ROUTE_DATE = new Date(Date.now() + 21 * 86400000).toISOString().slice(0, 10);
+const ROUTE_DATE_2 = new Date(Date.now() + 28 * 86400000).toISOString().slice(0, 10);
 
 let supplierId = "";
 let restaurantId = "";
 let driverMemberId = "";
+let secondDriverMemberId = "";
 let adminMemberId = "";
+let restaurantAdminMemberId = "";
 let productId = "";
 const productItemPrice = "10.00";
 const sessionSids: string[] = [];
@@ -111,6 +117,17 @@ before(async () => {
     .returning();
   driverMemberId = driver.id;
 
+  const [secondDriver] = await db
+    .insert(members)
+    .values({
+      organizationId: supplierId,
+      name: `Lifecycle Second Driver ${RUN}`,
+      email: `lifecycle-driver-2-${RUN}@test.invalid`,
+      role: "driver",
+    })
+    .returning();
+  secondDriverMemberId = secondDriver.id;
+
   const [admin] = await db
     .insert(members)
     .values({
@@ -121,6 +138,17 @@ before(async () => {
     })
     .returning();
   adminMemberId = admin.id;
+
+  const [restaurantAdmin] = await db
+    .insert(members)
+    .values({
+      organizationId: restaurantId,
+      name: `Lifecycle Restaurant Admin ${RUN}`,
+      email: `lifecycle-restaurant-admin-${RUN}@test.invalid`,
+      role: "admin",
+    })
+    .returning();
+  restaurantAdminMemberId = restaurantAdmin.id;
 
   const [product] = await db
     .insert(products)
@@ -176,6 +204,10 @@ after(async () => {
         )})`,
       );
     }
+    // Delete driver routes before their assignments and drivers (all FK-linked).
+    await db
+      .delete(driverRoutes)
+      .where(eq(driverRoutes.supplierId, supplierId));
     // Delete delivery assignments first (FK → orders).
     await db
       .delete(deliveryAssignments)
@@ -319,7 +351,8 @@ async function apiFetch(
 async function seedOrderWithAssignment(opts: {
   requestedDeliveryDate?: string;
   orderStatus?: string;
-  assignmentStatus?: "assigned" | "en_route" | "delivered";
+  assignmentStatus?: "assigned" | "en_route" | "delivered" | "problem";
+  stopSequence?: number;
 } = {}): Promise<{ orderId: string; orderItemId: string; assignmentId: string }> {
   const [order] = await db
     .insert(orders)
@@ -353,6 +386,7 @@ async function seedOrderWithAssignment(opts: {
       driverMemberId,
       assignedByMemberId: adminMemberId,
       deliveryDate: opts.requestedDeliveryDate ?? TODAY,
+      stopSequence: opts.stopSequence ?? 0,
       status: opts.assignmentStatus ?? "assigned",
     })
     .returning();
@@ -362,12 +396,22 @@ async function seedOrderWithAssignment(opts: {
 
 async function getAssignment(
   assignmentId: string,
-): Promise<{ id: string; deliveryDate: string; status: string } | undefined> {
+): Promise<{
+  id: string;
+  deliveryDate: string;
+  status: string;
+  problemType: string | null;
+  exceptionResolution: string | null;
+  exceptionResolvedAt: Date | null;
+} | undefined> {
   const rows = await db
     .select({
       id: deliveryAssignments.id,
       deliveryDate: deliveryAssignments.deliveryDate,
       status: deliveryAssignments.status,
+      problemType: deliveryAssignments.problemType,
+      exceptionResolution: deliveryAssignments.exceptionResolution,
+      exceptionResolvedAt: deliveryAssignments.exceptionResolvedAt,
     })
     .from(deliveryAssignments)
     .where(eq(deliveryAssignments.id, assignmentId));
@@ -591,5 +635,179 @@ describe("driver lifecycle: date changes move the assignment", () => {
       FUTURE_DATE_2,
       `Assignment must move to ${FUTURE_DATE_2}, got ${after!.deliveryDate}`,
     );
+  });
+});
+
+describe("driver lifecycle: exception resolution", () => {
+  test("a driver-reported partial delivery waits for office approval, then resumes without changing order quantities", async () => {
+    const { orderId, assignmentId } = await seedOrderWithAssignment({
+      orderStatus: "in_delivery",
+      assignmentStatus: "en_route",
+    });
+    const driverCookie = await seedSessionCookie(driverMemberId);
+    const wrongDriverCookie = await seedSessionCookie(secondDriverMemberId);
+    const adminCookie = await seedSessionCookie(adminMemberId);
+    const restaurantCookie = await seedSessionCookie(restaurantAdminMemberId);
+
+    const wrongDriver = await apiFetch(
+      "POST",
+      `/api/driver/deliveries/${assignmentId}/problem`,
+      { problemType: "partial_delivery" },
+      wrongDriverCookie,
+    );
+    assert.equal(wrongDriver.status, 404, "Another driver must not report an exception on this stop");
+
+    const reported = await apiFetch(
+      "POST",
+      `/api/driver/deliveries/${assignmentId}/problem`,
+      { problemType: "partial_delivery", note: "One crate is unavailable at the door." },
+      driverCookie,
+    );
+    assert.equal(reported.status, 200, `Expected report success: ${JSON.stringify(reported.json)}`);
+
+    const blocked = await apiFetch(
+      "PATCH",
+      `/api/driver/deliveries/${assignmentId}/status`,
+      { status: "en_route" },
+      driverCookie,
+    );
+    assert.equal(blocked.status, 400, "Driver must wait for supplier review after reporting an exception");
+
+    const resolved = await apiFetch(
+      "POST",
+      `/api/supplier/deliveries/${assignmentId}/resolve`,
+      { action: "continue_delivery" },
+      adminCookie,
+    );
+    assert.equal(resolved.status, 200, `Expected office approval: ${JSON.stringify(resolved.json)}`);
+
+    const tracking = await apiFetch(
+      "GET",
+      `/api/orders/${orderId}/tracking`,
+      undefined,
+      restaurantCookie,
+    );
+    assert.equal(tracking.status, 200, `Restaurant tracking must remain visible: ${JSON.stringify(tracking.json)}`);
+    const trackingAssignment = (tracking.json as any).assignment;
+    assert.equal(trackingAssignment.problemType, "partial_delivery");
+    assert.equal(trackingAssignment.exceptionResolution, "continue_delivery");
+    assert.ok(trackingAssignment.exceptionResolvedAt, "Restaurant must receive the reviewed delivery outcome");
+
+    const assignment = await getAssignment(assignmentId);
+    assert.ok(assignment);
+    assert.equal(assignment!.status, "en_route");
+    assert.equal(assignment!.problemType, "partial_delivery");
+    assert.equal(assignment!.exceptionResolution, "continue_delivery");
+    assert.ok(assignment!.exceptionResolvedAt, "Office decision should remain auditable after driver resumes");
+
+    const [order] = await db.select({ status: orders.status }).from(orders).where(eq(orders.id, orderId));
+    assert.equal(order.status, "in_delivery", "Continuing an exception must not alter the order lifecycle or quantities");
+  });
+
+  test("approval restores a stop reported before route start so the driver can start the route", async () => {
+    const { assignmentId } = await seedOrderWithAssignment({
+      requestedDeliveryDate: ROUTE_DATE,
+      orderStatus: "confirmed",
+      assignmentStatus: "assigned",
+    });
+    const driverCookie = await seedSessionCookie(driverMemberId);
+    const adminCookie = await seedSessionCookie(adminMemberId);
+    await storage.syncDraftDriverRoute(driverMemberId, supplierId, ROUTE_DATE);
+    await storage.confirmDriverRoute(driverMemberId, ROUTE_DATE);
+
+    const reported = await apiFetch(
+      "POST",
+      `/api/driver/deliveries/${assignmentId}/problem`,
+      { problemType: "unavailable" },
+      driverCookie,
+    );
+    assert.equal(reported.status, 200);
+    const approved = await apiFetch(
+      "POST",
+      `/api/supplier/deliveries/${assignmentId}/resolve`,
+      { action: "continue_delivery" },
+      adminCookie,
+    );
+    assert.equal(approved.status, 200);
+    assert.equal((await getAssignment(assignmentId))?.status, "assigned", "Approval must restore the pre-problem stop state");
+
+    const started = await apiFetch("POST", "/api/driver/route/start", { deliveryDate: ROUTE_DATE }, driverCookie);
+    assert.equal(started.status, 200, `Approved stop must make the route startable: ${JSON.stringify(started.json)}`);
+    assert.equal((await getAssignment(assignmentId))?.status, "en_route");
+  });
+
+  test("approval restores a waiting stop so an active route advances to it", async () => {
+    const first = await seedOrderWithAssignment({
+      requestedDeliveryDate: ROUTE_DATE_2,
+      orderStatus: "confirmed",
+      assignmentStatus: "assigned",
+      stopSequence: 0,
+    });
+    const second = await seedOrderWithAssignment({
+      requestedDeliveryDate: ROUTE_DATE_2,
+      orderStatus: "confirmed",
+      assignmentStatus: "assigned",
+      stopSequence: 1,
+    });
+    const driverCookie = await seedSessionCookie(driverMemberId);
+    const adminCookie = await seedSessionCookie(adminMemberId);
+    await storage.syncDraftDriverRoute(driverMemberId, supplierId, ROUTE_DATE_2);
+    await storage.confirmDriverRoute(driverMemberId, ROUTE_DATE_2);
+
+    assert.equal((await apiFetch("POST", `/api/driver/deliveries/${second.assignmentId}/problem`, { problemType: "missing_items" }, driverCookie)).status, 200);
+    assert.equal((await apiFetch("POST", `/api/supplier/deliveries/${second.assignmentId}/resolve`, { action: "continue_delivery" }, adminCookie)).status, 200);
+    assert.equal((await apiFetch("POST", "/api/driver/route/start", { deliveryDate: ROUTE_DATE_2 }, driverCookie)).status, 200);
+    assert.equal((await apiFetch("PATCH", `/api/driver/deliveries/${first.assignmentId}/status`, { status: "arriving" }, driverCookie)).status, 200);
+    assert.equal((await apiFetch("POST", `/api/driver/deliveries/${first.assignmentId}/complete`, {}, driverCookie)).status, 200);
+
+    assert.equal((await getAssignment(second.assignmentId))?.status, "en_route", "Active route must advance to the approved next stop");
+  });
+
+  test("only supplier delivery managers can return a problem to office review", async () => {
+    const { orderId, assignmentId } = await seedOrderWithAssignment({
+      orderStatus: "in_delivery",
+      assignmentStatus: "problem",
+    });
+    await db.update(deliveryAssignments).set({
+      problemType: "missing_items",
+      problemNote: "Two items missing",
+      problemReportedAt: new Date(),
+    }).where(eq(deliveryAssignments.id, assignmentId));
+    const restaurantMemberCookie = await seedSessionCookie(driverMemberId);
+    const adminCookie = await seedSessionCookie(adminMemberId);
+
+    // A driver has no office-delivery-management capability.
+    const forbidden = await apiFetch(
+      "POST",
+      `/api/supplier/deliveries/${assignmentId}/resolve`,
+      { action: "return_to_review" },
+      restaurantMemberCookie,
+    );
+    assert.equal(forbidden.status, 403, "Driver must not resolve their own exception");
+
+    const resolved = await apiFetch(
+      "POST",
+      `/api/supplier/deliveries/${assignmentId}/resolve`,
+      { action: "return_to_review", note: "Office will arrange a new delivery slot." },
+      adminCookie,
+    );
+    assert.equal(resolved.status, 200, `Expected office review resolution: ${JSON.stringify(resolved.json)}`);
+
+    const duplicate = await apiFetch(
+      "POST",
+      `/api/supplier/deliveries/${assignmentId}/resolve`,
+      { action: "return_to_review" },
+      adminCookie,
+    );
+    assert.equal(duplicate.status, 400, "A resolved exception cannot be resolved twice");
+
+    const assignment = await getAssignment(assignmentId);
+    assert.ok(assignment);
+    assert.equal(assignment!.status, "rejected");
+    assert.equal(assignment!.problemType, "missing_items");
+    assert.equal(assignment!.exceptionResolution, "return_to_review");
+
+    const [order] = await db.select({ status: orders.status }).from(orders).where(eq(orders.id, orderId));
+    assert.equal(order.status, "to_review", "Order and assignment must move to office review together");
   });
 });

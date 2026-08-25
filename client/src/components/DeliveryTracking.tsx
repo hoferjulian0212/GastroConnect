@@ -1,14 +1,18 @@
 import { useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { MapContainer, TileLayer, Marker, Polyline } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { useLanguage } from "@/context/LanguageContext";
+import { useUser } from "@/context/UserContext";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
 import { Phone, Truck, Check, AlertTriangle } from "lucide-react";
 import { format } from "date-fns";
 import type { OrderTrackingInfo } from "@shared/schema";
 import { PROBLEM_TYPE_LABELS } from "@/pages/driver/DeliveryStatus";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
 const SOUTH_TYROL_CENTER: [number, number] = [46.6, 11.45];
 
@@ -87,6 +91,8 @@ export function DeliveryTracking({
   active: boolean;
 }) {
   const { lang } = useLanguage();
+  const { currentUser } = useUser();
+  const { toast } = useToast();
 
   const { data } = useQuery<OrderTrackingInfo>({
     queryKey: ["/api/orders", orderId, "tracking"],
@@ -101,6 +107,35 @@ export function DeliveryTracking({
 
   const assignment = data?.assignment ?? null;
   const driver = data?.driver ?? null;
+  // This endpoint is already capability-gated. An undefined result means this
+  // viewer cannot manage deliveries, so controls never appear for a driver,
+  // restaurant, or supplier staff member without the permission.
+  const { data: supplierDeliveries } = useQuery({
+    queryKey: ["/api/supplier/deliveries"],
+    enabled: currentUser?.role === "supplier",
+    retry: false,
+  });
+  const canResolveException = currentUser?.role === "supplier" && supplierDeliveries !== undefined;
+  const resolveExceptionMutation = useMutation({
+    mutationFn: async (action: "continue_delivery" | "return_to_review") => {
+      if (!assignment) throw new Error("Delivery is unavailable");
+      const response = await apiRequest("POST", `/api/supplier/deliveries/${assignment.id}/resolve`, { action });
+      return response.json();
+    },
+    onSuccess: (_, action) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/orders", orderId, "tracking"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/supplier/deliveries"] });
+      toast({
+        title: action === "continue_delivery"
+          ? (lang === "de" ? "Fortsetzung freigegeben" : "Proseguimento autorizzato")
+          : (lang === "de" ? "Bestellung wird im Büro geprüft" : "Ordine in verifica in ufficio"),
+      });
+    },
+    onError: () => toast({
+      title: lang === "de" ? "Entscheidung konnte nicht gespeichert werden" : "Impossibile salvare la decisione",
+      variant: "destructive",
+    }),
+  });
 
   const steps = useMemo(() => {
     if (!assignment) return [];
@@ -132,6 +167,14 @@ export function DeliveryTracking({
 
   if (!assignment) return null;
   const isProblem = assignment.status === "problem";
+  const hasResolvedException = !!assignment.problemReportedAt && !!assignment.exceptionResolvedAt;
+  const exceptionResolutionText = assignment.exceptionResolution === "continue_delivery"
+    ? (lang === "de" ? "Der Lieferant hat die Fortsetzung der Lieferung freigegeben." : "Il fornitore ha autorizzato il proseguimento della consegna.")
+    : assignment.exceptionResolution === "reassigned"
+      ? (lang === "de" ? "Die Lieferung wurde neu geplant und einem Fahrer zugewiesen." : "La consegna è stata ripianificata e assegnata a un autista.")
+      : assignment.exceptionResolution === "return_to_review"
+        ? (lang === "de" ? "Der Lieferant prüft die Bestellung und plant die Lieferung neu." : "Il fornitore sta verificando l'ordine e ripianificherà la consegna.")
+        : null;
 
   const driverPos: [number, number] | null =
     data?.location && Number.isFinite(parseFloat(data.location.latitude))
@@ -173,17 +216,47 @@ export function DeliveryTracking({
         )}
       </div>
 
-      {isProblem && (
+        {(isProblem || hasResolvedException) && (
         <div className="px-4 py-3 border-b border-border/20 bg-red-50 dark:bg-red-950/30 flex items-start gap-3" data-testid="banner-tracking-problem">
-          <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
+          {hasResolvedException
+            ? <Check className="h-5 w-5 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
+            : <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />}
           <div className="min-w-0">
-            <p className="text-sm font-semibold text-red-800 dark:text-red-300" data-testid="text-tracking-problem-type">
+            <p className={`text-sm font-semibold ${hasResolvedException ? "text-emerald-800 dark:text-emerald-300" : "text-red-800 dark:text-red-300"}`} data-testid="text-tracking-problem-type">
               {assignment.problemType
                 ? (PROBLEM_TYPE_LABELS[assignment.problemType]?.[lang] ?? assignment.problemType)
                 : (lang === "de" ? "Problem bei der Lieferung" : "Problema con la consegna")}
             </p>
-            {assignment.problemNote && (
+            {!hasResolvedException && assignment.problemNote && (
               <p className="text-sm text-red-700/80 dark:text-red-300/80 mt-0.5 whitespace-pre-wrap" data-testid="text-tracking-problem-note">{assignment.problemNote}</p>
+            )}
+            {hasResolvedException && exceptionResolutionText && (
+              <p className="text-sm text-emerald-700/80 dark:text-emerald-300/80 mt-0.5" data-testid="text-tracking-resolution">{exceptionResolutionText}</p>
+            )}
+            {hasResolvedException && assignment.exceptionResolutionNote && (
+              <p className="text-sm text-emerald-700/80 dark:text-emerald-300/80 mt-0.5 whitespace-pre-wrap">{assignment.exceptionResolutionNote}</p>
+            )}
+            {isProblem && canResolveException && (
+              <div className="mt-3 flex flex-wrap gap-2" data-testid="tracking-exception-actions">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={resolveExceptionMutation.isPending}
+                  onClick={() => resolveExceptionMutation.mutate("continue_delivery")}
+                  data-testid="button-tracking-continue-delivery"
+                >
+                  {lang === "de" ? "Fortsetzung freigeben" : "Autorizza proseguimento"}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={resolveExceptionMutation.isPending}
+                  onClick={() => resolveExceptionMutation.mutate("return_to_review")}
+                  data-testid="button-tracking-review-delivery"
+                >
+                  {lang === "de" ? "Im Büro prüfen" : "Verifica in ufficio"}
+                </Button>
+              </div>
             )}
             {assignment.problemReportedAt && (
               <p className="text-[11px] text-red-600/70 dark:text-red-400/70 mt-1" data-testid="text-tracking-problem-time">

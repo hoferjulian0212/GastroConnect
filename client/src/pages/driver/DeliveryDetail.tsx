@@ -37,7 +37,7 @@ import { formatOrderNumber, type DeliveryAssignmentWithDetails } from "@shared/s
 import { DELIVERY_STATUS_META, PROBLEM_TYPE_LABELS, StatusPill, mapsDirectionsUrl } from "./DeliveryStatus";
 import { pluralizeUnit } from "@/lib/units";
 
-const PROBLEM_OPTIONS = ["not_reachable", "refused", "damaged", "wrong_address", "traffic", "other"] as const;
+const PROBLEM_OPTIONS = ["not_reachable", "unavailable", "refused", "partial_delivery", "missing_items", "damaged", "packaging_return", "wrong_address", "traffic", "other"] as const;
 const REJECT_OPTIONS = ["no_time", "not_reachable", "refused", "damaged", "wrong_address", "traffic", "other"] as const;
 
 export default function DriverDeliveryDetail() {
@@ -250,6 +250,7 @@ export default function DriverDeliveryDetail() {
   const StatusIcon = meta.icon;
   const isDone = delivery.status === "delivered";
   const isProblem = delivery.status === "problem";
+  const officeApprovedContinuation = isProblem && delivery.exceptionResolution === "continue_delivery" && !!delivery.exceptionResolvedAt;
   const total = delivery.order.items.reduce((s, it) => s + parseFloat(it.totalPrice ?? "0"), 0);
 
   const nextAction: { label: string; sub: string; status: "picked_up" | "en_route" | "arriving" } | null =
@@ -271,7 +272,13 @@ export default function DriverDeliveryDetail() {
               sub: lang === "de" ? "Kunde wird benachrichtigt" : "Il cliente verrà avvisato",
               status: "arriving",
             }
-          : null;
+          : officeApprovedContinuation
+            ? {
+                label: lang === "de" ? "Lieferung fortsetzen" : "Riprendi consegna",
+                sub: lang === "de" ? "Das Büro hat die Fortsetzung freigegeben" : "L'ufficio ha autorizzato il proseguimento",
+                status: delivery.arrivingAt ? "arriving" : delivery.enRouteAt ? "en_route" : "picked_up",
+              }
+            : null;
 
   return (
     <div className="space-y-4 pt-2 pb-[var(--mobile-bottom-pad)] md:pb-6" data-testid="page-delivery-detail">
@@ -386,6 +393,11 @@ export default function DriverDeliveryDetail() {
             {delivery.problemNote && (
               <p className="text-sm text-red-700/80 dark:text-red-300/80 mt-0.5">{delivery.problemNote}</p>
             )}
+            <p className={`text-sm mt-2 ${officeApprovedContinuation ? "text-emerald-700 dark:text-emerald-300" : "text-red-700/80 dark:text-red-300/80"}`} data-testid="text-driver-problem-next-step">
+              {officeApprovedContinuation
+                ? (lang === "de" ? "Das Büro hat die Fortsetzung freigegeben. Sie können die Lieferung jetzt fortsetzen." : "L'ufficio ha autorizzato il proseguimento. Ora puoi riprendere la consegna.")
+                : (lang === "de" ? "Bitte warten Sie auf die Entscheidung des Büros, bevor Sie fortfahren." : "Attendi la decisione dell'ufficio prima di proseguire.")}
+            </p>
           </div>
         </div>
       )}
@@ -462,7 +474,7 @@ export default function DriverDeliveryDetail() {
               )}
             </Button>
           )}
-          {(delivery.status === "en_route" || delivery.status === "arriving" || isProblem) && (
+          {delivery.status === "arriving" && (
             <Button
               size="lg"
               className="w-full h-14 text-base font-semibold rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white"

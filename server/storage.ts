@@ -318,6 +318,7 @@ export interface IStorage {
   getDeliveriesForSupplier(supplierId: string, deliveryDate?: string): Promise<DeliveryAssignmentWithDetails[]>;
   updateDeliveryAssignment(id: string, data: Partial<DeliveryAssignment>): Promise<DeliveryAssignment | undefined>;
   updateDeliveryAssignmentIfStatus(id: string, expectedStatus: string, data: Partial<DeliveryAssignment>): Promise<DeliveryAssignment | undefined>;
+  updateDeliveryAssignmentIfUnresolvedProblem(id: string, data: Partial<DeliveryAssignment>): Promise<DeliveryAssignment | undefined>;
   deleteDeliveryAssignment(id: string): Promise<void>;
   reorderDeliveryStops(driverMemberId: string, deliveryDate: string, orderedIds: string[]): Promise<void>;
   applyRouteDelay(driverMemberId: string, deliveryDate: string, fromStopSequence: number, delayMinutes: number, requestKey?: string): Promise<DeliveryAssignment[]>;
@@ -5467,6 +5468,11 @@ export class DatabaseStorage implements IStorage {
     `);
     await db.execute(sql`ALTER TABLE delivery_assignments ADD COLUMN IF NOT EXISTS route_polyline text`);
     await db.execute(sql`ALTER TABLE delivery_assignments ADD COLUMN IF NOT EXISTS delay_request_key varchar(128)`);
+    await db.execute(sql`ALTER TABLE delivery_assignments ADD COLUMN IF NOT EXISTS exception_resolution text`);
+    await db.execute(sql`ALTER TABLE delivery_assignments ADD COLUMN IF NOT EXISTS exception_resolution_note text`);
+    await db.execute(sql`ALTER TABLE delivery_assignments ADD COLUMN IF NOT EXISTS exception_resume_status text`);
+    await db.execute(sql`ALTER TABLE delivery_assignments ADD COLUMN IF NOT EXISTS exception_resolved_at timestamp`);
+    await db.execute(sql`ALTER TABLE delivery_assignments ADD COLUMN IF NOT EXISTS exception_resolved_by_member_id varchar(36) REFERENCES members(id)`);
     await db.execute(sql`CREATE UNIQUE INDEX IF NOT EXISTS uniq_delivery_assignments_order ON delivery_assignments (order_id)`);
     await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_delivery_assignments_driver_date ON delivery_assignments (driver_member_id, delivery_date)`);
     await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_delivery_assignments_supplier_date ON delivery_assignments (supplier_id, delivery_date)`);
@@ -5614,6 +5620,18 @@ export class DatabaseStorage implements IStorage {
     const [row] = await db.update(deliveryAssignments)
       .set({ ...data, updatedAt: new Date() })
       .where(and(eq(deliveryAssignments.id, id), eq(deliveryAssignments.status, expectedStatus as any)))
+      .returning();
+    return row;
+  }
+
+  async updateDeliveryAssignmentIfUnresolvedProblem(id: string, data: Partial<DeliveryAssignment>): Promise<DeliveryAssignment | undefined> {
+    const [row] = await db.update(deliveryAssignments)
+      .set({ ...data, updatedAt: new Date() })
+      .where(and(
+        eq(deliveryAssignments.id, id),
+        eq(deliveryAssignments.status, "problem"),
+        isNull(deliveryAssignments.exceptionResolvedAt),
+      ))
       .returning();
     return row;
   }

@@ -237,6 +237,30 @@ export default function SupplierOrders() {
  },
  });
 
+ const resolveDeliveryProblemMutation = useMutation({
+ mutationFn: async ({ assignmentId, action }: { assignmentId: string; action: "continue_delivery" | "return_to_review" }) => {
+   const response = await apiRequest("POST", `/api/supplier/deliveries/${assignmentId}/resolve`, { action });
+   return response.json();
+ },
+ onSuccess: (_, variables) => {
+   haptic("success");
+   queryClient.invalidateQueries({ queryKey: [`/api/supplier/orders?supplierId=${currentUser?.id}`] });
+   queryClient.invalidateQueries({ queryKey: ["/api/supplier/deliveries"] });
+   toast({
+     title: variables.action === "continue_delivery"
+       ? (lang === "de" ? "Fortsetzung freigegeben" : "Proseguimento autorizzato")
+       : (lang === "de" ? "Bestellung zur Prüfung gegeben" : "Ordine inviato in verifica"),
+   });
+ },
+ onError: (error: any) => {
+   toast({
+     title: lang === "de" ? "Entscheidung konnte nicht gespeichert werden" : "Impossibile salvare la decisione",
+     description: error?.message,
+     variant: "destructive",
+   });
+ },
+ });
+
  const updateStatusMutation = useMutation({
  mutationFn: async ({ orderId, status, requestedDeliveryDate, deliveryNotes }: { orderId: string; status: string; requestedDeliveryDate?: string; deliveryNotes?: string }) => {
  return apiRequest("PATCH", `/api/orders/${orderId}/status`, { status, requestedDeliveryDate: requestedDeliveryDate || undefined, deliveryNotes: deliveryNotes || undefined });
@@ -666,32 +690,71 @@ export default function SupplierOrders() {
  </div>
  )}
 
- {canManageDrivers && ["confirmed", "partially_confirmed", "in_delivery"].includes(order.status) && (() => {
+ {canManageDrivers && ["confirmed", "partially_confirmed", "scheduled", "in_delivery", "to_review"].includes(order.status) && (() => {
  const assignment = assignmentByOrder.get(order.id);
  return (
- <div
- className="mt-2 flex items-center justify-between gap-2 rounded-md bg-muted/40 border border-border/60 px-2.5 py-1.5"
- onClick={(e) => e.stopPropagation()}
- data-testid={`driver-status-${order.id}`}
- >
- <span className="flex items-center gap-1.5 min-w-0 text-xs md:text-sm">
- <Truck className={`h-3.5 w-3.5 shrink-0 ${assignment ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground"}`} />
- {assignment ? (
- <span className="font-medium truncate" data-testid={`text-driver-name-${order.id}`}>{assignment.driver?.name}</span>
- ) : (
- <span className="text-muted-foreground truncate">{lang === "de" ? "Kein Fahrer zugewiesen" : "Nessun autista assegnato"}</span>
- )}
- </span>
- {order.status !== "in_delivery" && (
- <button
- className="text-xs font-semibold text-primary hover:underline shrink-0"
- onClick={() => setAssignDriverOrder(order)}
- data-testid={`button-assign-driver-${order.id}`}
- >
- {assignment ? (lang === "de" ? "Ändern" : "Modifica") : (lang === "de" ? "Zuweisen" : "Assegna")}
- </button>
- )}
- </div>
+  <>
+    <div
+    className="mt-2 flex items-center justify-between gap-2 rounded-md bg-muted/40 border border-border/60 px-2.5 py-1.5"
+    onClick={(e) => e.stopPropagation()}
+    data-testid={`driver-status-${order.id}`}
+    >
+    <span className="flex items-center gap-1.5 min-w-0 text-xs md:text-sm">
+    <Truck className={`h-3.5 w-3.5 shrink-0 ${assignment ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground"}`} />
+    {assignment ? (
+    <span className="font-medium truncate" data-testid={`text-driver-name-${order.id}`}>{assignment.driver?.name}</span>
+    ) : (
+    <span className="text-muted-foreground truncate">{lang === "de" ? "Kein Fahrer zugewiesen" : "Nessun autista assegnato"}</span>
+    )}
+    </span>
+    {(order.status !== "in_delivery" || assignment?.status === "problem") && (
+    <button
+    className="text-xs font-semibold text-primary hover:underline shrink-0"
+    onClick={() => setAssignDriverOrder(order)}
+    data-testid={`button-assign-driver-${order.id}`}
+    >
+    {assignment ? (assignment.status === "problem" ? (lang === "de" ? "Neu planen" : "Ripianifica") : (lang === "de" ? "Ändern" : "Modifica")) : (lang === "de" ? "Zuweisen" : "Assegna")}
+    </button>
+    )}
+    </div>
+    {assignment?.status === "problem" && (
+      <div
+        className="mt-2 rounded-lg border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/30 p-3"
+        onClick={(e) => e.stopPropagation()}
+        data-testid={`delivery-exception-${order.id}`}
+      >
+        <div className="flex items-start gap-2">
+          <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5 text-red-600 dark:text-red-400" />
+          <div className="min-w-0">
+            <p className="text-xs font-semibold text-red-800 dark:text-red-300">
+              {lang === "de" ? "Fahrerproblem wartet auf Entscheidung" : "Problema dell'autista in attesa di decisione"}
+            </p>
+            {assignment.problemNote && <p className="mt-0.5 text-xs text-red-700/80 dark:text-red-300/80 line-clamp-2">{assignment.problemNote}</p>}
+          </div>
+        </div>
+        <div className="mt-2 flex flex-wrap gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={resolveDeliveryProblemMutation.isPending}
+            onClick={() => resolveDeliveryProblemMutation.mutate({ assignmentId: assignment.id, action: "continue_delivery" })}
+            data-testid={`button-continue-delivery-${order.id}`}
+          >
+            {lang === "de" ? "Fortsetzung freigeben" : "Autorizza proseguimento"}
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={resolveDeliveryProblemMutation.isPending}
+            onClick={() => resolveDeliveryProblemMutation.mutate({ assignmentId: assignment.id, action: "return_to_review" })}
+            data-testid={`button-review-delivery-${order.id}`}
+          >
+            {lang === "de" ? "Im Büro prüfen" : "Verifica in ufficio"}
+          </Button>
+        </div>
+      </div>
+    )}
+  </>
  );
  })()}
 
