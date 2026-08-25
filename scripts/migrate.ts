@@ -40,6 +40,10 @@ const checkoutMigrations = [
     name: "0012_product_sustainability_metadata",
     file: path.join(migrationFolder, "0012_product_sustainability_metadata.sql"),
   },
+  {
+    name: "0013_order_local_impact_snapshot",
+    file: path.join(migrationFolder, "0013_order_local_impact_snapshot.sql"),
+  },
 ] as const;
 
 function parsePositiveTimeout(value: string | undefined, fallback: number): number {
@@ -273,6 +277,9 @@ export async function verifyCheckoutMigration(client: Queryable = pool): Promise
     "sustainability_verified_at", "sustainability_updated_at",
   ]) {
     if (!(await columnExists(client, "products", column))) missingColumns.push(`products.${column}`);
+  }
+  if (!(await columnExists(client, "order_items", "local_impact_snapshot"))) {
+    missingColumns.push("order_items.local_impact_snapshot");
   }
 
   const expectedProductConstraints = [

@@ -503,7 +503,7 @@ function HeaderNavDropdown({ item, location }: { item: NavItem; location: string
 }
 
 function HeaderNav() {
-  const { currentRole, isWarehouse, isDriver } = useUser();
+  const { currentRole, currentMember, isWarehouse, isDriver } = useUser();
   const [location] = useLocation();
   const { lang } = useLanguage();
 
@@ -517,7 +517,9 @@ function HeaderNav() {
         { href: '/restaurant/orders', label: lang === 'de' ? 'Bestellungen' : 'Ordini' },
         { href: '/restaurant/complaints', label: lang === 'de' ? 'Reklamationen' : 'Reclami' },
         { href: '/restaurant/documents', label: lang === 'de' ? 'Dokumente' : 'Documenti' },
-        { href: '/restaurant/monthly-reports', label: lang === 'de' ? 'Monatsberichte' : 'Report mensili' },
+        ...(can(currentMember?.role, "impact.analytics")
+          ? [{ href: '/restaurant/monthly-reports', label: lang === 'de' ? 'Monatsberichte' : 'Report mensili' }]
+          : []),
       ],
     },
     {

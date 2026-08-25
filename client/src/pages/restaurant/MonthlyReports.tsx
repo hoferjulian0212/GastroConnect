@@ -18,6 +18,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import PullToRefreshWrapper from "@/components/PullToRefreshWrapper";
 import type { MonthlyReport, MonthlyReportPayload } from "@shared/schema";
+import { useLanguage } from "@/context/LanguageContext";
 
 function formatMonthLabel(month: string): string {
   const [y, m] = month.split("-").map(Number);
@@ -413,6 +414,7 @@ function HeroKpi({ icon, label, value, hint, valueClass, hintClass, testId }: {
 
 function ReportDetailDialog({ reportId, reports, onClose }: { reportId: string | null; reports: MonthlyReport[]; onClose: () => void }) {
   const { toast } = useToast();
+  const { lang } = useLanguage();
   const [, setLocation] = useLocation();
   const [sharing, setSharing] = useState(false);
 
@@ -535,6 +537,28 @@ function ReportDetailDialog({ reportId, reports, onClose }: { reportId: string |
                 />
                 <SummaryCard label="Einsparpotenzial" value={fmtEuro(payload.totalSavingPotential)} hint="bei optimalen Lieferanten" valueClass="text-green-600" />
               </div>
+
+              {payload.localImpact && (
+                <section className="rounded-2xl border bg-green-50/40 dark:bg-green-950/10 p-4" data-testid="report-local-impact">
+                  <h3 className="font-semibold text-sm mb-3">{lang === "de" ? "Local & Bestellwirkung" : "Locale e impatto degli ordini"}</h3>
+                  <div className="grid grid-cols-4 gap-2 text-center">
+                    {[
+                      [lang === "de" ? "Score" : "Punteggio", payload.localImpact.score],
+                      ["Local", payload.localImpact.localItemCount],
+                      [lang === "de" ? "Saisonal" : "Stagionale", payload.localImpact.seasonalItemCount],
+                      ["Low Waste", payload.localImpact.lowWasteItemCount],
+                    ].map(([label, value]) => (
+                      <div key={String(label)}>
+                        <div className="font-bold">{value === null ? "—" : value}</div>
+                        <div className="text-[10px] text-muted-foreground">{label}</div>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-[11px] text-muted-foreground mt-3">
+                    {payload.localImpact.calculationVersion} · {lang === "de" ? "Abdeckung" : "Copertura"} {Math.round(payload.localImpact.coverage * 100)}% · {lang === "de" ? "fehlende Werte sind nicht verfügbar, nicht null." : "i valori mancanti non sono disponibili e non vengono trattati come zero."}
+                  </p>
+                </section>
+              )}
 
               {/* Spend trend */}
               {trend.points.length > 1 && (
@@ -759,6 +783,7 @@ function BreakdownCard({ title, icon, rows, max, testIdPrefix }: {
 
 function ReportPrintView({ report, payload }: { report: MonthlyReport; payload: MonthlyReportPayload }) {
   const savingsRows = payload.productRows.filter(r => r.potentialSaving > 0);
+  const isItalian = payload.language === "it";
   return (
     <div className="print-report" data-testid="print-report">
       <div style={{ borderBottom: "2px solid #161921", paddingBottom: 10, marginBottom: 16 }}>
@@ -792,6 +817,18 @@ function ReportPrintView({ report, payload }: { report: MonthlyReport; payload: 
           </tr>
         </tbody>
       </table>
+
+      {payload.localImpact && (
+        <div style={{ border: "1px solid #ddd", padding: 10, marginBottom: 18, fontSize: 11 }}>
+          <h2 style={{ fontSize: 14, margin: "0 0 6px" }}>{isItalian ? "Locale e impatto degli ordini" : "Local & Bestellwirkung"}</h2>
+          <div>
+            {isItalian ? "Punteggio" : "Score"}: {payload.localImpact.score ?? (isItalian ? "non disponibile" : "nicht verfügbar")} · Local: {payload.localImpact.localItemCount ?? "—"} · {isItalian ? "Stagionale" : "Saisonal"}: {payload.localImpact.seasonalItemCount ?? "—"} · Low Waste: {payload.localImpact.lowWasteItemCount ?? "—"}
+          </div>
+          <div style={{ color: "#666", fontSize: 9, marginTop: 4 }}>
+            {payload.localImpact.calculationVersion} · {isItalian ? "Copertura" : "Abdeckung"} {Math.round(payload.localImpact.coverage * 100)}% · {isItalian ? "i dati mancanti non vengono trattati come zero" : "fehlende Angaben werden nicht als Null gewertet"}
+          </div>
+        </div>
+      )}
 
       <h2 style={{ fontSize: 14, margin: "0 0 8px" }}>Top 5 Produkte</h2>
       <table style={{ width: "100%", borderCollapse: "collapse", marginBottom: 18, fontSize: 11 }}>

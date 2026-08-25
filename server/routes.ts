@@ -22,6 +22,8 @@ import { registerAuthRoutes } from "./auth/routes";
 import { createClerkClient } from "@clerk/express";
 import { registerAdminAuthRoutes, bootstrapPlatformAdmin, bootstrapDemoWarehouseMember, bootstrapDemoDriverMembers, bootstrapDemoRoleMembers, DEMO_ROLE_LOGINS, DEMO_WAREHOUSE_EMAIL, DEMO_DRIVER_EMAIL, DEMO_DRIVER_PASSWORD, DEMO_WAREHOUSE_PASSWORD } from "./auth/adminAuth";
 import { geocodeAddress, backfillMissingCoordinates, isGeocodingConfigured } from "./geocoding";
+import { summarizeLocalImpact, unavailableLocalImpact } from "@shared/localImpact";
+import { calculateLocalImpact } from "./localImpact";
 
 // Sentinel used inside the atomic order-edit transaction to signal the order
 // is no longer pending (detected after taking the row lock) so we can roll back
@@ -655,6 +657,41 @@ const updateProductSchema = z.object({
   minOrderQuantity: z.number().int().min(1).max(999999).optional(),
   imageUrl: safeString.optional().nullable(),
 }).merge(sustainabilityWriteSchema);
+
+function productWithPermittedImpact(req: any, product: any) {
+  const localImpact = calculateLocalImpact(product, req.auth?.org ?? {});
+  if (req.auth?.org?.role === "restaurant" && can(req.auth?.role, "impact.analytics")) {
+    return { ...product, localImpact };
+  }
+
+  // Staff receives one compact purchasing signal only. Evidence, provenance,
+  // and full metadata remain behind the analytics capability on the server.
+  const {
+    originCountryCode: _originCountryCode,
+    originRegion: _originRegion,
+    originLocality: _originLocality,
+    originPostalCode: _originPostalCode,
+    seasonMonths: _seasonMonths,
+    packagingType: _packagingType,
+    sustainabilitySource: _sustainabilitySource,
+    sustainabilityEvidenceUrl: _sustainabilityEvidenceUrl,
+    sustainabilityEvidenceNote: _sustainabilityEvidenceNote,
+    sustainabilityVerifiedAt: _sustainabilityVerifiedAt,
+    sustainabilityUpdatedAt: _sustainabilityUpdatedAt,
+    ...compactProduct
+  } = product;
+  return {
+    ...compactProduct,
+    localImpact: {
+      calculationVersion: localImpact.calculationVersion,
+      classification: localImpact.classification,
+      isLocal: localImpact.isLocal,
+      isSeasonal: localImpact.isSeasonal,
+      lowWaste: localImpact.lowWaste,
+      signal: localImpact.signal,
+    },
+  };
+}
 
 const stockMovementSchema = z.object({
   productId: uuidField,
@@ -2094,7 +2131,11 @@ export async function registerRoutes(
       const restaurantId = req.auth.organizationId;
       if (supplierId) {
         const products = await storage.getProductsBySupplier(supplierId);
-        return res.json(products);
+        const mayManageSupplierProducts = req.auth.org.role === "supplier"
+          && req.auth.organizationId === supplierId;
+        return res.json(mayManageSupplierProducts
+          ? products
+          : products.map((product) => productWithPermittedImpact(req, product)));
       }
       const products = await storage.getProducts();
       const activePromotions = await storage.getActivePromotions(restaurantId);
@@ -2118,7 +2159,7 @@ export async function registerRoutes(
       const productsWithPromotions = products.map(p => {
         const customMoq = customMoqMap.get(p.id);
         return {
-          ...p,
+          ...productWithPermittedImpact(req, p),
           activePromotion: promoMap.get(p.id) || null,
           ...(customMoq !== undefined ? { minOrderQuantity: customMoq } : {}),
         };
@@ -3339,6 +3380,9 @@ export async function registerRoutes(
       }
       const itemsWithPromo = items.map(item => ({
         ...item,
+        product: {
+          ...productWithPermittedImpact(req, item.product),
+        },
         activePromotion: promoMap.get(item.productId) || null,
       }));
       res.json(itemsWithPromo);
@@ -3355,6 +3399,32 @@ export async function registerRoutes(
       res.json({ count });
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch cart count" });
+    }
+  });
+
+  app.get("/api/restaurant/local-impact-summary", async (req, res) => {
+    try {
+      if (!req.auth) return res.status(401).json({ error: "unauthenticated" });
+      if (req.auth.org.role !== "restaurant") return res.status(403).json({ error: "forbidden" });
+      if (!can(req.auth.role, "impact.analytics")) return res.status(403).json({ error: "forbidden" });
+      const rows = await db.select({
+        quantity: orderItems.quantity,
+        localImpactSnapshot: orderItems.localImpactSnapshot,
+      })
+        .from(orderItems)
+        .innerJoin(orders, eq(orderItems.orderId, orders.id))
+        .where(and(
+          eq(orders.restaurantId, req.auth.organizationId),
+          inArray(orders.status, ["confirmed", "partially_confirmed", "scheduled", "in_delivery", "delivered"]),
+        ));
+      const summary = summarizeLocalImpact(rows.map((row) => ({
+        impact: row.localImpactSnapshot ?? unavailableLocalImpact(),
+        quantity: row.quantity,
+      })));
+      res.json(summary);
+    } catch (error) {
+      console.error("restaurant local impact summary error", error);
+      res.status(500).json({ error: "Failed to fetch impact summary" });
     }
   });
 
@@ -8546,7 +8616,9 @@ export async function registerRoutes(
   // from the session — never from client-supplied identity.
   function assertRestaurantOwnership(req: any, targetRestaurantId: string): string | null {
     if (!req.auth) return "Unauthorized";
+    if (req.auth.org.role !== "restaurant") return "Forbidden";
     if (req.auth.organizationId !== targetRestaurantId) return "Forbidden";
+    if (!can(req.auth.role, "impact.analytics")) return "Forbidden";
     return null;
   }
 
@@ -8554,6 +8626,8 @@ export async function registerRoutes(
     try {
       if (!req.auth) return res.status(401).json({ error: "unauthenticated" });
       const restaurantId = req.auth.organizationId;
+      const denied = assertRestaurantOwnership(req, restaurantId);
+      if (denied) return res.status(403).json({ error: denied });
       const reports = await storage.getMonthlyReportsByRestaurant(restaurantId);
       res.json(reports);
     } catch (error) {
@@ -8626,6 +8700,8 @@ export async function registerRoutes(
     try {
       if (!req.auth) return res.status(401).json({ error: "unauthenticated" });
       const restaurantId = req.auth.organizationId;
+      const denied = assertRestaurantOwnership(req, restaurantId);
+      if (denied) return res.status(403).json({ error: denied });
       const month = req.params.month;
       if (!MONTH_RE.test(month)) return res.status(400).json({ error: "month must be YYYY-MM" });
       const payload = await computeMonthlyReport(restaurantId, month);

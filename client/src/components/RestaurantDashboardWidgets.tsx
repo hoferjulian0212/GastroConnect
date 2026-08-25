@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
-import { TrendingUp, Package, Building2, Tag, MessageCircle, AlertCircle, ClipboardList, ArrowRight } from "lucide-react";
+import { TrendingUp, Package, Building2, Tag, MessageCircle, AlertCircle, ClipboardList, ArrowRight, Leaf } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
@@ -8,6 +8,7 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGri
 import { useT } from "@/lib/translations";
 import { getMessageReplyPreview } from "@/lib/messageReplyPreview";
 import type { OrderWithDetails, ConversationWithUser, ComplaintWithDetails } from "@shared/schema";
+import type { LocalImpactSummary } from "@shared/localImpact";
 
 const CARD_BASE = "h-full md:rounded-xl md:border md:border-border md:bg-card md:shadow-[0_1px_2px_rgba(15,23,42,0.03),0_6px_16px_-8px_rgba(15,23,42,0.08),0_16px_28px_-20px_rgba(15,23,42,0.10)]";
 const HEADER = "flex items-center justify-between gap-2 mb-3 md:mb-0 md:p-5 md:pb-4";
@@ -72,6 +73,49 @@ const COMPLAINT_STATUS_COLORS: Record<string, string> = {
   resolved: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300",
   closed: "bg-muted text-muted-foreground",
 };
+
+export function LocalImpactWidget({ lang }: { restaurantId: string; lang: "de" | "it" }) {
+  const { data, isLoading } = useQuery<LocalImpactSummary>({
+    queryKey: ["/api/restaurant/local-impact-summary"],
+  });
+  const unavailable = lang === "de" ? "Nicht verfügbar" : "Non disponibile";
+  return (
+    <div className={CARD_BASE} data-testid="widget-local-impact">
+      <div className={HEADER}>
+        <WidgetTitle
+          icon={<Leaf className="h-4 w-4 text-green-600" />}
+          title={lang === "de" ? "Bestellwirkung" : "Impatto degli ordini"}
+          desc={lang === "de" ? "Local-, Saison- und Low-Waste-Signale" : "Segnali locali, stagionali e meno sprechi"}
+          testId="text-widget-local-impact-title"
+        />
+      </div>
+      <div className={BODY}>
+        {isLoading ? <Skeleton className="h-20 w-full" /> : (
+          <>
+            <div className="grid grid-cols-4 gap-2 text-center">
+              {[
+                [lang === "de" ? "Score" : "Punteggio", data?.score],
+                ["Local", data?.localItemCount],
+                [lang === "de" ? "Saisonal" : "Stagionale", data?.seasonalItemCount],
+                ["Low Waste", data?.lowWasteItemCount],
+              ].map(([label, value]) => (
+                <div key={String(label)} className="rounded-xl bg-muted/40 p-2">
+                  <div className="font-bold">{value === null || value === undefined ? "—" : value}</div>
+                  <div className="text-[10px] text-muted-foreground">{label}</div>
+                </div>
+              ))}
+            </div>
+            <p className="text-[11px] text-muted-foreground mt-3">
+              {!data || data.score === null
+                ? unavailable
+                : `${data.calculationVersion} · ${Math.round(data.coverage * 100)}% ${lang === "de" ? "Abdeckung" : "copertura"}`}
+            </p>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
 
 function eur(value: number, lang: "de" | "it"): string {
   return `${Math.round(value).toLocaleString(lang === "de" ? "de-DE" : "it-IT")}€`;

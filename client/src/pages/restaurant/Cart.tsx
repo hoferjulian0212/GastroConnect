@@ -9,17 +9,19 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { ShoppingCart, Trash2, Package, ArrowRight, CalendarDays, Truck, Tag, CheckCircle2, ShoppingBag, ClipboardList, Send, Loader2, Clock, StickyNote, AlertCircle, Check, ChevronLeft, MapPin, Receipt } from "lucide-react";
+import { ShoppingCart, Trash2, Package, ArrowRight, CalendarDays, Truck, Tag, CheckCircle2, ShoppingBag, ClipboardList, Send, Loader2, Clock, StickyNote, AlertCircle, Check, ChevronLeft, MapPin, Receipt, Leaf } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import QuantityInput from "@/components/QuantityInput";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { formatOrderNumber, type CartItemWithProduct, type DeliverySchedule, type Promotion } from "@shared/schema";
+import type { LocalImpact } from "@shared/localImpact";
+import { summarizeLocalImpact, unavailableLocalImpact } from "@shared/localImpact";
 import { can } from "@shared/permissions";
 import { ProductImage } from "@/components/ProductImage";
 import { checkoutFingerprint, clearPendingCheckoutKey, getPendingCheckoutKey } from "@/lib/checkoutIdempotency";
 
-type CartItemWithPromotion = CartItemWithProduct & { activePromotion?: Promotion | null };
+type CartItemWithPromotion = CartItemWithProduct & { product: CartItemWithProduct["product"] & { localImpact?: LocalImpact }; activePromotion?: Promotion | null };
 
 type WheelOption = { value: string; label: string };
 
@@ -642,6 +644,38 @@ export default function RestaurantCart() {
         subtitle={lang === "de" ? "Ihre ausgewählten Produkte" : "I tuoi prodotti selezionati"}
         testId="mobile-header-cart"
       />
+      {cartItems && cartItems.length > 0 && can(currentMember?.role, "impact.analytics") && (() => {
+        const impact = summarizeLocalImpact(cartItems
+          .map((item) => ({ impact: item.product.localImpact ?? unavailableLocalImpact(), quantity: item.quantity })));
+        return (
+          <details className="rounded-xl border bg-card" data-testid="cart-impact-summary">
+            <summary className="cursor-pointer list-none px-4 py-3 flex items-center gap-2 text-sm font-semibold">
+              <Leaf className="h-4 w-4 text-green-600" />
+              {lang === "de" ? "Wirkung dieser Bestellung" : "Impatto di questo ordine"}
+              <span className="ml-auto text-xs font-normal text-muted-foreground">
+                {impact.score === null ? (lang === "de" ? "Nicht verfügbar" : "Non disponibile") : `${impact.score}/100`}
+              </span>
+            </summary>
+            <div className="border-t px-4 py-3 grid grid-cols-3 gap-3 text-center">
+              {[
+                [lang === "de" ? "Local" : "Locale", impact.localItemCount],
+                [lang === "de" ? "Saisonal" : "Stagionale", impact.seasonalItemCount],
+                ["Low Waste", impact.lowWasteItemCount],
+              ].map(([label, value]) => (
+                <div key={String(label)}>
+                  <div className="font-semibold">{value === null ? "—" : value}</div>
+                  <div className="text-[11px] text-muted-foreground">{label}</div>
+                </div>
+              ))}
+              <p className="col-span-3 text-[11px] text-left text-muted-foreground">
+                {lang === "de"
+                  ? `Nur verfügbare Produktdaten · ${impact.calculationVersion} · Abdeckung ${Math.round(impact.coverage * 100)}%`
+                  : `Solo dati prodotto disponibili · ${impact.calculationVersion} · Copertura ${Math.round(impact.coverage * 100)}%`}
+              </p>
+            </div>
+          </details>
+        );
+      })()}
       {isLoading ? (
         <div className="space-y-4">
           {[1, 2].map((i) => (

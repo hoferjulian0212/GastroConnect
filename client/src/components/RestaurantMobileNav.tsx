@@ -4,9 +4,10 @@ import { useLanguage } from "@/context/LanguageContext";
 import { useT } from "@/lib/translations";
 import { useQuery } from "@tanstack/react-query";
 import { MobileNavBase, type NavGroup } from "./MobileNavBase";
+import { can } from "@shared/permissions";
 
 export function RestaurantMobileNav() {
-  const { currentUser } = useUser();
+  const { currentUser, currentMember } = useUser();
   const { lang } = useLanguage();
   const t = useT(lang);
 
@@ -23,7 +24,9 @@ export function RestaurantMobileNav() {
       items: [
         { title: t("common", "complaints"), url: "/restaurant/complaints", icon: AlertCircle },
         { title: t("common", "documents"), url: "/restaurant/documents", icon: FileText },
-        { title: lang === "de" ? "Monatsberichte" : "Report mensili", url: "/restaurant/monthly-reports", icon: BarChart3 },
+        ...(can(currentMember?.role, "impact.analytics")
+          ? [{ title: lang === "de" ? "Monatsberichte" : "Report mensili", url: "/restaurant/monthly-reports", icon: BarChart3 }]
+          : []),
       ],
     },
     {

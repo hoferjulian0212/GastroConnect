@@ -17,6 +17,7 @@ import {
   LetzteReklamationenWidget,
   BestellungenStatusWidget,
   LetzteBestellungenWidget,
+  LocalImpactWidget,
 } from "@/components/RestaurantDashboardWidgets";
 import { Input } from "@/components/ui/input";
 import QuantityInput from "@/components/QuantityInput";
@@ -42,9 +43,10 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { ProductImage } from "@/components/ProductImage";
 import { getMessageReplyPreview } from "@/lib/messageReplyPreview";
 import { ActiveDeliveryBanner } from "@/components/ActiveDeliveryBanner";
+import { can } from "@shared/permissions";
 
 export default function RestaurantHome() {
-  const { currentUser } = useUser();
+  const { currentUser, currentMember } = useUser();
   const { lang } = useLanguage();
   const t = useT(lang);
   const { toast } = useToast();
@@ -1007,6 +1009,12 @@ export default function RestaurantHome() {
           refreshAll: t("dashboardViews", "refreshAll"),
         }}
         sections={[
+          ...(can(currentMember?.role, "impact.analytics") ? [{
+            id: "w-local-impact", optional: true, defaultEnabled: false, defaultSize: "half" as const, queryKeys: [["/api/restaurant/local-impact-summary"]],
+            title: lang === "de" ? "Bestellwirkung" : "Impatto degli ordini",
+            description: lang === "de" ? "Versionierte Local- und Wirkungssignale" : "Segnali locali e di impatto con versione",
+            content: <LocalImpactWidget restaurantId={currentUser?.id || ""} lang={lang} />,
+          }] : []),
           { id: "w-ausgaben-trend", optional: true, defaultEnabled: false, defaultSize: "full" as const, queryKeys: [[`/api/restaurant/detailed-stats?restaurantId=${currentUser?.id}`]],
             title: t("restaurantHome", "widgetSpendingTrend"), description: t("restaurantHome", "widgetSpendingTrendDesc"),
             content: <AusgabenTrendWidget restaurantId={currentUser?.id || ""} lang={lang} />,

@@ -11,6 +11,8 @@ import { storage } from "./storage";
 import { objectStorageClient, ObjectStorageService } from "./replit_integrations/object_storage/objectStorage";
 import { randomUUID } from "crypto";
 import PDFDocument from "pdfkit";
+import { summarizeLocalImpact } from "@shared/localImpact";
+import { calculateLocalImpact } from "./localImpact";
 
 const COUNTABLE_STATUSES = ["confirmed", "partially_confirmed", "scheduled", "in_delivery", "delivered"] as const;
 
@@ -76,6 +78,7 @@ export async function computeMonthlyReport(restaurantId: string, month: string):
     orderId: string; productId: string; productName: string;
     quantity: number; confirmedQuantity: number | null;
     unitPrice: string; totalPrice: string;
+    localImpactSnapshot: ReturnType<typeof calculateLocalImpact> | null;
   }> = [];
   if (orderIds.length > 0) {
     itemRows = await db.select({
@@ -86,6 +89,7 @@ export async function computeMonthlyReport(restaurantId: string, month: string):
       confirmedQuantity: orderItems.confirmedQuantity,
       unitPrice: orderItems.unitPrice,
       totalPrice: orderItems.totalPrice,
+      localImpactSnapshot: orderItems.localImpactSnapshot,
     })
       .from(orderItems)
       .where(inArray(orderItems.orderId, orderIds));
@@ -309,6 +313,10 @@ export async function computeMonthlyReport(restaurantId: string, month: string):
   const trendPercent = prevMonthTotal > 0
     ? Math.round(((totalSpent - prevMonthTotal) / prevMonthTotal) * 1000) / 10
     : 0;
+  const localImpact = summarizeLocalImpact(itemRows.map((item) => ({
+    impact: item.localImpactSnapshot ?? calculateLocalImpact({}),
+    quantity: item.confirmedQuantity ?? item.quantity,
+  })));
 
   return {
     month,
@@ -323,6 +331,8 @@ export async function computeMonthlyReport(restaurantId: string, month: string):
     totalSavingPotential,
     recommendedSwitches,
     missedPromotions: missedPromotions.slice(0, 10),
+    localImpact,
+    language: restaurant.language === "it" ? "it" : "de",
   };
 }
 
@@ -383,6 +393,20 @@ export async function generateMonthlyReportPDF(payload: MonthlyReportPayload): P
       .text("bei optimalen Lieferanten", 390, y + 36);
 
     y += 70;
+
+    if (payload.localImpact) {
+      const impact = payload.localImpact;
+      const isItalian = payload.language === "it";
+      doc.font("Helvetica-Bold").fontSize(13).fillColor("#161921")
+        .text(isItalian ? "Locale e impatto degli ordini" : "Local & Bestellwirkung", 50, y);
+      y += 18;
+      doc.font("Helvetica").fontSize(9).fillColor("#333333")
+        .text(`${isItalian ? "Punteggio" : "Score"}: ${impact.score ?? (isItalian ? "non disponibile" : "nicht verfügbar")}  ·  Local: ${impact.localItemCount ?? "—"}  ·  ${isItalian ? "Stagionale" : "Saisonal"}: ${impact.seasonalItemCount ?? "—"}  ·  Low Waste: ${impact.lowWasteItemCount ?? "—"}`, 50, y);
+      y += 14;
+      doc.fontSize(8).fillColor("#777777")
+        .text(`${impact.calculationVersion} · ${isItalian ? "Copertura" : "Abdeckung"} ${Math.round(impact.coverage * 100)}% · ${isItalian ? "i dati mancanti non vengono trattati come zero" : "fehlende Angaben werden nicht als Null gewertet"}`, 50, y);
+      y += 24;
+    }
 
     // Top-5 products
     doc.font("Helvetica-Bold").fontSize(13).fillColor("#161921")

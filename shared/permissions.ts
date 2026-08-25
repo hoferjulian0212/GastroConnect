@@ -25,7 +25,8 @@ export type Capability =
   | "vertreter.assign"      // assign Betriebe (restaurants) to a Vertreter
   | "chat"                  // send chat messages
   | "deliveries.manage"     // office: assign/unassign drivers, oversee deliveries
-  | "deliveries.drive";     // driver: work own assigned deliveries, post location
+  | "deliveries.drive"      // driver: work own assigned deliveries, post location
+  | "impact.analytics";     // restaurant manager/admin: aggregated impact reporting
 
 export const MEMBER_ROLE_VALUES: MemberRole[] = ["admin", "manager", "staff", "vertreter", "warehouse", "driver"];
 
@@ -46,6 +47,7 @@ const ROLE_CAPABILITIES: Record<MemberRole, Capability[]> = {
     "vertreter.assign",
     "chat",
     "deliveries.manage",
+    "impact.analytics",
   ],
   manager: [
     "team.view",
@@ -59,6 +61,7 @@ const ROLE_CAPABILITIES: Record<MemberRole, Capability[]> = {
     "inventory_risk.manage",
     "chat",
     "deliveries.manage",
+    "impact.analytics",
   ],
   staff: [
     "team.view",

@@ -287,6 +287,9 @@ export const orderItems = pgTable("order_items", {
   rejectedQuantity: integer("rejected_quantity"),
   unitPrice: decimal("unit_price", { precision: 10, scale: 2 }).notNull(),
   totalPrice: decimal("total_price", { precision: 10, scale: 2 }).notNull(),
+  // Immutable at-order-time Local/impact result. This does not participate in
+  // checkout pricing, MOQ, delivery, payload validation, or idempotency.
+  localImpactSnapshot: jsonb("local_impact_snapshot").$type<import("./localImpact").LocalImpact>(),
 }, (table) => [
   index("idx_order_items_order_id").on(table.orderId),
   index("idx_order_items_product_id").on(table.productId),
@@ -1133,6 +1136,10 @@ export type OrderStatusHistoryWithUser = OrderStatusHistory & { changedByUser?: 
 export type ComplaintStatusHistoryWithUser = ComplaintStatusHistory & { changedByUser?: User; changedByMember?: Member | null };
 export type PromotionWithProduct = PromotionWithRescueState & { product: Product };
 export type ProductWithSupplierAndPromotion = ProductWithSupplier & { activePromotion?: PromotionWithRescueState | null };
+
+export type ProductWithLocalImpact = ProductWithSupplierAndPromotion & {
+  localImpact?: import("./localImpact").LocalImpact;
+};
 export type StockMovementWithProduct = StockMovement & { product: Product };
 export type InsertOrderTemplate = z.infer<typeof insertOrderTemplateSchema>;
 export type OrderTemplate = typeof orderTemplates.$inferSelect;
@@ -1220,6 +1227,8 @@ export interface MonthlyReportPayload {
   totalSavingPotential: number;
   recommendedSwitches: MonthlyReportSwitchRecommendation[];
   missedPromotions: MonthlyReportMissedPromotion[];
+  localImpact?: import("./localImpact").LocalImpactSummary;
+  language?: "de" | "it";
 }
 
 export const monthlyReports = pgTable("monthly_reports", {

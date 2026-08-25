@@ -9,9 +9,9 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Search, Package, Store, Tag, ArrowLeft, Carrot, Apple, Beef, Fish, Milk, Wine, Wheat, Flame, MoreHorizontal, Sandwich, Coffee, Droplets, Check, Trash2, ArrowRight, Plus, Minus, HeartHandshake } from "lucide-react";
+import { Search, Package, Store, Tag, ArrowLeft, Carrot, Apple, Beef, Fish, Milk, Wine, Wheat, Flame, MoreHorizontal, Sandwich, Coffee, Droplets, Check, Trash2, ArrowRight, Plus, Minus, HeartHandshake, MapPin, Leaf, Recycle } from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import type { User, ProductWithSupplierAndPromotion, CartItemWithProduct, PromotionWithRescueState } from "@shared/schema";
+import type { User, ProductWithSupplierAndPromotion, ProductWithLocalImpact, CartItemWithProduct, PromotionWithRescueState } from "@shared/schema";
 import { useLanguage } from "@/context/LanguageContext";
 import { useT } from "@/lib/translations";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -27,7 +27,9 @@ import { useScrollCompact } from "@/hooks/use-scroll-compact";
 import { motion, AnimatePresence } from "framer-motion";
 
 type CartItemWithPromo = CartItemWithProduct & { activePromotion?: PromotionWithRescueState | null };
-type CatalogProduct = ProductWithSupplierAndPromotion;
+type CatalogProduct = Omit<ProductWithLocalImpact, "activePromotion"> & {
+ activePromotion?: PromotionWithRescueState | null;
+};
 
 function CategoryIndicator({
   icon: Icon,
@@ -691,6 +693,7 @@ export default function RestaurantCatalog() {
  const [onlyAvailable, setOnlyAvailable] = useState(false);
  const [onlyPromotions, setOnlyPromotions] = useState(false);
  const [onlyRescue, setOnlyRescue] = useState(false);
+ const [impactFilter, setImpactFilter] = useState<"all" | "local" | "seasonal" | "lowWaste">("all");
  const { lang } = useLanguage();
  const t = useT(lang);
 
@@ -780,7 +783,12 @@ export default function RestaurantCatalog() {
  const matchesAvailability = !onlyAvailable || p.inStock;
  const matchesPromotion = !onlyPromotions || !!p.activePromotion;
  const matchesRescue = !onlyRescue || p.activePromotion?.promotionType === "rescue";
- return matchesSearch && matchesAvailability && matchesPromotion && matchesRescue;
+ const matchesImpact =
+ impactFilter === "all" ||
+ (impactFilter === "local" && p.localImpact?.isLocal === true) ||
+ (impactFilter === "seasonal" && p.localImpact?.isSeasonal === true) ||
+ (impactFilter === "lowWaste" && p.localImpact?.lowWaste === true);
+ return matchesSearch && matchesAvailability && matchesPromotion && matchesRescue && matchesImpact;
  })
  : [];
 
@@ -997,6 +1005,19 @@ export default function RestaurantCatalog() {
  {product.inStock && (
  <div className="absolute top-1.5 right-1.5 z-10">
  <QuickAddBar product={product} lang={lang} t={t} />
+ </div>
+ )}
+ {product.localImpact?.signal && (
+ <div
+ className="absolute bottom-1.5 left-1.5 z-10 inline-flex items-center gap-1 rounded-full bg-black/70 px-1.5 py-0.5 text-[9px] font-medium text-white backdrop-blur-sm"
+ data-testid={`impact-signal-${product.id}`}
+ >
+ {product.localImpact.signal === "local" ? <MapPin className="h-2.5 w-2.5" /> : product.localImpact.signal === "seasonal" ? <Leaf className="h-2.5 w-2.5" /> : <Recycle className="h-2.5 w-2.5" />}
+ {product.localImpact.signal === "local"
+ ? (lang === "de" ? "Local" : "Locale")
+ : product.localImpact.signal === "seasonal"
+ ? (lang === "de" ? "Saisonal" : "Stagionale")
+ : (lang === "de" ? "Low Waste" : "Meno sprechi")}
  </div>
  )}
  </div>
@@ -1272,6 +1293,25 @@ export default function RestaurantCatalog() {
  data-testid="input-search-products"
  />
  {renderSuggestionDropdown(false)}
+ </div>
+ <div className="flex flex-row gap-2 flex-wrap">
+ {([
+ ["all", lang === "de" ? "Alle" : "Tutti", Package],
+ ["local", lang === "de" ? "Local" : "Locale", MapPin],
+ ["seasonal", lang === "de" ? "Saisonal" : "Stagionale", Leaf],
+ ["lowWaste", "Low Waste", Recycle],
+ ] as const).map(([value, label, Icon]) => (
+ <Button
+ key={value}
+ variant={impactFilter === value ? "default" : "outline"}
+ onClick={() => setImpactFilter(value)}
+ className="text-xs md:text-sm"
+ data-testid={`filter-impact-${value}`}
+ >
+ <Icon className="h-3.5 w-3.5 md:h-4 md:w-4 mr-1.5" />
+ {label}
+ </Button>
+ ))}
  </div>
  <div className="flex flex-row gap-2 flex-wrap">
  <Button

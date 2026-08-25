@@ -8,13 +8,13 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
-import { ArrowLeft, Package, ShoppingCart, Check, Clock, Tag, Euro, Layers, Info, Percent, Store, History, Repeat, TrendingUp, TrendingDown, CalendarDays, AlertTriangle, ShieldCheck, Leaf, Flame, ZoomIn, User, Phone, Mail } from "lucide-react";
+import { ArrowLeft, Package, ShoppingCart, Check, Clock, Tag, Euro, Layers, Info, Percent, Store, History, Repeat, TrendingUp, TrendingDown, CalendarDays, AlertTriangle, ShieldCheck, Leaf, Flame, ZoomIn, User, Phone, Mail, MapPin, Recycle } from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import QuantityInput from "@/components/QuantityInput";
 import { differenceInDays, differenceInHours, format } from "date-fns";
 import { de, it } from "date-fns/locale";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
-import type { ProductWithSupplierAndPromotion, CartItemWithProduct, ProductPurchaseHistoryEntry } from "@shared/schema";
+import type { ProductWithSupplierAndPromotion, ProductWithLocalImpact, CartItemWithProduct, ProductPurchaseHistoryEntry } from "@shared/schema";
 import { formatOrderNumber } from "@shared/schema";
 import { productMatchKey, normalizeName } from "@shared/productMatch";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -25,12 +25,13 @@ import { useFlyToCart } from "@/hooks/use-fly-to-cart";
 import { pluralizeUnit } from "@/lib/units";
 import { ProductImage } from "@/components/ProductImage";
 import { HeroPortal } from "@/context/HeroContext";
+import { can } from "@shared/permissions";
 
 export default function ProductDetail() {
   const [, params] = useRoute("/restaurant/product/:id");
   const productId = params?.id;
   const [, setLocation] = useLocation();
-  const { currentUser } = useUser();
+  const { currentUser, currentMember } = useUser();
   const { toast } = useToast();
   const { lang } = useLanguage();
   const t = useT(lang);
@@ -40,7 +41,7 @@ export default function ProductDetail() {
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const { triggerFly } = useFlyToCart();
 
-  const { data: products, isLoading } = useQuery<ProductWithSupplierAndPromotion[]>({
+  const { data: products, isLoading } = useQuery<ProductWithLocalImpact[]>({
     queryKey: [`/api/products?restaurantId=${currentUser?.id}`],
     enabled: !!currentUser?.id,
   });
@@ -505,6 +506,59 @@ export default function ProductDetail() {
         <div className="grid gap-5 md:gap-6 lg:grid-cols-12 lg:items-start">
 
           <div className="order-2 lg:order-1 lg:col-span-8 space-y-5 md:space-y-6 min-w-0">
+            {product.localImpact && can(currentMember?.role, "impact.analytics") && (
+              <section className="rounded-2xl border bg-card p-5 md:p-6" data-testid="section-local-impact">
+                <div className="flex items-start justify-between gap-3 mb-4">
+                  <div>
+                    <h2 className="text-base md:text-lg font-semibold flex items-center gap-2">
+                      <MapPin className="h-5 w-5 text-green-600 dark:text-green-400" />
+                      {lang === "de" ? "Local & Wirkung" : "Locale e impatto"}
+                    </h2>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {lang === "de"
+                        ? "Nur hinterlegte Angaben werden bewertet; fehlende Daten bleiben unverfügbar."
+                        : "Vengono valutati solo i dati disponibili; quelli mancanti restano non disponibili."}
+                    </p>
+                  </div>
+                  <Badge variant="outline" className="shrink-0">
+                    {product.localImpact.score === null ? (lang === "de" ? "Nicht verfügbar" : "Non disponibile") : `${product.localImpact.score}/100`}
+                  </Badge>
+                </div>
+                <div className="grid sm:grid-cols-2 gap-x-6">
+                  {[
+                    [lang === "de" ? "Herkunft" : "Origine", product.localImpact.originLabel, MapPin],
+                    [lang === "de" ? "Saison" : "Stagione", product.localImpact.isSeasonal === null ? null : product.localImpact.isSeasonal ? (lang === "de" ? "Aktuell saisonal" : "Attualmente stagionale") : (lang === "de" ? "Außerhalb der Saison" : "Fuori stagione"), CalendarDays],
+                    [lang === "de" ? "Verpackung" : "Imballaggio", product.localImpact.packagingType, Recycle],
+                    [lang === "de" ? "Entfernung" : "Distanza", product.localImpact.distanceKm === null ? null : `ca. ${product.localImpact.distanceKm} km`, MapPin],
+                  ].map(([label, value, Icon]) => {
+                    const RowIcon = Icon as typeof MapPin;
+                    return (
+                    <div key={String(label)} className="flex items-center justify-between gap-3 py-2.5 border-b">
+                      <span className="flex items-center gap-2 text-sm text-muted-foreground"><RowIcon className="h-4 w-4" />{label as string}</span>
+                      <span className="text-sm font-medium text-right">{(value as string | null) ?? (lang === "de" ? "Nicht verfügbar" : "Non disponibile")}</span>
+                    </div>
+                    );
+                  })}
+                </div>
+                <div className="mt-4">
+                  <h3 className="text-sm font-semibold mb-2">{lang === "de" ? "Score-Aufschlüsselung" : "Dettaglio punteggio"}</h3>
+                  <div className="grid grid-cols-3 gap-2">
+                    {product.localImpact.scoreBreakdown.map((factor) => (
+                      <div key={factor.key} className="rounded-lg bg-muted/40 p-2 text-center">
+                        <div className="text-xs text-muted-foreground">{factor.key === "local" ? "Local" : factor.key === "seasonal" ? (lang === "de" ? "Saison" : "Stagione") : (lang === "de" ? "Verpackung" : "Imballaggio")}</div>
+                        <div className="font-semibold text-sm mt-0.5">{factor.value === null ? "—" : factor.value}</div>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-[11px] text-muted-foreground mt-3">
+                    {lang === "de"
+                      ? `Berechnung ${product.localImpact.calculationVersion}; Distanz ist eine Luftlinien-Schätzung. Abdeckung ${Math.round(product.localImpact.coverage * 100)}%.`
+                      : `Calcolo ${product.localImpact.calculationVersion}; la distanza è una stima in linea d'aria. Copertura ${Math.round(product.localImpact.coverage * 100)}%.`}
+                  </p>
+                </div>
+              </section>
+            )}
+
             {product.allergens && (
               <div className="rounded-2xl border bg-card p-5 md:p-6" data-testid="section-allergens">
                 <h2 className="text-base md:text-lg font-semibold mb-3 flex items-center gap-2">

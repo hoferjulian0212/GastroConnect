@@ -1,6 +1,7 @@
 import { db } from "./db";
 import { applyBucketMovement } from "./stockBuckets";
 import { getRescueAllocationTarget, getRescuePromotionState } from "./rescuePromotion";
+import { calculateLocalImpact } from "./localImpact";
 import { eq, and, desc, or, sql, ne, inArray, notInArray, gt, gte, lte, isNull, isNotNull } from "drizzle-orm";
 import {
   users, products, orders, orderItems, cartItems, conversations, messages, complaints, notifications, orderNotificationRetries, complaintComments, documents,
@@ -1135,6 +1136,21 @@ export class DatabaseStorage implements IStorage {
     return this.generateOrderNumber() + "-" + Date.now().toString(36).toUpperCase();
   }
 
+  private async buildLocalImpactSnapshot(
+    executor: any,
+    restaurantId: string,
+    productId: string,
+    asOf: Date,
+  ) {
+    const [[product], [restaurant]] = await Promise.all([
+      executor.select().from(products).where(eq(products.id, productId)).limit(1),
+      executor.select().from(users).where(eq(users.id, restaurantId)).limit(1),
+    ]);
+    return product && restaurant
+      ? calculateLocalImpact(product, restaurant, asOf)
+      : calculateLocalImpact({});
+  }
+
   async createOrder(
     order: InsertOrder,
     items: InsertOrderItem[],
@@ -1149,7 +1165,8 @@ export class DatabaseStorage implements IStorage {
 
       const insertedItems = [] as InsertOrderItem[];
       for (const item of items) {
-        await tx.insert(orderItems).values({ ...item, orderId: created.id });
+        const localImpactSnapshot = await this.buildLocalImpactSnapshot(tx, created.restaurantId, item.productId, created.createdAt);
+        await tx.insert(orderItems).values({ ...item, orderId: created.id, localImpactSnapshot });
         insertedItems.push(item);
       }
 
@@ -1231,7 +1248,8 @@ export class DatabaseStorage implements IStorage {
         const orderNumber = await this.generateUniqueOrderNumber();
         const [order] = await tx.insert(orders).values({ ...entry.order, orderNumber }).returning();
         for (const item of entry.items) {
-          const [insertedItem] = await tx.insert(orderItems).values({ ...item, orderId: order.id }).returning();
+          const localImpactSnapshot = await this.buildLocalImpactSnapshot(tx, order.restaurantId, item.productId, order.createdAt);
+          const [insertedItem] = await tx.insert(orderItems).values({ ...item, orderId: order.id, localImpactSnapshot }).returning();
           if (insertedItem.promotionId) {
             await this.reserveRescueAllocation(tx, insertedItem.id, insertedItem.promotionId, insertedItem.productId, entry.order.supplierId, entry.order.restaurantId, insertedItem.quantity);
           }
@@ -1321,9 +1339,26 @@ export class DatabaseStorage implements IStorage {
 
   async updateOrderItems(id: string, items: InsertOrderItem[], totalAmount: string, requestedDeliveryDate?: string | null, executor?: any): Promise<Order | undefined> {
     const run = async (tx: any) => {
+      const [existingOrder] = await tx.select().from(orders).where(eq(orders.id, id)).limit(1);
+      if (!existingOrder) return undefined;
+      const existingItems = await tx.select().from(orderItems).where(eq(orderItems.orderId, id));
+      const snapshotsByProduct = new Map<string, Array<typeof existingItems[number]["localImpactSnapshot"]>>();
+      for (const existingItem of existingItems) {
+        const snapshots = snapshotsByProduct.get(existingItem.productId) ?? [];
+        snapshots.push(existingItem.localImpactSnapshot);
+        snapshotsByProduct.set(existingItem.productId, snapshots);
+      }
       await tx.delete(orderItems).where(eq(orderItems.orderId, id));
       if (items.length > 0) {
-        await tx.insert(orderItems).values(items.map(item => ({ ...item, orderId: id })));
+        const snapshottedItems = await Promise.all(items.map(async (item) => {
+          const existingSnapshots = snapshotsByProduct.get(item.productId);
+          const hasExistingSnapshot = !!existingSnapshots?.length;
+          const localImpactSnapshot = hasExistingSnapshot
+            ? existingSnapshots!.shift()!
+            : await this.buildLocalImpactSnapshot(tx, existingOrder.restaurantId, item.productId, new Date());
+          return { ...item, orderId: id, localImpactSnapshot };
+        }));
+        await tx.insert(orderItems).values(snapshottedItems);
       }
       const setData: any = { totalAmount, updatedAt: new Date() };
       if (requestedDeliveryDate !== undefined) {
@@ -5907,6 +5942,10 @@ export class DatabaseStorage implements IStorage {
   }
 
   async runAdminMigration(): Promise<void> {
+    // Immutable Local-impact snapshots are additive and remain independent of
+    // the canonical product sustainability migration.
+    await db.execute(sql`ALTER TABLE order_items ADD COLUMN IF NOT EXISTS local_impact_snapshot jsonb`);
+
     await db.execute(sql`
       CREATE TABLE IF NOT EXISTS platform_admins (
         id varchar(36) PRIMARY KEY DEFAULT gen_random_uuid(),

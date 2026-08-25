@@ -13,4 +13,4 @@ The first Product Local methodology is fixed as `local-product-v1.0.0`: verified
 
 **Why:** This prevents supplier headquarters, a loose region label, stale paperwork, or an unrelated price edit from laundering an unverified product into a visible Local claim.
 
-**How to apply:** New calculation versions may change these definitions, but historical outputs keep their version. Admin/Manager product owners maintain the optional metadata; null remains unknown. Any future catalog/report UI consumes the server calculation rather than recomputing eligibility.
+**How to apply:** New calculation versions may change these definitions, but historical outputs keep their version. Admin/Manager product owners maintain the optional metadata; null remains unknown. Any future catalog/report UI consumes the server calculation rather than recomputing eligibility. Historical order and report impact must aggregate immutable order-time snapshots; never recalculate history from mutable product metadata or today's season.
