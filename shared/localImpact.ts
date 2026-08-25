@@ -30,6 +30,8 @@ export type LocalImpact = {
   originLabel: string | null;
   seasonMonths: number[] | null;
   packagingType: string | null;
+  /** Safe compact signal: packaging data exists, without exposing its details. */
+  packagingKnown: boolean;
   packagingReusable: boolean | null;
   distanceKm: number | null;
   distanceClassification: ImpactClassification;
@@ -51,6 +53,7 @@ export function unavailableLocalImpact(): LocalImpact {
     originLabel: null,
     seasonMonths: null,
     packagingType: null,
+    packagingKnown: false,
     packagingReusable: null,
     distanceKm: null,
     distanceClassification: "unknown",
@@ -72,6 +75,7 @@ export type LocalImpactSummary = {
   localItemCount: number | null;
   seasonalItemCount: number | null;
   lowWasteItemCount: number | null;
+  packagingItemCount: number | null;
   score: number | null;
   missingInputs: string[];
 };
@@ -83,6 +87,7 @@ export function summarizeLocalImpact(
   const withLocal = impacts.filter(({ impact }) => impact.isLocal !== null);
   const withSeason = impacts.filter(({ impact }) => impact.isSeasonal !== null);
   const withWaste = impacts.filter(({ impact }) => impact.lowWaste !== null);
+  const withPackaging = impacts.filter(({ impact }) => impact.packagingKnown);
   const scored = impacts.filter(({ impact }) => impact.score !== null);
   const scoredQuantity = scored.reduce((sum, item) => sum + Math.max(0, item.quantity), 0);
   const weightedScore = scoredQuantity > 0
@@ -109,6 +114,7 @@ export function summarizeLocalImpact(
     lowWasteItemCount: withWaste.length === count
       ? withWaste.filter(({ impact }) => impact.lowWaste === true).length
       : null,
+    packagingItemCount: withPackaging.length === count ? withPackaging.length : null,
     score: weightedScore,
     missingInputs,
   };

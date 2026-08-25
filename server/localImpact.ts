@@ -76,6 +76,7 @@ export function calculateLocalImpact(
       ? [...product.seasonMonths]
       : null,
     packagingType: product.packagingType ?? null,
+    packagingKnown: product.packagingType !== null && product.packagingType !== undefined,
     packagingReusable,
     distanceKm: null,
     distanceClassification: "unknown",

@@ -1,9 +1,13 @@
 import { and, eq, inArray } from "drizzle-orm";
+import { randomUUID } from "node:crypto";
 import { db } from "./db";
 import { generateAndStoreMonthlyReport } from "./monthlyReportService";
 import { storage } from "./storage";
 import {
   orders,
+  inventoryRiskRecords,
+  members,
+  type Promotion,
   products,
   users,
   type Product,
@@ -15,6 +19,24 @@ import {
  * this is curated UI verification data, not a claim received from a supplier.
  */
 export const SUSTAINABILITY_DEMO_NOTE_PREFIX = "GastroConnect demo/test sustainability dataset v1";
+export const RESCUE_DEMO_NOTE = "GastroConnect demo/test Rescue scenario v1 — created through the Risk Stock action workflow.";
+
+export function isCurrentTargetedRescuePromotion(
+  promotion: Promotion | undefined,
+  restaurantId: string,
+  now: Date,
+): promotion is Promotion {
+  const remainingCapacity = promotion
+    ? (promotion.quantityCap ?? 0) - (promotion.rescueReservedQuantity ?? 0) - (promotion.rescueSoldQuantity ?? 0)
+    : 0;
+  return !!promotion &&
+    promotion.promotionType === "rescue" &&
+    promotion.isActive &&
+    promotion.startDate <= now &&
+    promotion.endDate >= now &&
+    !!promotion.targetRestaurantIds?.includes(restaurantId) &&
+    remainingCapacity > 0;
+}
 
 type DemoScenario =
   | "local-seasonal-returnable"
@@ -173,13 +195,17 @@ export type SustainabilityDemoSeedResult = {
   reportMonth: string;
   reportScore: number | null;
   reportItemCount: number;
+  rescueRiskId: string;
+  rescuePromotionId: string;
+  createdRescueRisk: boolean;
+  createdRescueOrder: boolean;
 };
 
 /**
  * Safe, idempotent development seed. It only touches explicitly named products
  * that have no metadata yet or already carry this seed's provenance marker.
  */
-export async function seedSustainabilityDemoData(): Promise<SustainabilityDemoSeedResult> {
+export async function seedSustainabilityDemoData(options: { generateReport?: boolean } = {}): Promise<SustainabilityDemoSeedResult> {
   const [supplier] = await db.select().from(users)
     .where(and(eq(users.role, "supplier"), eq(users.companyName, "Frische Produkte GmbH")))
     .limit(1);
@@ -302,8 +328,129 @@ export async function seedSustainabilityDemoData(): Promise<SustainabilityDemoSe
     createdOrders++;
   }
 
+  // Create one traceable Rescue offer through the same storage action that the
+  // authenticated Risk Stock route uses. We never insert a promotion directly:
+  // the record must be open, has a capped flagged quantity, and the atomic
+  // action links the resulting `rescue` promotion back to its source risk.
+  const rescueProduct = catalogByName.get("Bio Äpfel")!;
+  const fixtureRisks = (await db.select().from(inventoryRiskRecords).where(and(
+    eq(inventoryRiskRecords.supplierId, supplier.id),
+    eq(inventoryRiskRecords.productId, rescueProduct.id),
+  ))).filter((risk) => risk.note?.startsWith(RESCUE_DEMO_NOTE));
+  const linkedFixtures = await Promise.all(fixtureRisks.map(async (risk) => ({
+    risk,
+    promotion: risk.linkedPromotionId ? await storage.getPromotion(risk.linkedPromotionId) : undefined,
+  })));
+  const reusableFixture = linkedFixtures.find(({ promotion }) =>
+    isCurrentTargetedRescuePromotion(promotion, restaurant.id, now),
+  );
+
+  const rescueReporter = (await db.select().from(members).where(and(
+    eq(members.organizationId, supplier.id),
+    eq(members.role, "manager"),
+  )).limit(1))[0] ?? (await db.select().from(members).where(and(
+    eq(members.organizationId, supplier.id),
+    eq(members.role, "admin"),
+  )).limit(1))[0];
+  if (!rescueReporter) {
+    throw new Error("Required Frische Produkte manager/admin demo member is missing");
+  }
+
+  let rescueRisk = reusableFixture?.risk;
+  let rescuePromotion = reusableFixture?.promotion;
+  let createdRescueRisk = false;
+  if (!rescueRisk) {
+    // Atomic checkout already reserves Rescue quantities against tracked
+    // product stock. That stock is the sole source of availability here.
+    const rescueCapacity = Math.min(6, rescueProduct.stockQuantity ?? 0);
+    if (rescueCapacity < 3) {
+      throw new Error("Rescue demo requires at least three unallocated units of Bio Äpfel to replace an unavailable fixture");
+    }
+    rescueRisk = await storage.createInventoryRiskRecord({
+      supplierId: supplier.id,
+      productId: rescueProduct.id,
+      createdBy: rescueReporter.id,
+      flaggedQuantity: rescueCapacity,
+      expiryDate: new Date(now.getTime() + 48 * 60 * 60 * 1000),
+      qualityStatus: "Risk",
+      riskReason: "Near Expiry",
+      priority: "normal",
+      note: fixtureRisks.length ? `${RESCUE_DEMO_NOTE} · replacement` : RESCUE_DEMO_NOTE,
+      photoUrl: null,
+    });
+    createdRescueRisk = true;
+  }
+
+  if (!rescuePromotion) {
+    const rescueCapacity = Math.min(6, rescueProduct.stockQuantity ?? 0);
+    const startDate = new Date(now);
+    startDate.setHours(0, 0, 0, 0);
+    const endDate = new Date(now);
+    endDate.setDate(endDate.getDate() + 14);
+    endDate.setHours(23, 59, 59, 999);
+    const actioned = await storage.actionInventoryRiskRecord(rescueRisk.id, supplier.id, {
+      discountPercent: 35,
+      startDate,
+      endDate,
+      isActive: true,
+      name: "Rescue: Bio Äpfel",
+      description: "Kurze Restlaufzeit · limitierte Rettungsmenge",
+      groupId: randomUUID(),
+      targetRestaurantIds: [restaurant.id],
+      quantityCap: rescueCapacity,
+    });
+    rescueRisk = actioned.record;
+    rescuePromotion = actioned.promotion;
+  }
+  if (!isCurrentTargetedRescuePromotion(rescuePromotion, restaurant.id, now)) {
+    throw new Error("Rescue demo action did not create a rescue promotion");
+  }
+
+  const rescueOrderKey = `sustainability-demo-rescue-${rescuePromotion.id}`;
+  const [existingRescueOrder] = await db.select({ id: orders.id }).from(orders).where(and(
+    eq(orders.restaurantId, restaurant.id),
+    eq(orders.supplierId, supplier.id),
+    eq(orders.idempotencyKey, rescueOrderKey),
+  )).limit(1);
+  let createdRescueOrder = false;
+  if (!existingRescueOrder) {
+    const remainingQuantity = (rescuePromotion.quantityCap ?? 0) -
+      (rescuePromotion.rescueReservedQuantity ?? 0) -
+      (rescuePromotion.rescueSoldQuantity ?? 0);
+    const quantity = Math.min(2, remainingQuantity);
+    if (quantity < 1) {
+      throw new Error("Current Rescue demo promotion has no allocatable capacity for its initial checkout");
+    }
+    const discountedUnitPrice = (Number(rescueProduct.price) * (1 - rescuePromotion.discountPercent / 100)).toFixed(2);
+    await storage.createOrdersAtomically([{
+      order: {
+        restaurantId: restaurant.id,
+        supplierId: supplier.id,
+        createdByUserId: restaurant.id,
+        status: "pending",
+        totalAmount: (Number(discountedUnitPrice) * quantity).toFixed(2),
+        notes: "Rescue demo order; created through the normal atomic checkout allocation workflow.",
+        idempotencyKey: rescueOrderKey,
+        idempotencyFingerprint: "sustain-demo-rescue-v1",
+      },
+      items: [{
+        // createOrdersAtomically replaces this with the generated order id.
+        orderId: "",
+        productId: rescueProduct.id,
+        promotionId: rescuePromotion.id,
+        productName: rescueProduct.name,
+        quantity,
+        unitPrice: discountedUnitPrice,
+        totalPrice: (Number(discountedUnitPrice) * quantity).toFixed(2),
+      }],
+    }], restaurant.id, supplier.id, { queueNotifications: false });
+    createdRescueOrder = true;
+  }
+
   const reportMonth = now.toISOString().slice(0, 7);
-  const { payload } = await generateAndStoreMonthlyReport(restaurant.id, reportMonth, { notify: false });
+  const payload = options.generateReport === false
+    ? undefined
+    : (await generateAndStoreMonthlyReport(restaurant.id, reportMonth, { notify: false })).payload;
   return {
     updatedProducts,
     alreadySeededProducts,
@@ -311,7 +458,11 @@ export async function seedSustainabilityDemoData(): Promise<SustainabilityDemoSe
     existingOrders,
     dashboardWidgetAdded,
     reportMonth,
-    reportScore: payload.localImpact?.score ?? null,
-    reportItemCount: payload.localImpact?.itemCount ?? 0,
+    reportScore: payload?.localImpact?.score ?? null,
+    reportItemCount: payload?.localImpact?.itemCount ?? 0,
+    rescueRiskId: rescueRisk.id,
+    rescuePromotionId: rescuePromotion.id,
+    createdRescueRisk,
+    createdRescueOrder,
   };
 }

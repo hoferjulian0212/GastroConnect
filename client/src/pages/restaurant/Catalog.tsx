@@ -36,6 +36,8 @@ export function ImpactMarkers({ product, lang }: { product: CatalogProduct; lang
     product.localImpact?.isLocal === true && { emoji: "📍", label: lang === "de" ? "Lokal" : "Locale" },
     product.localImpact?.isSeasonal === true && { emoji: "🌱", label: lang === "de" ? "Saisonal" : "Stagionale" },
     product.localImpact?.lowWaste === true && { emoji: "♻️", label: lang === "de" ? "Wenig Verpackung" : "Meno imballaggio" },
+    product.localImpact?.packagingKnown === true && { emoji: "📦", label: lang === "de" ? "Verpackung" : "Imballaggio" },
+    product.activePromotion?.promotionType === "rescue" && { emoji: "⚡", label: lang === "de" ? "Rescue-Angebot" : "Offerta Rescue" },
   ].filter(Boolean) as Array<{ emoji: string; label: string }>;
 
   if (markers.length === 0) return null;

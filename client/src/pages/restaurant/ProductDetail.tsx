@@ -438,6 +438,11 @@ export default function ProductDetail() {
                   {product.category && (
                     <Badge variant="outline" className="bg-white/10 text-white/80 border-white/15">{product.category}</Badge>
                   )}
+                  {promo?.promotionType === "rescue" && (
+                    <Badge variant="outline" className="bg-amber-400/15 text-amber-200 border-amber-400/35" data-testid="badge-product-rescue">
+                      <span aria-hidden="true">⚡</span>&nbsp;Rescue
+                    </Badge>
+                  )}
                 </div>
               </div>
             </div>
@@ -528,7 +533,8 @@ export default function ProductDetail() {
                   {[
                     ["📍", lang === "de" ? "Herkunft" : "Origine", product.localImpact.originLabel],
                     ["🌱", lang === "de" ? "Saison" : "Stagione", product.localImpact.isSeasonal === null ? null : product.localImpact.isSeasonal ? (lang === "de" ? "Aktuell saisonal" : "Attualmente stagionale") : (lang === "de" ? "Außerhalb der Saison" : "Fuori stagione")],
-                    ["♻️", lang === "de" ? "Verpackung" : "Imballaggio", product.localImpact.packagingType],
+                    ["♻️", lang === "de" ? "Wenig Verpackung" : "Meno imballaggio", product.localImpact.lowWaste === null ? null : product.localImpact.lowWaste ? (lang === "de" ? "Wenig Verpackung" : "Meno imballaggio") : (lang === "de" ? "Höherer Verpackungsanteil" : "Imballaggio più intenso")],
+                    ["📦", lang === "de" ? "Verpackung" : "Imballaggio", product.localImpact.packagingType],
                     ["📍", lang === "de" ? "Entfernung" : "Distanza", product.localImpact.distanceKm === null ? null : `ca. ${product.localImpact.distanceKm} km`],
                   ].map(([emoji, label, value]) => {
                     return (

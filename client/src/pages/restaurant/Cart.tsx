@@ -626,18 +626,19 @@ export default function RestaurantCart() {
                 {impact.score === null ? (lang === "de" ? "Nicht verfügbar" : "Non disponibile") : `${impact.score}/100`}
               </span>
             </summary>
-            <div className="border-t px-4 py-3 grid grid-cols-3 gap-3 text-center">
+            <div className="border-t px-4 py-3 grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
               {[
                 ["📍", lang === "de" ? "Lokal" : "Locale", impact.localItemCount],
                 ["🌱", lang === "de" ? "Saisonal" : "Stagionale", impact.seasonalItemCount],
                 ["♻️", "Low Waste", impact.lowWasteItemCount],
+                ["📦", lang === "de" ? "Verpackung" : "Imballaggio", impact.packagingItemCount],
               ].map(([emoji, label, value]) => (
                 <div key={String(label)}>
                   <div className="font-semibold">{value === null ? "—" : value}</div>
                   <div className="text-[11px] text-muted-foreground"><span aria-hidden="true">{emoji} </span>{label}</div>
                 </div>
               ))}
-              <p className="col-span-3 text-[11px] text-left text-muted-foreground">
+              <p className="col-span-2 sm:col-span-4 text-[11px] text-left text-muted-foreground">
                 {lang === "de"
                   ? `Nur verfügbare Produktdaten · ${impact.calculationVersion} · Abdeckung ${Math.round(impact.coverage * 100)}%`
                   : `Solo dati prodotto disponibili · ${impact.calculationVersion} · Copertura ${Math.round(impact.coverage * 100)}%`}
@@ -710,6 +711,11 @@ export default function RestaurantCart() {
                                     -{item.activePromotion!.discountPercent}%
                                   </span>
                                 )}
+                                 {item.activePromotion?.promotionType === "rescue" && (
+                                   <span className="inline-flex items-center gap-0.5 text-[10px] font-medium text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-900/30 px-1 rounded shrink-0" data-testid={`cart-rescue-${item.id}`}>
+                                     <span aria-hidden="true">⚡</span> Rescue
+                                   </span>
+                                 )}
                               </div>
                               <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] md:text-xs text-muted-foreground">
                                 {item.product.articleNumber && (

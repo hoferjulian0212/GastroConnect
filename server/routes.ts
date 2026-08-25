@@ -804,6 +804,7 @@ function productWithPermittedImpact(req: any, product: any) {
       isLocal: localImpact.isLocal,
       isSeasonal: localImpact.isSeasonal,
       lowWaste: localImpact.lowWaste,
+      packagingKnown: localImpact.packagingKnown,
       signal: localImpact.signal,
     },
   };

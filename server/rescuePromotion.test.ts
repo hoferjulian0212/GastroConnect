@@ -6,6 +6,7 @@ import {
   getRescuePromotionState,
   wouldIntroduceRescuePromotion,
 } from "./rescuePromotion";
+import { isCurrentTargetedRescuePromotion } from "./sustainabilityDemoSeed";
 
 function rescuePromotion(overrides: Partial<Promotion> = {}): Promotion {
   return {
@@ -133,4 +134,35 @@ test("pending edits detect a newly introduced Rescue product", () => {
     ),
     true,
   );
+});
+
+test("a demo Rescue fixture is reusable only while active, current, and targeted", () => {
+  const now = new Date("2026-08-25T12:00:00.000Z");
+  const targeted = rescuePromotion({
+    targetRestaurantIds: ["restaurant-1"],
+    startDate: new Date("2026-08-25T00:00:00.000Z"),
+    endDate: new Date("2026-09-08T23:59:59.000Z"),
+  });
+
+  assert.equal(isCurrentTargetedRescuePromotion(targeted, "restaurant-1", now), true);
+  assert.equal(isCurrentTargetedRescuePromotion(
+    rescuePromotion({ ...targeted, isActive: false }),
+    "restaurant-1",
+    now,
+  ), false);
+  assert.equal(isCurrentTargetedRescuePromotion(
+    rescuePromotion({ ...targeted, endDate: new Date("2026-08-24T23:59:59.000Z") }),
+    "restaurant-1",
+    now,
+  ), false);
+  assert.equal(isCurrentTargetedRescuePromotion(
+    rescuePromotion({
+      ...targeted,
+      rescueReservedQuantity: targeted.quantityCap,
+      rescueSoldQuantity: 0,
+    }),
+    "restaurant-1",
+    now,
+  ), false);
+  assert.equal(isCurrentTargetedRescuePromotion(targeted, "other-restaurant", now), false);
 });
