@@ -90,6 +90,14 @@ export function canCompleteDelivery(status: string): boolean {
 }
 
 /**
+ * A stale driver screen may skip the visible departure step. The restaurant
+ * must still receive that step before an arrival or completion update.
+ */
+export function isDriverRecoveryToArrival(from: string, to: string): boolean {
+  return to === "arriving" && ["assigned", "picked_up"].includes(from);
+}
+
+/**
  * Cross-entity bridges. Callers retain their own authorization, stock,
  * notification and route effects, but may not contradict these relationships.
  */

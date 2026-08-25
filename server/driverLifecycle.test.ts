@@ -18,7 +18,7 @@ import { test, describe, before, after } from "node:test";
 import assert from "node:assert/strict";
 import crypto from "node:crypto";
 import { spawn, type ChildProcess } from "child_process";
-import { eq, inArray, or } from "drizzle-orm";
+import { and, eq, inArray, or } from "drizzle-orm";
 import { sql } from "drizzle-orm";
 import { db, pool } from "./db";
 import { storage } from "./storage";
@@ -36,6 +36,7 @@ import {
   deliverySchedules,
   restaurantAvailability,
   platformAdmins,
+  notifications,
 } from "../shared/schema";
 
 // ── Test server ──────────────────────────────────────────────────────────────
@@ -438,7 +439,108 @@ async function getAssignment(
   return rows[0];
 }
 
+async function getRestaurantDeliveryEvents(orderId: string) {
+  const [notificationRows, messageRows] = await Promise.all([
+    db.select({
+      title: notifications.title,
+      message: notifications.message,
+      createdAt: notifications.createdAt,
+    }).from(notifications).where(and(
+      eq(notifications.userId, restaurantId),
+      eq(notifications.referenceId, orderId),
+    )),
+    db.select({
+      messageType: messages.messageType,
+      content: messages.content,
+      createdAt: messages.createdAt,
+    }).from(messages).where(and(
+      eq(messages.orderId, orderId),
+      eq(messages.messageType, "delivery_status"),
+    )),
+  ]);
+  return {
+    notifications: notificationRows.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime()),
+    messages: messageRows.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime()),
+  };
+}
+
 // ── Tests ─────────────────────────────────────────────────────────────────────
+
+describe("driver lifecycle: restaurant delivery updates", () => {
+  test("normal route progress sends one ordered departure story", async () => {
+    const { orderId, assignmentId } = await seedOrderWithAssignment({
+      orderStatus: "scheduled",
+      assignmentStatus: "assigned",
+    });
+    const driverCookie = await seedSessionCookie(driverMemberId);
+
+    assert.equal((await apiFetch(
+      "PATCH",
+      `/api/driver/deliveries/${assignmentId}/status`,
+      { status: "en_route" },
+      driverCookie,
+    )).status, 200);
+    assert.equal((await apiFetch(
+      "PATCH",
+      `/api/driver/deliveries/${assignmentId}/status`,
+      { status: "arriving" },
+      driverCookie,
+    )).status, 200);
+
+    const events = await getRestaurantDeliveryEvents(orderId);
+    assert.equal(events.notifications.filter((n) => n.title.includes("unterwegs")).length, 1);
+    assert.equal(events.messages.length, 1);
+    assert.equal(JSON.parse(events.messages[0].content).type, "in_delivery");
+  });
+
+  test("recovery to arrival sends departure before arrival without duplicating it", async () => {
+    const { orderId, assignmentId } = await seedOrderWithAssignment({
+      orderStatus: "scheduled",
+      assignmentStatus: "assigned",
+    });
+    const driverCookie = await seedSessionCookie(driverMemberId);
+
+    const response = await apiFetch(
+      "PATCH",
+      `/api/driver/deliveries/${assignmentId}/status`,
+      { status: "arriving" },
+      driverCookie,
+    );
+    assert.equal(response.status, 200, JSON.stringify(response.json));
+
+    const events = await getRestaurantDeliveryEvents(orderId);
+    assert.deepEqual(
+      events.notifications.map((n) => n.title.split(" #")[0]),
+      ["Lieferung unterwegs", "Lieferung kommt gleich an"],
+    );
+    assert.equal(events.messages.length, 1);
+    assert.equal(JSON.parse(events.messages[0].content).type, "in_delivery");
+  });
+
+  test("recovery completion sends the missing departure before delivery", async () => {
+    const { orderId, assignmentId } = await seedOrderWithAssignment({
+      orderStatus: "scheduled",
+      assignmentStatus: "arriving",
+    });
+    const driverCookie = await seedSessionCookie(driverMemberId);
+
+    const response = await apiFetch(
+      "POST",
+      `/api/driver/deliveries/${assignmentId}/complete`,
+      {},
+      driverCookie,
+    );
+    assert.equal(response.status, 200, JSON.stringify(response.json));
+
+    const events = await getRestaurantDeliveryEvents(orderId);
+    assert.deepEqual(
+      events.notifications.map((n) => n.title.split(" #")[0]),
+      ["Lieferung unterwegs", "Bestellung geliefert"],
+    );
+    assert.equal(events.messages.length, 1);
+    assert.equal(JSON.parse(events.messages[0].content).type, "in_delivery");
+  });
+});
 
 describe("driver lifecycle: cancel and pending-correction", () => {
   test("PATCH /status cancelled removes an undelivered driver assignment", async () => {

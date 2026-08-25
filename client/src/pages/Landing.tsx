@@ -712,14 +712,24 @@ function RegistrationGuide({
           </Button>
         </div>
 
-        {/* Mobile keeps this area intentionally minimal: one clear path into
-            the new-user registration flow. */}
-        <div className="flex justify-center md:hidden">
+        {/* Mobile mirrors the desktop entry points so returning users can
+            sign in without opening the navigation drawer. */}
+        <div className="flex w-full flex-col gap-3 md:hidden">
           <Button
             size="lg"
-            className="h-11 gap-1.5 rounded-full bg-black px-5 text-sm font-medium text-white shadow-none hover:bg-black/85 dark:bg-white dark:text-black dark:hover:bg-white/90"
+            className="h-12 w-full gap-2 rounded-full bg-black px-6 text-sm font-semibold text-white shadow-none hover:bg-black/85 dark:bg-white dark:text-black dark:hover:bg-white/90"
             onClick={() => onStart("restaurant")}
             data-testid="button-guide-mobile-cta"
+          >
+            {t.guideCta}
+            <ArrowUpRight className="h-4 w-4" />
+          </Button>
+          <Button
+            size="lg"
+            variant="outline"
+            className="h-12 w-full gap-2 rounded-full border-black/15 bg-white px-6 text-sm font-semibold text-black shadow-none hover:bg-black/[0.04] hover:text-black"
+            onClick={onRegister}
+            data-testid="button-guide-mobile-register"
           >
             {t.guideMobileCta}
             <ArrowUpRight className="h-4 w-4" />

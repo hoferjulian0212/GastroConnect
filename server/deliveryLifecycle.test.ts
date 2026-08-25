@@ -7,6 +7,7 @@ import {
   canAdvanceDriverStatus,
   canCompleteDelivery,
   canTransitionOrderStatus,
+  isDriverRecoveryToArrival,
 } from "@shared/deliveryLifecycle";
 
 describe("cross-role delivery lifecycle policy", () => {
@@ -34,5 +35,12 @@ describe("cross-role delivery lifecycle policy", () => {
     assert.equal(canAdvanceDriverStatus("problem", "en_route"), false);
     assert.equal(canCompleteDelivery("arriving"), true);
     assert.equal(canCompleteDelivery("en_route"), false);
+  });
+
+  test("identifies only skipped departure steps as recovery", () => {
+    assert.equal(isDriverRecoveryToArrival("assigned", "arriving"), true);
+    assert.equal(isDriverRecoveryToArrival("picked_up", "arriving"), true);
+    assert.equal(isDriverRecoveryToArrival("en_route", "arriving"), false);
+    assert.equal(isDriverRecoveryToArrival("assigned", "en_route"), false);
   });
 });

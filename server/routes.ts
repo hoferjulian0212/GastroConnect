@@ -22,7 +22,7 @@ import { registerAuthRoutes } from "./auth/routes";
 import { createClerkClient } from "@clerk/express";
 import { registerAdminAuthRoutes, bootstrapPlatformAdmin, bootstrapDemoWarehouseMember, bootstrapDemoDriverMembers, bootstrapDemoRoleMembers, DEMO_ROLE_LOGINS, DEMO_WAREHOUSE_EMAIL, DEMO_DRIVER_EMAIL, DEMO_DRIVER_PASSWORD, DEMO_WAREHOUSE_PASSWORD } from "./auth/adminAuth";
 import { resetSessionForDemoLogin } from "./auth/demoSession";
-import { assertOrderTransition, canAdvanceDriverStatus, canCompleteDelivery, LifecycleTransitionError } from "@shared/deliveryLifecycle";
+import { assertOrderTransition, canAdvanceDriverStatus, canCompleteDelivery, isDriverRecoveryToArrival, LifecycleTransitionError } from "@shared/deliveryLifecycle";
 import { geocodeAddress, backfillMissingCoordinates, isGeocodingConfigured } from "./geocoding";
 import { summarizeLocalImpact, unavailableLocalImpact } from "@shared/localImpact";
 import { calculateLocalImpact } from "./localImpact";
@@ -9700,6 +9700,27 @@ export async function registerRoutes(
       if (!updated) return res.json(await storage.getDeliveryAssignment(assignment.id));
 
       const order = await storage.getOrder(assignment.orderId);
+      const recoveryToArrival = isDriverRecoveryToArrival(assignment.status, status);
+      // A stale driver screen may skip en_route. Restore the restaurant-facing
+      // departure step before publishing the arrival update, so the story is
+      // ordered and the commercial order is bridged before the next event.
+      if (recoveryToArrival && order) {
+        if (["confirmed", "partially_confirmed", "scheduled"].includes(order.status)) {
+          try {
+            await transitionOrderWithStock({
+              order,
+              newStatus: "in_delivery",
+              previousStatus: order.status,
+              changedByMemberId: req.auth!.memberId,
+              actorName: req.auth!.member.name,
+              movementType: null,
+            });
+          } catch (err) {
+            if (!(err instanceof OrderTransitionConflictError)) throw err;
+          }
+        }
+        await notifyRouteDeparture(assignment, req.auth!.member.name);
+      }
       // Departing moves the ORDER to in_delivery (no stock movement — stock is
       // outbounded only on delivered). Conflicts are non-fatal: the sub-state
       // update already succeeded.
@@ -9821,6 +9842,13 @@ export async function registerRoutes(
           error: "order_cancelled",
           message: "Die Bestellung wurde storniert und kann nicht mehr zugestellt werden.",
         });
+      }
+      // Completion may be the first request that reaches this endpoint after
+      // the driver recovered an arrival state. Emit the missing departure
+      // update before the terminal delivered update, but only when the
+      // commercial lifecycle still proves it was not already emitted.
+      if (order && ["confirmed", "partially_confirmed", "scheduled"].includes(order.status)) {
+        await notifyRouteDeparture(assignment, req.auth!.member.name);
       }
       // Driver recovery can fast-forward a stop to arriving. Preserve the same
       // commercial bridge as a normal en_route update before completing it.
