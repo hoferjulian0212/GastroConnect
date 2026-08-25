@@ -1,0 +1,986 @@
+GASTROCONNECT — COMPLETE DEMO DATA SEEDING + NEW FEATURE VISIBILITY AUDIT
+
+The new Local / Sustainability / Zero-Waste / Logistics features have been implemented, but when I open the application, especially the dashboards, it still looks largely like the old version.
+
+I suspect that the implementation exists but the new fields/data are empty, calculations have no data, some components are hidden by conditions, or some features are not correctly connected to the existing data.
+
+Your task is to make the ENTIRE CURRENT IMPLEMENTATION fully demonstrable using realistic, interconnected demo data.
+
+IMPORTANT:
+
+DO NOT just hardcode numbers into the UI.
+
+DO NOT create fake dashboard values.
+
+DO NOT create duplicate data models.
+
+DO NOT replace existing logic.
+
+Use the EXISTING database, schema, components, queries, calculations, roles, permissions and workflows.
+
+The goal is:
+
+REAL DATA → REAL CALCULATION → REAL UI → CORRECT USER ROLE → COMPLETE WORKFLOW
+
+
+==================================================
+1. FIRST: AUDIT THE CURRENT IMPLEMENTATION
+==================================================
+
+Before adding demo data, inspect the entire current codebase.
+
+Identify every feature related to the latest implementation:
+
+- Local Score
+- Local / regional origin
+- product distance
+- seasonality
+- sustainability
+- packaging
+- waste
+- Risk Stock
+- Rescue
+- Local badges
+- Seasonal badges
+- Sustainability badges
+- Order Impact
+- Restaurant Impact
+- Local Spend
+- monthly statistics
+- supplier statistics
+- route efficiency
+- CO2 estimates
+- delivery consolidation
+- delivery windows
+- smart quantity recommendations
+- Local filter
+- Seasonal filter
+- Rescue filter
+- product catalog indicators
+- product detail indicators
+- cart indicators
+- dashboard statistics
+- AI insights/messages
+- any other feature introduced by the recent update
+
+For every feature determine:
+
+1. Is it implemented?
+2. Is it connected to real data?
+3. Which database fields does it use?
+4. Is the required data populated?
+5. Is the query working?
+6. Is the calculation working?
+7. Is the UI actually rendering it?
+8. Is it hidden by a condition?
+9. Is it restricted by role/permission?
+10. Is it duplicating existing functionality?
+
+Do NOT create new fields if an existing field already provides the required information.
+
+
+==================================================
+2. FIND WHY THE APP LOOKS LIKE THE OLD VERSION
+==================================================
+
+This is a critical part of the task.
+
+For every new dashboard section or feature that currently appears empty/invisible, trace:
+
+UI
+→ Component
+→ Query
+→ API
+→ Database
+→ Calculation
+→ Returned value
+→ Rendered value
+
+Find the actual reason.
+
+Possible causes:
+
+- missing demo data
+- wrong field
+- wrong relationship
+- incorrect query
+- incorrect role filter
+- calculation returns null/0
+- component is conditionally hidden
+- component is not connected
+- frontend/backend mismatch
+- implementation incomplete
+
+Fix the ROOT CAUSE.
+
+Do not simply populate unrelated fields to make something appear.
+
+
+==================================================
+3. CREATE A COMPLETE DEMO ENVIRONMENT
+==================================================
+
+Populate the existing database with realistic interconnected demo data.
+
+Do NOT use random numbers.
+
+The data should represent a believable South Tyrol gastronomy ecosystem.
+
+Create/use demo users for every relevant existing role:
+
+- Restaurant Chef / Buyer
+- Restaurant Manager / Owner
+- Restaurant Warehouse / Lager
+- Supplier Manager / Office
+- Supplier Warehouse
+- Driver
+- Admin
+
+Use the existing authentication and permission system.
+
+Do not create duplicate role systems.
+
+
+==================================================
+4. RESTAURANTS
+==================================================
+
+Create several demo restaurants with different characteristics.
+
+Restaurant A:
+- strong local purchasing
+- high Local Score
+- seasonal purchasing
+- low waste
+- multiple local suppliers
+
+Restaurant B:
+- mixed local/non-local purchasing
+- average Local Score
+- average waste performance
+
+Restaurant C:
+- high order volume
+- multiple delivery days
+- complex delivery windows
+
+Populate all relevant existing fields:
+
+- name
+- address
+- PLZ
+- location
+- delivery availability
+- delivery windows
+- users
+- historical orders
+- suppliers
+- preferences
+- settings
+
+
+==================================================
+5. SUPPLIERS
+==================================================
+
+Create several realistic suppliers.
+
+Supplier A:
+- South Tyrol/local
+- short delivery distances
+- high Local Score
+- seasonal products
+
+Supplier B:
+- regional
+- medium distance
+
+Supplier C:
+- non-local
+- longer distance
+- lower Local Score
+
+Populate their existing:
+
+- location
+- products
+- delivery information
+- zones
+- logistics information
+- relevant sustainability data
+
+
+==================================================
+6. PRODUCTS
+==================================================
+
+Create a realistic gastronomy catalog.
+
+Use products such as:
+
+- apples
+- potatoes
+- tomatoes
+- carrots
+- onions
+- lettuce
+- herbs
+- flour
+- eggs
+- milk
+- cheese
+- meat
+- pasta
+- oil
+- seasonal fruit
+- seasonal vegetables
+
+IMPORTANT:
+
+Do NOT make every product local.
+
+Create different scenarios.
+
+Example:
+
+PRODUCT A:
+South Tyrolean apples
+- local
+- seasonal
+- short distance
+- high Local Score
+- appropriate badges
+
+PRODUCT B:
+Regional tomatoes
+- regional
+- seasonal
+- medium distance
+
+PRODUCT C:
+Non-local product
+- long distance
+- non-seasonal
+- lower Local Score
+
+PRODUCT D:
+Local product
+- reusable packaging
+
+PRODUCT E:
+Product with higher packaging impact
+
+PRODUCT F:
+Product suitable for Rescue
+
+
+==================================================
+7. LOCAL SCORE
+==================================================
+
+Populate all actual fields required by the existing Local Score calculation.
+
+Verify that the score is actually calculated.
+
+The same product must have the same score in:
+
+Catalog
+→ Product Detail
+→ Cart
+→ Order
+→ Dashboard
+
+Do NOT hardcode scores.
+
+If the score is inconsistent, find and fix the underlying calculation or data mapping.
+
+
+==================================================
+8. EMOJI LOGIC — VERY IMPORTANT
+==================================================
+
+I currently do NOT see even one emoji from the previous implementation.
+
+Audit the codebase specifically for this.
+
+The intended emoji indicators are:
+
+📍 Local / Origin
+🌱 Seasonal
+♻️ Waste / Sustainability
+🚚 Logistics / Delivery
+📦 Packaging
+💶 Local Spend / Economic Impact
+⚡ Rescue / Surplus
+
+Check whether this logic actually exists.
+
+If it does not exist, implement it in the appropriate existing components.
+
+Expected examples:
+
+PRODUCT DETAIL:
+
+📍 South Tyrol
+🌱 Seasonal
+📦 Reusable packaging
+
+CATALOG:
+
+small compact Local / Seasonal indicator
+
+CART:
+
+🌱 Local order impact
+
+DASHBOARD:
+
+🌱 Local
+♻️ Waste
+🚚 Logistics
+
+RESCUE:
+
+⚡ Rescue
+
+IMPORTANT:
+
+Do NOT put emojis everywhere.
+
+The app is minimalist black/white.
+
+Emojis should be small informational markers.
+
+Do NOT replace the existing icon system.
+
+Do NOT turn the UI into a colorful/childish interface.
+
+
+==================================================
+9. CATALOG
+==================================================
+
+After seeding the data, open the Catalog.
+
+Verify that it visibly demonstrates:
+
+- Local products
+- Non-local products
+- Seasonal products
+- Non-seasonal products
+- Local Score
+- Local badges
+- Seasonal badges
+- relevant sustainability indicators
+- Local filter
+- Seasonal filter
+- Rescue filter if implemented
+
+The filters must actually work.
+
+Check desktop and mobile.
+
+Do not make the product cards unnecessarily large.
+
+
+==================================================
+10. PRODUCT DETAIL
+==================================================
+
+Open multiple products.
+
+Verify that relevant information appears based on the actual product data.
+
+Example:
+
+Tomatoes
+
+📍 South Tyrol
+🌱 Seasonal
+🚚 28 km
+📦 Reusable packaging
+
+Local Score: 91
+
+Values must come from the actual data/calculation.
+
+
+==================================================
+11. CART
+==================================================
+
+Create several realistic carts.
+
+Cart A:
+Mostly local products.
+
+Cart B:
+Mixed products.
+
+Cart C:
+Mostly non-local products.
+
+Verify that the actual Local/Sustainability/Order Impact changes accordingly.
+
+Check:
+
+- Local impact
+- sustainability information
+- AI insight if implemented
+- dismissible insight
+- no unnecessary popups
+- no duplicate information
+- no additional unnecessary ordering steps
+
+
+==================================================
+12. HISTORICAL ORDERS
+==================================================
+
+Create enough historical orders for statistics to actually work.
+
+Use several months, for example:
+
+June
+July
+August
+
+Create different:
+
+- products
+- quantities
+- suppliers
+- prices
+- delivery dates
+- delivery windows
+- statuses
+- routes
+- local/non-local combinations
+
+This data must support:
+
+- Local Spend
+- Local %
+- Local Score
+- sustainability
+- waste
+- order quality
+- monthly reports
+- delivery efficiency
+- route statistics
+- CO2 estimates
+- trends
+
+
+==================================================
+13. ORDER STATUS DATA
+==================================================
+
+Populate orders across the EXISTING order lifecycle.
+
+Use only statuses already present in the application.
+
+For example, if these exist:
+
+- pending
+- confirmed
+- scheduled
+- preparing
+- ready
+- dispatched
+- out for delivery
+- delivered
+- completed
+
+Do NOT invent statuses.
+
+Make sure different dashboards therefore have meaningful active orders to display.
+
+
+==================================================
+14. SUPPLIER DASHBOARD
+==================================================
+
+Populate enough data so the Supplier Dashboard visibly demonstrates the new functionality.
+
+It should contain meaningful:
+
+- incoming orders
+- pending orders
+- confirmed orders
+- preparation
+- stock
+- Risk Stock
+- Rescue
+- delivery information
+- routes
+- Local statistics
+- sustainability statistics
+- logistics statistics
+
+If something remains empty, investigate why instead of assuming more data is needed.
+
+
+==================================================
+15. RISK STOCK → RESCUE
+==================================================
+
+Create realistic Risk Stock.
+
+Example:
+
+Apples
+25 kg
+Risk Stock
+Potential surplus
+
+Then use the actual existing Rescue workflow to create a Rescue Offer.
+
+Example:
+
+⚡ Rescue
+
+Apples
+25 kg
+Reduced price
+Available until date
+
+Verify the complete chain:
+
+Warehouse
+→ Risk Stock
+→ Manager/Supplier
+→ Rescue
+→ Restaurant
+→ Order
+→ Stock update
+
+Do not create an isolated fake Rescue object.
+
+
+==================================================
+16. RESTAURANT MANAGER DASHBOARD
+==================================================
+
+This is a priority.
+
+The Manager Dashboard should visibly demonstrate the new features.
+
+Populate enough real data for:
+
+🌱 Local Spend
+📍 Local Order %
+♻️ Waste
+🚚 Delivery Efficiency
+Local Score
+Order Quality
+Monthly trends
+Sustainability statistics
+Relevant badges
+
+If the dashboard still looks like the old version, investigate:
+
+- missing data
+- wrong query
+- wrong relationship
+- wrong field
+- null calculation
+- hidden component
+- incorrect role
+- frontend/backend mismatch
+
+Fix the actual cause.
+
+Do NOT hardcode dashboard values.
+
+
+==================================================
+17. MONTHLY REPORT
+==================================================
+
+Create enough historical data so the monthly report produces meaningful values.
+
+Example:
+
+August:
+
+🌱 68% local
+♻️ 14% waste reduction
+🚚 11% delivery efficiency improvement
+💶 €12,400 local spend
+
+These numbers must come from actual seeded data and actual calculations.
+
+Do NOT manually write these values into the dashboard.
+
+
+==================================================
+18. SUPPLIER STATISTICS
+==================================================
+
+Populate enough supplier history to demonstrate:
+
+- local deliveries
+- average delivery distance
+- route efficiency
+- Rescue products
+- consolidated deliveries
+- CO2 estimates
+- delivery performance
+
+
+==================================================
+19. DRIVER DEMO
+==================================================
+
+Create realistic driver routes based on real seeded orders.
+
+Example:
+
+Supplier
+→ Restaurant A
+→ Restaurant B
+→ Restaurant C
+
+The driver should be able to follow the real existing workflow:
+
+Assigned
+→ Start Route
+→ Navigate
+→ Arrive
+→ Deliver
+→ Proof of Delivery
+→ Complete Stop
+→ Next Stop
+
+Do not create fake standalone route data disconnected from orders.
+
+
+==================================================
+20. ROUTE + CO2
+==================================================
+
+Create realistic routes with multiple stops.
+
+Verify that the actual system calculates:
+
+- distance
+- ETA
+- stop count
+- route efficiency
+- consolidation
+- CO2 estimate
+
+from actual route/order data.
+
+Do not hardcode the results.
+
+
+==================================================
+21. DELIVERY WINDOWS
+==================================================
+
+Populate different restaurant delivery windows.
+
+Example:
+
+Restaurant A:
+07:00–12:00
+
+Restaurant B:
+10:00–14:00
+
+Restaurant C:
+14:00–18:00
+
+Create compatible orders.
+
+Also create an incompatible scenario to ensure routes do not incorrectly combine orders.
+
+Route optimization must respect:
+
+- fixed delivery date
+- delivery window
+- restaurant availability
+- supplier constraints
+
+
+==================================================
+22. SMART QUANTITY RECOMMENDATIONS
+==================================================
+
+If this feature is implemented:
+
+Create historical data such as:
+
+10 kg
+12 kg
+11 kg
+
+for the same product.
+
+Then verify that a new order produces a sensible recommendation.
+
+The recommendation must use actual history.
+
+The user must be able to ignore it.
+
+The `i` explanation must work if implemented.
+
+
+==================================================
+23. BADGES
+==================================================
+
+Create enough variation so badges appear naturally.
+
+Examples:
+
+Product:
+🌱 Seasonal
+♻️ Low Waste
+
+Restaurant:
+🌱 Local Champion
+
+Supplier:
+📍 Regional Supplier
+
+Rescue:
+⚡ Rescue
+
+Do NOT give every entity every badge.
+
+Badges must follow the actual implemented rules.
+
+
+==================================================
+24. ROLE-BY-ROLE VISIBILITY
+==================================================
+
+Test every demo role.
+
+CHEF / BUYER:
+
+Should see:
+- products
+- prices
+- availability
+- delivery
+- compact Local/Sustainability indicators
+
+Should NOT be overwhelmed with analytics.
+
+MANAGER:
+
+Should see:
+- Local Score
+- Local Spend
+- sustainability
+- waste
+- order quality
+- trends
+- monthly reports
+
+WAREHOUSE:
+
+Should see:
+- inventory
+- Risk Stock
+- expiry
+- quantities
+- relevant actions
+
+SUPPLIER:
+
+Should see:
+- orders
+- stock
+- Rescue
+- routes
+- logistics
+- statistics
+
+DRIVER:
+
+Should see:
+- route
+- stops
+- ETA
+- navigation
+- delivery
+- proof
+- exceptions
+
+ADMIN:
+
+Should see the appropriate system-wide functionality.
+
+Check that irrelevant functionality is not exposed.
+
+
+==================================================
+25. EMPTY STATES
+==================================================
+
+Do NOT eliminate all empty states.
+
+Empty states are still required when a real user has no data.
+
+But relevant demo users must have enough data to demonstrate every implemented feature.
+
+Verify both:
+
+DATA EXISTS → FEATURE WORKS
+
+and
+
+NO DATA → CORRECT EMPTY STATE
+
+
+==================================================
+26. PERFORMANCE
+==================================================
+
+Do not solve this by loading huge amounts of unnecessary data.
+
+Check:
+
+- repeated queries
+- duplicate calculations
+- unnecessary API calls
+- expensive calculations on every render
+- unnecessary AI calls
+- dashboard performance
+
+Use the existing architecture wherever possible.
+
+
+==================================================
+27. DO NOT CREATE DUPLICATE LOGIC
+==================================================
+
+Before adding any data or code:
+
+Check whether the existing application already has:
+
+- product origin
+- supplier location
+- restaurant location
+- distance
+- order history
+- inventory
+- risk stock
+- routes
+- ETA
+- delivery dates
+- delivery windows
+- user roles
+
+Reuse existing fields and logic.
+
+Do NOT create parallel systems just for demo data.
+
+
+==================================================
+28. FINAL VISUAL CHECK
+==================================================
+
+After everything is populated/fixed, ACTUALLY OPEN THE APPLICATION.
+
+Check:
+
+1. Catalog
+2. Product Detail
+3. Cart
+4. Restaurant Dashboard
+5. Manager Dashboard
+6. Supplier Dashboard
+7. Warehouse
+8. Risk Stock
+9. Rescue
+10. Driver Dashboard
+11. Route
+12. Order Details
+13. Monthly Statistics
+14. Local/Sustainability information
+
+Do not finish based only on code inspection.
+
+The features must actually be visible in the running application.
+
+
+==================================================
+29. FINAL REPORT
+==================================================
+
+At the end give me:
+
+A. DEMO DATA CREATED
+
+- users
+- restaurants
+- suppliers
+- products
+- orders
+- Risk Stock
+- Rescue Offers
+- routes
+- delivery windows
+- historical data
+
+B. FEATURES NOW VISIBLY WORKING
+
+List every feature that can now be demonstrated.
+
+C. FEATURES STILL EMPTY
+
+For every empty feature explain the exact reason.
+
+D. BUGS FOUND AND FIXED
+
+E. DATA/QUERY/CALCULATION ISSUES FOUND
+
+F. EMOJI AUDIT
+
+Explicitly tell me:
+
+- whether emoji logic existed
+- where it existed
+- where it was missing
+- where you added it
+- which components now display emojis
+- why I previously saw no emojis
+
+G. DEMO USERS
+
+List the demo roles/accounts available for testing.
+
+H. REMAINING ISSUES
+
+List anything that still requires product/business decisions.
+
+
+==================================================
+FINAL RULE
+==================================================
+
+Do NOT interpret this as:
+
+"Fill the database with random demo values."
+
+Interpret it as:
+
+"Create a complete, coherent, interconnected GastroConnect demo environment where every implemented feature can actually be seen and tested."
+
+Every feature must follow:
+
+REAL DATA
+→ REAL CALCULATION
+→ REAL UI
+→ CORRECT ROLE
+→ REAL WORKFLOW
+
+If a feature is implemented but still cannot be seen, find out WHY and fix the underlying issue.
+
+If the UI still looks like the old version after this task, the task is NOT complete.
