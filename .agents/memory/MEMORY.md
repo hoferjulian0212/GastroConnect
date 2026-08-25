@@ -30,3 +30,4 @@
 - [Published health contract](published-health-contract.md) — public health checks must validate JSON content, not only an HTTP 200, to reject SPA fallbacks.
 - [Release health history](release-health-history.md) — comparison needs a pipeline-retained JSONL path; local release workspaces are not durable history.
 - [Landing video compatibility](landing-video-compatibility.md) — transcode phone recordings to browser-safe H.264 with a poster before using autoplay video.
+- [Local sustainability data governance](local-sustainability-data-governance.md) — Local/impact claims require shared versioned calculations, provenance, coverage and explicit unknowns.
