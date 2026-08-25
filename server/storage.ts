@@ -1214,6 +1214,18 @@ export class DatabaseStorage implements IStorage {
     opts?: { queueNotifications?: boolean },
   ): Promise<Order[]> {
     return await db.transaction(async (tx) => {
+      // Lock referenced promotion rows before inserting order_items. The FK
+      // insert takes a key-share lock on promotions; doing that first in two
+      // concurrent Rescue checkouts and then upgrading both rows FOR UPDATE can
+      // deadlock. A stable pre-lock order makes contenders serialize here and
+      // lets the loser receive rescue_capacity_unavailable deterministically.
+      const promotionIds = Array.from(new Set(
+        entries.flatMap((entry) => entry.items.flatMap((item) => item.promotionId ? [item.promotionId] : [])),
+      )).sort();
+      for (const promotionId of promotionIds) {
+        await tx.execute(sql`SELECT id FROM ${promotions} WHERE id = ${promotionId} FOR UPDATE`);
+      }
+
       const created: Order[] = [];
       for (const entry of entries) {
         const orderNumber = await this.generateUniqueOrderNumber();
