@@ -1,0 +1,1350 @@
+GastroConnect – Local, Sustainability, Zero-Waste & Logistics Intelligence Integration
+
+0. WICHTIG: ERST VERSTEHEN, DANN ÄNDERN
+
+Du arbeitest als Senior Full-Stack Developer / Product Architect an der bestehenden GastroConnect-Anwendung.
+
+DO NOT immediately start coding.
+
+Bevor du irgendetwas veränderst, musst du die bestehende Anwendung vollständig analysieren und verstehen.
+
+GastroConnect ist bereits eine funktionierende Anwendung mit bestehenden User Roles, Workflows, Datenmodellen, Bestellungen, Lieferanten, Restaurants, Produkten, Lagerfunktionen, Lieferlogik, Fahrer-App usw.
+
+Die Aufgabe ist NICHT, eine neue App zu bauen.
+
+Die Aufgabe ist:
+
+Die bestehende GastroConnect-App gezielt um eine Local / Sustainability / Zero-Waste / Logistics Intelligence Layer zu erweitern, ohne bestehende Funktionen, Datenmodelle, Workflows oder UI-Prinzipien unnötig zu verändern oder zu duplizieren.
+
+Die bestehende App soll danach weiterhin wie dieselbe App funktionieren – nur intelligenter, informativer und strategisch stärker.
+
+⸻
+
+1. ERSTE PHASE: BESTEHENDE APP VOLLSTÄNDIG AUDITIEREN
+
+Bevor du Code schreibst, analysiere die komplette bestehende Anwendung.
+
+Untersuche mindestens:
+
+* alle Pages
+* alle Routes
+* alle User Roles
+* alle Components
+* alle Product Components
+* Product Detail
+* Catalog
+* Cart
+* Checkout
+* Orders
+* Order Details
+* Supplier Dashboard
+* Restaurant Dashboard
+* Manager-Funktionen
+* Lager-/Warehouse-Funktionen
+* Risk Stock / Risk Inventory
+* Supplier Logistics
+* Driver App
+* Delivery Routes
+* Delivery Zones
+* PLZ-Logik
+* bestehende Distance-/ETA-Berechnung
+* bestehende Maps
+* bestehende Datenmodelle
+* bestehende APIs
+* bestehende Backend Functions
+* bestehende Database Tables / Collections
+* bestehende Statuslogik
+* bestehende Notifications
+* bestehende User Preferences
+* bestehende Stammdaten
+* bestehende Reporting-/Statistics-Funktionen
+* bestehende AI-Funktionen, falls vorhanden
+* bestehende Design-/UI-Komponenten
+* bestehende Icons
+* bestehende Filter
+* bestehende Search-Funktionen
+
+Ganz wichtig
+
+Erstelle vor Änderungen eine interne Übersicht:
+
+EXISTING
+
+Was existiert bereits und kann wiederverwendet werden?
+
+PARTIAL
+
+Was existiert bereits, ist aber noch unvollständig oder nicht ausreichend?
+
+MISSING
+
+Was existiert noch nicht?
+
+DUPLICATION RISK
+
+Wo würde eine neue Funktion möglicherweise bereits vorhandene Logik duplizieren?
+
+DATA SOURCE
+
+Welche bestehenden Daten können für die neuen Features verwendet werden?
+
+⸻
+
+2. KEINE DUPLIKATION VON DATEN ODER LOGIK
+
+Das ist eine der wichtigsten Anforderungen.
+
+Bevor du neue Variablen, Felder, Tabellen, Functions oder Services erstellst:
+
+Prüfe immer zuerst, ob die benötigte Information bereits existiert.
+
+Beispiele:
+
+Wenn bereits ein Product origin, supplier, category, deliveryZone, price, stock, distance etc. besitzt:
+
+KEIN zweites paralleles Datenmodell erstellen.
+
+Wenn bereits Delivery Distance oder ETA berechnet wird:
+
+Diese bestehende Logik wiederverwenden oder erweitern.
+
+Wenn bereits Risk Stock existiert:
+
+Daraus das spätere Rescue-/Low-Waste-System aufbauen, nicht ein neues unabhängiges Inventory-System entwickeln.
+
+Wenn bereits Supplier Location / Restaurant Location existiert:
+
+Diese Daten für Local Score und Logistics verwenden.
+
+Wenn bereits Order Dates / Delivery Dates existieren:
+
+Diese Daten für Route Optimization und Delivery Efficiency verwenden.
+
+⸻
+
+3. DAS GRUNDPRINZIP DER ERWEITERUNG
+
+Die neue Funktionalität soll als zusätzliche intelligente Ebene über die bestehende App gelegt werden.
+
+Die bestehende Kernlogik bleibt:
+
+Restaurant:
+
+Product → Cart → Order → Delivery
+
+Supplier:
+
+Order → Confirmation → Preparation → Delivery
+
+Driver:
+
+Route → Stops → Delivery
+
+Neu kommt eine zusätzliche Ebene:
+
+LOCAL
+SUSTAINABILITY
+ZERO WASTE
+LOGISTICS EFFICIENCY
+
+Diese Informationen sollen den bestehenden Workflow ergänzen, nicht ersetzen.
+
+⸻
+
+4. PRODUCT LOCAL INTELLIGENCE
+
+Ziel
+
+Bei jedem Produkt soll Regionalität und Nachhaltigkeit sichtbar werden, ohne die Product UI zu überladen.
+
+Product Detail
+
+Auf der Product Detail Page sollen zusätzliche Informationen integriert werden:
+
+* Herkunft
+* Herkunftsregion
+* Produzent/Supplier
+* Entfernung
+* Saisonalität
+* Verpackungsart, sofern Daten vorhanden
+* regionale Verfügbarkeit
+* Local Score
+* Sustainability Score, sofern sinnvoll
+* relevante Badges
+
+Beispiel:
+
+Tomaten
+
+€4,20/kg
+
+LOCAL SEASONAL
+
+Local Score 91
+
+18 km · Südtirol
+
+Die Darstellung muss zum bestehenden minimalistischen Schwarz-Weiß-Design passen.
+
+Emojis können gezielt für kurze Beschreibungen verwendet werden, z.B.:
+
+📍 Herkunft
+🌱 Saison
+🚚 Entfernung
+♻️ Verpackung
+
+Aber:
+
+Keine Emoji-Explosion.
+
+Minimalistisch bleiben.
+
+⸻
+
+5. CATALOG VIEW – BESONDERS WICHTIG
+
+Die Catalog/Product Cards dürfen auf Mobile NICHT überladen werden.
+
+Analysiere zunächst die aktuelle Product Card.
+
+Ziel:
+
+Der User muss auf den ersten Blick erkennen können:
+
+Dieses Produkt ist lokal / saisonal / besonders nachhaltig.
+
+Aber nicht 10 Informationen auf der Card sehen.
+
+Mögliche Lösung:
+
+* nur 1 kompakter Local Badge
+* optional kleines Icon
+* Local Score kompakt
+* restliche Informationen erst in Product Detail
+* bei Mobile eventuell nur ein kleines visuelles Signal
+* Desktop darf etwas mehr Informationen zeigen
+
+Prüfe selbst, welche Variante am besten zur bestehenden UI passt.
+
+Do not automatically enlarge all cards.
+
+Die bestehende Übersichtlichkeit muss erhalten bleiben.
+
+⸻
+
+6. LOCAL SCORE
+
+Implementiere ein transparentes GastroConnect Local Score System.
+
+Der Score muss nachvollziehbar sein.
+
+Mögliche Faktoren:
+
+* Herkunft / Regionalität
+* Entfernung
+* Lieferkette / Direktheit
+* Saisonalität
+* Verpackung
+* Lieferlogistik
+
+Aber:
+
+Nicht blind neue Datenfelder erstellen.
+
+Prüfe zuerst, welche Faktoren aus vorhandenen Daten bereits zuverlässig berechnet werden können.
+
+Wenn bestimmte Informationen noch nicht zuverlässig vorhanden sind:
+
+* Score nicht künstlich vortäuschen
+* Datenqualität berücksichtigen
+* optional unknown / not available
+* keine erfundenen Werte
+
+Der Score muss modular aufgebaut sein, sodass die Gewichtung später verändert werden kann.
+
+⸻
+
+7. LOCAL SCORE EXPLAINER
+
+Der Local Score bekommt eine kleine eigene Informationsseite bzw. Modal/Info View.
+
+Dort erklären:
+
+What is GastroConnect Local Score?
+
+Welche Faktoren fließen ein?
+
+Beispiel:
+
+📍 Herkunft
+🚚 Entfernung
+🌱 Saison
+📦 Verpackung
+🔗 Lieferkette
+
+Die Darstellung muss einfach sein.
+
+Keine wissenschaftliche Abhandlung.
+
+⸻
+
+8. LANDING PAGE / MARKETING
+
+Die neue Local-/Sustainability-Layer soll auch Marketing-relevant sein.
+
+Prüfe die bestehende Landing Page und integriere eine eigene Section:
+
+GastroConnect Local
+
+Beispielhafte Inhalte:
+
+Buy Local. Waste Less. Deliver Smarter.
+
+Darstellung von:
+
+* Local Score
+* Local purchasing
+* seasonal products
+* waste reduction
+* smarter delivery
+* measurable impact
+
+Diese Section soll nicht wie eine separate Produktseite wirken, sondern die bestehende Landing Page erweitern.
+
+⸻
+
+9. LOCAL FIRST FILTER
+
+Im bestehenden Catalog:
+
+Filter:
+
+All
+Local
+Seasonal
+Low Waste
+
+Optional später:
+
+Best Score
+
+Der Filter muss auf vorhandener Product-/Supplier-Datenlogik aufbauen.
+
+Keine neue parallele Search Engine bauen, wenn die bestehende Filter-/Search-Logik erweitert werden kann.
+
+⸻
+
+10. SEASONAL PRIORITY
+
+Saisonale Produkte sollen nicht aggressiv beworben werden.
+
+Stattdessen:
+
+* Badge
+* kleines Ranking-/Priority-Signal
+* optional „Seasonal“ Filter
+* bei passenden Suchanfragen höhere Sichtbarkeit
+* saisonale Empfehlungen
+
+Beispiel:
+
+User sucht ein Produkt.
+
+Wenn aktuell eine regionale saisonale Alternative vorhanden ist:
+
+🌱 Seasonal local option available
+
+Die bestehende Bestelllogik darf dadurch NICHT blockiert werden.
+
+⸻
+
+11. LOCAL ALTERNATIVE / AI INSIGHT
+
+Optional kleine intelligente Hinweise.
+
+Beispiel:
+
+💡 Local option
+
+This product is 20 km away.
+A local alternative could reduce the delivery distance by ~70%.
+
+Oder:
+
+🌱 Seasonal alternative available
+
+Diese Hinweise dürfen:
+
+* kurz sein
+* dismissible sein
+* nicht den Bestellprozess unterbrechen
+* niemals mehrere Popups nacheinander erzeugen
+
+NO popup spam.
+
+Eine Bestellung muss weiterhin schnell abgeschlossen werden können.
+
+⸻
+
+12. CART / ORDER IMPACT
+
+Im Cart bzw. Order Summary kann kompakt angezeigt werden:
+
+Order Impact
+
+🌱 Local: 72 %
+
+🚚 Consolidated delivery: Yes
+
+♻️ Low Waste: Good
+
+Optional einklappbar.
+
+Der User muss nicht jedes Detail sehen.
+
+Default:
+
+collapsed / compact
+
+Bei Klick:
+
+Details anzeigen.
+
+⸻
+
+13. SMART ORDER QUANTITY
+
+Das bestehende Ordering darf NICHT verlangsamt werden.
+
+Wenn historische Daten vorhanden sind, kann bei der Mengenauswahl dezent stehen:
+
+Recommended: 12 kg
+
+kleines i Icon.
+
+Beim Klick:
+
+Based on your previous orders and consumption patterns.
+
+Der User kann die Empfehlung vollständig ignorieren.
+
+Es darf keinen Zwang, kein Popup und keinen zusätzlichen Schritt geben.
+
+⸻
+
+14. RESTAURANT ORDER QUALITY / MANAGER VIEW
+
+Nicht jeder User braucht dieselben Informationen.
+
+Die bestehende Role-/Permission-Logik verwenden.
+
+Chef / Buyer
+
+Priorität:
+
+* schnell bestellen
+* Preis
+* Verfügbarkeit
+* Lieferdatum
+* Local Badge
+* eventuell kompakter Local Score
+
+NICHT:
+
+10 Statistiken und Nachhaltigkeitskennzahlen.
+
+Manager / Geschäftsführer
+
+Kann mehr sehen:
+
+* Order Quality
+* Local Score
+* Sustainability
+* Waste
+* Local Spend
+* Order Impact
+* Trends
+* Mitarbeiter-/Bestellqualität
+
+Ziel:
+
+Der Manager soll erkennen können:
+
+Wie gut wird innerhalb des Unternehmens eingekauft?
+
+⸻
+
+15. RESTAURANT IMPACT / STATISTICS
+
+Nicht sofort eine komplett neue große App-Page bauen.
+
+Analysiere zuerst bestehende Dashboard-/Statistics-Flächen.
+
+Wenn möglich:
+
+bestehende Dashboard-Struktur erweitern.
+
+Mögliche kompakte Section:
+
+GastroConnect Impact
+
+🌱 Local Spend
+€12,780
+
+📍 Regional Orders
+68 %
+
+♻️ Waste Reduction
+−12 %
+
+🚚 Delivery Efficiency
++18 %
+
+Dann:
+
+View details
+
+Falls eine bestehende Statistics Page existiert, diese erweitern.
+
+Nur wenn keine geeignete bestehende Fläche existiert, eine neue dedizierte Seite erstellen.
+
+⸻
+
+16. MONTHLY IMPACT REPORT
+
+Einmal pro Monat kann ein kompakter Report angezeigt werden.
+
+Beispiel:
+
+August GastroConnect Impact
+
+🌱 68 % regional
+
+♻️ 18 % weniger Waste
+
+🚚 14 % effizientere Lieferungen
+
+💶 €12,780 Local Spend
+
+Das kann beispielsweise am Monatsanfang als einmalige Information erscheinen.
+
+Aber:
+
+* nicht jedes Mal
+* nicht bei jeder Bestellung
+* dismissible
+* später wieder im Dashboard abrufbar
+
+⸻
+
+17. RESTAURANT SCORE
+
+Erweitere das Restaurant-Dashboard um einen aggregierten Score.
+
+Beispiel:
+
+GastroConnect Score
+
+84 / 100
+
+Unterwerte:
+
+🌱 Local
+♻️ Waste
+🚚 Logistics
+📦 Packaging
+
+Aber nur anzeigen, wenn ausreichend Daten vorhanden sind.
+
+Keine Bewertung auf Basis von 2 Bestellungen.
+
+Implementiere Mindestdatenmengen / Data Confidence.
+
+⸻
+
+18. BADGES
+
+Badges sollen sehr sparsam eingesetzt werden.
+
+Beispiele:
+
+LOCAL PARTNER
+
+SEASONAL KITCHEN
+
+LOW WASTE
+
+SMART LOGISTICS
+
+CIRCULAR
+
+LOCAL CHAMPION
+
+Badges müssen auf realen Daten basieren.
+
+Keine Badge erhalten, wenn die notwendigen Daten nicht vorhanden sind.
+
+⸻
+
+19. RISK STOCK → RESCUE MARKET
+
+Dies ist ein besonders wichtiger Integrationspunkt.
+
+Analysiere zuerst die bestehende:
+
+* Warehouse/Lagerlogik
+* Risk Stock
+* Inventory
+* Stock Alerts
+* Expiry/Date fields
+* Supplier stock
+* Manager actions
+
+Wenn ein Lagerarbeiter beispielsweise:
+
+Risk Stock detected
+
+meldet, soll diese Information später einen möglichen Rescue Workflow auslösen können.
+
+Beispiel:
+
+Risk Stock
+
+🍎 Apples
+25 kg
+Potential surplus
+
+Manager/Supplier Office kann:
+
+Create Rescue Offer
+
+Dann wird das Produkt optional im:
+
+RESCUE
+
+Filter sichtbar.
+
+Beispiel:
+
+🍎 Apples – Strudel Quality
+25 kg
+Local
+Rescue Price: €1.40/kg
+
+Das kann besonders für Produkte interessant sein, bei denen perfekte Optik/Qualität nicht notwendig ist.
+
+Wichtig:
+
+Nicht einfach ein zweites Inventory-System bauen.
+
+Die bestehende Risk Stock Logic soll die Datenquelle sein.
+
+⸻
+
+20. SUPPLIER-SIDE RESCUE
+
+Supplier kann, sofern bestehende Permissions dies erlauben:
+
+* Risk Stock sehen
+* verfügbare Überschüsse markieren
+* Rescue Offer erstellen
+* Menge definieren
+* Preis definieren
+* Verfügbarkeitsdatum definieren
+* ggf. Qualitätsklasse definieren
+
+Restaurant sieht:
+
+RESCUE
+
+als zusätzlichen Filter.
+
+⸻
+
+21. SUPPLIER SUSTAINABILITY STATISTICS
+
+Supplier Dashboard erweitern.
+
+Mögliche Kennzahlen:
+
+🌱 Local deliveries
+🚚 Route efficiency
+♻️ Rescue products sold
+📦 Returnable packaging
+📍 Average delivery distance
+🔗 Consolidated deliveries
+
+Aber nur messbare Werte anzeigen.
+
+⸻
+
+22. DELIVERY ROUTE INTELLIGENCE
+
+Das bestehende Routing-System ist bereits vorhanden.
+
+Es soll nicht ersetzt, sondern erweitert werden.
+
+Aktuell:
+
+Route optimization / ETA / Stops.
+
+Neu:
+
+Route Efficiency
+
+* total distance
+* number of stops
+* delivery density
+* route fill rate
+* consolidated deliveries
+* estimated CO₂
+* potentially avoided distance
+
+Beispiel:
+
+Route 24
+
+8 stops
+76 km
+89 % route efficiency
+
+Estimated:
+
+−18 % distance vs. separate deliveries
+
+Die genaue Methodik muss sauber definiert und dokumentiert werden.
+
+⸻
+
+23. CO₂ CALCULATION
+
+Nicht einfach irgendeinen CO₂-Wert anzeigen.
+
+Erstelle eine klar getrennte Calculation Layer:
+
+Inputs
+
+* vehicle type
+* estimated distance
+* route distance
+* number of stops
+* load/utilization, falls verfügbar
+* existing delivery data
+
+Output
+
+Estimated delivery emissions
+
+und optional:
+
+Estimated emissions avoided through consolidation
+
+Immer klar als estimated kennzeichnen, solange keine echten Fahrzeug-/Fuel-/Telematics-Daten vorhanden sind.
+
+⸻
+
+24. DELIVERY DATE / DELIVERY WINDOW LOGIC
+
+Besonders wichtig:
+
+Bestellungen haben möglicherweise:
+
+* ASAP
+* gewünschtes Lieferdatum
+* gewünschte Lieferzeit
+* Restaurant availability window
+
+Die bestehende Order Logic muss vollständig berücksichtigt werden.
+
+Wenn ein Restaurant sagt:
+
+ASAP
+
+darf daraus NICHT automatisch entstehen:
+
+Liefer jederzeit.
+
+Restaurants sollen in ihren Stammdaten definieren können:
+
+Delivery availability
+
+z.B.
+
+Mon–Fri
+07:00–12:00
+14:00–18:00
+
+Wenn eine Bestellung „ASAP“ gewählt wird, muss das Routing diese Verfügbarkeit berücksichtigen.
+
+Wenn ein fixes Lieferdatum gesetzt wurde:
+
+Dieses Datum darf nicht durch Route Optimization verändert werden.
+
+⸻
+
+25. ROUTE CONSOLIDATION
+
+Wenn mehrere Orders kompatibel sind:
+
+* gleicher Supplier
+* gleiche/nahe Zone
+* kompatibles Lieferfenster
+* kompatibler Liefertermin
+* verfügbare Fahrzeugkapazität
+
+kann GastroConnect sie bündeln.
+
+Beispiel:
+
+Restaurant A
+Restaurant B
+Restaurant C
+
+→ gleiche Tour.
+
+Das bestehende Routing muss dabei die bestehenden Business Rules behalten.
+
+⸻
+
+26. ROUTE FILL / DELIVERY EFFICIENCY
+
+Wenn eine bestehende Route bereits geplant ist:
+
+GastroConnect kann erkennen:
+
+Existing route to Eppan tomorrow.
+
+und passende weitere Orders vorschlagen:
+
+2 compatible orders can be added.
+
+Aber:
+
+niemals automatisch eine Lieferung verschieben, wenn der Kunde ein fixes Lieferdatum/-fenster gewählt hat.
+
+⸻
+
+27. DRIVER APP
+
+Die bestehende Driver App bleibt bestehen.
+
+Der Fahrer braucht NICHT alle Sustainability Statistics.
+
+Für ihn relevant:
+
+* optimized route
+* stop order
+* ETA
+* navigation
+* delivery status
+* proof of delivery
+* returnable packaging pickup/return
+* eventuell route efficiency
+
+Keine unnötigen Scores.
+
+⸻
+
+28. ROLE-BASED INFORMATION ARCHITECTURE
+
+Das ist eine zentrale Anforderung.
+
+Nicht jeder User sieht alles.
+
+CHEF / BUYER
+
+Priorität:
+
+1. Product
+2. Price
+3. Availability
+4. Delivery
+5. Local indicator
+6. Seasonal indicator
+
+Minimal.
+
+⸻
+
+RESTAURANT MANAGER / OWNER
+
+Priorität:
+
+1. Order quality
+2. Local Score
+3. Local Spend
+4. Waste
+5. Sustainability
+6. Trends
+7. Employee/order insights
+
+Mehr Analytics.
+
+⸻
+
+SUPPLIER OFFICE / MANAGER
+
+Priorität:
+
+1. Orders
+2. Stock
+3. Risk Stock
+4. Rescue
+5. Routes
+6. Route Efficiency
+7. CO₂ estimate
+8. Supplier sustainability statistics
+
+⸻
+
+WAREHOUSE / LAGER
+
+Priorität:
+
+1. Stock
+2. Risk Stock
+3. Expiry
+4. Quantity
+5. Actions
+
+Keine unnötigen Sustainability Dashboards.
+
+⸻
+
+DRIVER
+
+Priorität:
+
+1. Route
+2. Stops
+3. ETA
+4. Delivery
+5. Returns
+
+Keine komplexen Scores.
+
+⸻
+
+ADMIN
+
+Vollständige Daten-/Systemsicht.
+
+⸻
+
+29. MOBILE FIRST
+
+Die bestehende App ist minimalistisch.
+
+Das muss erhalten bleiben.
+
+Insbesondere Mobile:
+
+DO NOT:
+
+* Product Cards massiv aufblasen
+* 10 Badges gleichzeitig anzeigen
+* zusätzliche Popups
+* permanente AI Messages
+* große Sustainability Panels
+* unnötige neue Navigation Items
+
+Stattdessen:
+
+Progressive Disclosure
+
+Level 1
+
+kleines Icon / Badge
+
+↓
+
+Level 2
+
+Product Detail
+
+↓
+
+Level 3
+
+Info Modal / Details
+
+↓
+
+Level 4
+
+Manager Analytics
+
+Der normale Käufer bekommt nur die Informationen, die er für seine Aufgabe braucht.
+
+⸻
+
+30. EMOJIS
+
+Die bestehende App ist Schwarz/Weiß und minimalistisch.
+
+Emojis können sparsam verwendet werden, um Kategorien schneller verständlich zu machen.
+
+Beispiele:
+
+📍 Local / Herkunft
+🌱 Seasonal
+♻️ Waste
+🚚 Logistics
+📦 Packaging
+💶 Local Spend
+⚡ Rescue
+
+Aber:
+
+Emojis sind Informationsmarker, kein Dekorationselement.
+
+Das visuelle System darf nicht verspielt wirken.
+
+⸻
+
+31. DATA QUALITY / CONFIDENCE
+
+Das ist für alle Scores extrem wichtig.
+
+Nicht jede Information wird sofort verfügbar sein.
+
+Deshalb:
+
+Verified
+
+Daten sind vom Supplier / System bestätigt.
+
+Estimated
+
+Wert wurde berechnet.
+
+Unknown
+
+Keine ausreichenden Daten.
+
+Keine erfundenen Scores.
+
+Wenn ein Score nur auf wenigen Daten basiert:
+
+Local Score: 82 · Low confidence
+
+oder alternativ Score erst ab Mindestdatenmenge anzeigen.
+
+⸻
+
+32. NEST / SÜDTIROL STRATEGIC DIRECTION
+
+Die gesamte Erweiterung soll strategisch auf folgende langfristige Probleme einzahlen:
+
+1. Regional Supply & Demand Matching
+
+Gastronomie-Nachfrage besser mit regionalem Angebot verbinden.
+
+2. Regional Value Creation
+
+Mehr Wertschöpfung in der Region sichtbar machen.
+
+3. Sustainable Gastronomy
+
+Nachhaltigere Einkaufsentscheidungen direkt im Workflow ermöglichen.
+
+4. Food Waste Reduction
+
+Überschüsse und Risk Stock besser nutzen.
+
+5. Logistics Efficiency
+
+Lieferungen bündeln und unnötige Kilometer reduzieren.
+
+6. Data & Digitalization
+
+Aus Einkaufs-, Lager- und Lieferdaten messbare Erkenntnisse erzeugen.
+
+Diese Punkte sollen die langfristige Produktstrategie beeinflussen.
+
+Aber:
+
+Nicht alles davon jetzt bauen.
+
+⸻
+
+33. PRIORITY FRAMEWORK
+
+P0 – MUST HAVE / FIRST IMPLEMENTATION
+
+Nur Funktionen, die bestehende App logisch erweitern:
+
+* Local product metadata
+* Local badges
+* Local Score
+* Local First filter
+* Seasonal indicator
+* Product Detail sustainability information
+* Cart/Order Impact summary
+* Restaurant Local/Impact statistics
+* Monthly impact summary
+* Role-based visibility
+* bestehende Delivery-Daten für Route Efficiency vorbereiten
+
+⸻
+
+P1 – NEXT
+
+* Better Local Alternative
+* Smart Quantity Recommendation
+* Risk Stock → Rescue workflow
+* Rescue filter
+* Supplier sustainability statistics
+* Delivery consolidation
+* Route Efficiency
+* estimated CO₂
+* delivery window-aware route optimization
+
+⸻
+
+P2 – LATER
+
+* Waste prediction
+* route fill optimization
+* backhaul/return optimization
+* demand forecasting
+* regional demand analytics
+* seasonal demand forecasting
+* producer demand matching
+
+⸻
+
+P3 – FUTURE / DO NOT BUILD NOW
+
+Noch NICHT implementieren:
+
+* direkte Produzentenplattform
+* zentrale regionale Distribution
+* Producer marketplace
+* agricultural production planning
+* long-term supply contracts
+* large-scale regional food network
+
+Diese gehören zur langfristigen GastroConnect-Vision, aber nicht zum aktuellen MVP.
+
+⸻
+
+34. ARCHITECTURE REQUIREMENT
+
+Bevor du Änderungen machst:
+
+Erstelle eine interne technische Map:
+
+Existing Component
+
+→ reused / extended / new
+
+Existing Data
+
+→ reused / extended / missing
+
+Existing Function
+
+→ reused / modified / new
+
+Existing Page
+
+→ integrated section / modal / new page
+
+Priorität:
+
+Reuse > Extend > New
+
+Nicht:
+
+New > Duplicate > Replace
+
+⸻
+
+35. NO BREAKING CHANGES
+
+Bestehende Funktionalität darf nicht kaputtgehen.
+
+Vor Änderungen identifizieren:
+
+* critical workflows
+* order creation
+* checkout
+* supplier confirmation
+* delivery scheduling
+* warehouse
+* risk stock
+* route calculation
+* driver workflow
+* permissions
+* existing status transitions
+
+Nach jeder größeren Änderung prüfen:
+
+Restaurant
+
+Can I still order normally?
+
+Supplier
+
+Can I still receive/confirm/manage orders?
+
+Warehouse
+
+Can I still manage stock/risk stock?
+
+Driver
+
+Can I still complete deliveries?
+
+Manager
+
+Can I still see/manage existing data?
+
+⸻
+
+36. DO NOT OVERENGINEER
+
+Ein zentraler Grundsatz:
+
+GastroConnect soll nicht zu einer Sustainability Dashboard App werden.
+
+Der Marketplace bleibt das Produkt.
+
+Sustainability ist eine intelligente Ebene, die den Marketplace besser macht.
+
+Der Nutzer soll nicht denken:
+
+„Ich muss jetzt Nachhaltigkeit verwalten.“
+
+Sondern:
+
+„Ich bestelle wie immer – GastroConnect zeigt mir automatisch die bessere Option.“
+
+⸻
+
+37. DO NOT LOSE THE PLOT
+
+Die übergeordnete Vision lautet:
+
+GastroConnect macht regionale Gastronomie digital effizienter, nachhaltiger und messbarer, ohne den Einkaufsprozess komplizierter zu machen.
+
+Jede neue Funktion muss gegen diese Frage geprüft werden:
+
+Does this make GastroConnect:
+
+* more local?
+* less wasteful?
+* more efficient?
+* more data-driven?
+* easier to use?
+* more valuable for restaurants?
+* more valuable for suppliers?
+* more useful for logistics?
+
+Wenn nicht:
+
+Do not implement it just because it sounds innovative.
+
+⸻
+
+38. IMPLEMENTATION PROCESS
+
+Arbeite in dieser Reihenfolge:
+
+STEP 1
+
+Bestehende App vollständig analysieren.
+
+STEP 2
+
+Existing vs Partial vs Missing dokumentieren.
+
+STEP 3
+
+Bestehende Datenmodelle identifizieren.
+
+STEP 4
+
+Mapping erstellen:
+
+Feature → Existing Data → Existing Component → Required Extension
+
+STEP 5
+
+P0 implementieren.
+
+STEP 6
+
+Nach jedem größeren Feature bestehende Workflows testen.
+
+STEP 7
+
+P1 implementieren.
+
+STEP 8
+
+Data Quality prüfen.
+
+STEP 9
+
+Nur danach P2 evaluieren.
+
+⸻
+
+39. FINAL PRODUCT PRINCIPLE
+
+GastroConnect soll am Ende nicht einfach sagen:
+
+„Dieses Produkt ist nachhaltig.“
+
+Es soll dem User intelligent zeigen:
+
+Warum?
+
+Beispiel:
+
+Tomatoes
+
+LOCAL
+
+18 km
+🌱 Seasonal
+♻️ Reusable packaging
+
+Local Score 94
+
+Und beim Checkout:
+
+🌱 Good local choice
+
+This order contains 72% regional products and is planned within an existing delivery route.
+
+Der User muss dafür keinen zusätzlichen Schritt machen.
+
+Das ist das Ziel.
+
+⸻
+
+IMPORTANT
+
+Do not implement everything blindly in one pass.
+
+First:
+
+1. Audit the existing application.
+2. Explain what already exists.
+3. Identify reusable data and logic.
+4. Identify conflicts / duplication risks.
+5. Propose the exact integration points.
+6. Only then implement the features according to P0 → P1 → P2 priority.
+
+If you discover that an existing feature already solves part of a requirement, extend it instead of creating a parallel feature.
+
+If a requested feature cannot currently be calculated reliably from existing data, do not fake it. Identify the missing data and create the smallest sensible extension required to make it measurable later.
+
+The goal is not maximum feature count.
+
+The goal is:
+
+A cleaner, smarter, more local and more sustainable GastroConnect without losing the simplicity and speed of the existing product.
