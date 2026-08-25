@@ -79,6 +79,10 @@ export function UserProvider({ children }: { children: ReactNode }) {
   const { isLoaded: clerkLoaded, isSignedIn } = useClerkAuth();
   const { signOut } = useClerk();
   const [meSnapshot] = useState<MeResponse | undefined>(readMeSnapshot);
+  // Prevent the cold-start placeholder from resurrecting the previous
+  // dashboard during the short interval between signOut() and Clerk's
+  // signed-out state update.
+  const [logoutRequested, setLogoutRequested] = useState(false);
   const [currentUser, setCurrentUser] = useState<User | null>(
     () => (meSnapshot?.org as User | undefined) ?? null,
   );
@@ -123,10 +127,15 @@ export function UserProvider({ children }: { children: ReactNode }) {
   // When Clerk says signed-out, also clear local state and snapshot.
   useEffect(() => {
     if (clerkLoaded && !isSignedIn) {
+      setLogoutRequested(false);
       setCurrentUser(null);
       setCurrentMember(null);
       writeMeSnapshot(undefined);
     }
+  }, [clerkLoaded, isSignedIn]);
+
+  useEffect(() => {
+    if (clerkLoaded && isSignedIn) setLogoutRequested(false);
   }, [clerkLoaded, isSignedIn]);
 
   const currentRole = (currentUser?.role as UserRole) ?? "restaurant";
@@ -136,6 +145,8 @@ export function UserProvider({ children }: { children: ReactNode }) {
   // refresh runs. This is display-only optimism: once the first real request
   // completes, its result remains authoritative.
   const hasRestorableSession = !!(
+    !logoutRequested
+    &&
     meSnapshot?.authenticated
     && meSnapshot.org
     && !isFetchedAfterMount
@@ -154,6 +165,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
   const refetchMe = useCallback(() => refetch(), [refetch]);
 
   const logout = useCallback(async () => {
+    setLogoutRequested(true);
     setCurrentUser(null);
     setCurrentMember(null);
     writeMeSnapshot(undefined);

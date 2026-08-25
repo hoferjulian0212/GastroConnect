@@ -160,4 +160,23 @@ describe("public registration approval UI", () => {
       "/registration-status",
     );
   });
+
+  test("logging out from a dashboard returns to landing instead of rendering an empty dashboard", async () => {
+    window.history.replaceState({}, "", "/restaurant");
+    mockMutableMe({
+      authenticated: true,
+      member: { id: "member-demo", organizationId: "org-demo", role: "admin", email: "demo@example.com", name: "Demo" },
+      org: { id: "org-demo", name: "Demo", companyName: "Demo", role: "restaurant" },
+    });
+    render(<App />);
+
+    await waitFor(() => expect(screen.getByTestId("app-header-shell")).toBeInTheDocument());
+    fireEvent.pointerDown(screen.getByTestId("button-desktop-profile"));
+    fireEvent.click(screen.getByTestId("button-desktop-profile"));
+    await waitFor(() => expect(screen.getByTestId("menu-item-logout")).toBeInTheDocument());
+    fireEvent.click(screen.getByTestId("menu-item-logout"));
+
+    await waitFor(() => expect(window.location.pathname).toBe("/"));
+    expect(screen.queryByTestId("app-header-shell")).not.toBeInTheDocument();
+  });
 });
