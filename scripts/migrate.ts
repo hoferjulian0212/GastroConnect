@@ -32,6 +32,10 @@ const checkoutMigrations = [
     name: "0010_checkout_fingerprint_dedup",
     file: path.join(migrationFolder, "0010_checkout_fingerprint_dedup.sql"),
   },
+  {
+    name: "0011_rescue_promotion_allocations",
+    file: path.join(migrationFolder, "0011_rescue_promotion_allocations.sql"),
+  },
 ] as const;
 
 function parsePositiveTimeout(value: string | undefined, fallback: number): number {
@@ -194,6 +198,30 @@ const expectedIndexes: Record<string, ExpectedIndex> = {
     unique: false,
     predicate: null,
   },
+  uniq_promotions_source_risk: {
+    table: "promotions",
+    columns: ["source_risk_id"],
+    unique: true,
+    predicate: null,
+  },
+  idx_order_items_promotion_id: {
+    table: "order_items",
+    columns: ["promotion_id"],
+    unique: false,
+    predicate: null,
+  },
+  uniq_promotion_allocations_order_item: {
+    table: "promotion_allocations",
+    columns: ["order_item_id"],
+    unique: true,
+    predicate: null,
+  },
+  idx_promotion_allocations_promotion: {
+    table: "promotion_allocations",
+    columns: ["promotion_id"],
+    unique: false,
+    predicate: null,
+  },
 };
 
 function normalizePredicate(predicate: string | null): string | null {
@@ -221,6 +249,18 @@ export async function verifyCheckoutMigration(client: Queryable = pool): Promise
   }
   if (!(await relationExists(client, "order_notification_retries"))) {
     missingColumns.push("order_notification_retries");
+  }
+  for (const column of [
+    "promotion_type", "source_risk_id", "quantity_cap", "rescue_quality",
+    "rescue_reserved_quantity", "rescue_sold_quantity",
+  ]) {
+    if (!(await columnExists(client, "promotions", column))) missingColumns.push(`promotions.${column}`);
+  }
+  if (!(await columnExists(client, "order_items", "promotion_id"))) {
+    missingColumns.push("order_items.promotion_id");
+  }
+  if (!(await relationExists(client, "promotion_allocations"))) {
+    missingColumns.push("promotion_allocations");
   }
 
   const indexNames = Object.keys(expectedIndexes);
@@ -315,7 +355,11 @@ async function applyCheckoutMigrations(client: PoolClient): Promise<void> {
         // Verify the PostgreSQL catalog before recording this migration. This
         // prevents a same-named, stale or non-unique index from being certified
         // when CREATE INDEX IF NOT EXISTS skips it.
-        await verifyCheckoutMigration(client);
+        // The verifier describes the newest schema. Older versions must not be
+        // judged against columns introduced by a later migration in this run.
+        if (migration === checkoutMigrations[checkoutMigrations.length - 1]) {
+          await verifyCheckoutMigration(client);
+        }
         await client.query(
           `INSERT INTO "deployment_migrations" ("name") VALUES ($1)`,
           [migration.name],

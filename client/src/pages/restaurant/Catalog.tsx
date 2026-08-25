@@ -9,9 +9,9 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Search, Package, Store, Tag, ArrowLeft, Carrot, Apple, Beef, Fish, Milk, Wine, Wheat, Flame, MoreHorizontal, Sandwich, Coffee, Droplets, Check, Trash2, ArrowRight, Plus, Minus } from "lucide-react";
+import { Search, Package, Store, Tag, ArrowLeft, Carrot, Apple, Beef, Fish, Milk, Wine, Wheat, Flame, MoreHorizontal, Sandwich, Coffee, Droplets, Check, Trash2, ArrowRight, Plus, Minus, HeartHandshake } from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import type { User, ProductWithSupplierAndPromotion, CartItemWithProduct, Promotion } from "@shared/schema";
+import type { User, ProductWithSupplierAndPromotion, CartItemWithProduct, PromotionWithRescueState } from "@shared/schema";
 import { useLanguage } from "@/context/LanguageContext";
 import { useT } from "@/lib/translations";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -26,7 +26,8 @@ import { useFlyToCart } from "@/hooks/use-fly-to-cart";
 import { useScrollCompact } from "@/hooks/use-scroll-compact";
 import { motion, AnimatePresence } from "framer-motion";
 
-type CartItemWithPromo = CartItemWithProduct & { activePromotion?: Promotion | null };
+type CartItemWithPromo = CartItemWithProduct & { activePromotion?: PromotionWithRescueState | null };
+type CatalogProduct = ProductWithSupplierAndPromotion;
 
 function CategoryIndicator({
   icon: Icon,
@@ -689,6 +690,7 @@ export default function RestaurantCatalog() {
  };
  const [onlyAvailable, setOnlyAvailable] = useState(false);
  const [onlyPromotions, setOnlyPromotions] = useState(false);
+ const [onlyRescue, setOnlyRescue] = useState(false);
  const { lang } = useLanguage();
  const t = useT(lang);
 
@@ -715,6 +717,8 @@ export default function RestaurantCatalog() {
  setSelectedSupplierState(supplierParam || "all");
  const promotionsParam = p.get("promotions");
  setOnlyPromotions(promotionsParam === "true");
+ const rescueParam = p.get("rescue");
+ setOnlyRescue(rescueParam === "true");
  };
  syncFromUrl();
  window.addEventListener("popstate", syncFromUrl);
@@ -725,7 +729,7 @@ export default function RestaurantCatalog() {
  queryKey: ["/api/suppliers"],
  });
 
- const { data: products, isLoading: productsLoading } = useQuery<ProductWithSupplierAndPromotion[]>({
+ const { data: products, isLoading: productsLoading } = useQuery<CatalogProduct[]>({
  queryKey: [`/api/products?restaurantId=${currentUser?.id}`],
  enabled: !!currentUser?.id,
  });
@@ -775,7 +779,8 @@ export default function RestaurantCatalog() {
  searchIncludes(p.description, searchQuery);
  const matchesAvailability = !onlyAvailable || p.inStock;
  const matchesPromotion = !onlyPromotions || !!p.activePromotion;
- return matchesSearch && matchesAvailability && matchesPromotion;
+ const matchesRescue = !onlyRescue || p.activePromotion?.promotionType === "rescue";
+ return matchesSearch && matchesAvailability && matchesPromotion && matchesRescue;
  })
  : [];
 
@@ -920,9 +925,10 @@ export default function RestaurantCatalog() {
  );
  };
 
- const renderProductCard = (product: ProductWithSupplierAndPromotion) => {
+ const renderProductCard = (product: CatalogProduct) => {
  const promo = product.activePromotion;
  const hasPromo = !!promo;
+ const isRescue = promo?.promotionType === "rescue";
  const originalPrice = parseFloat(product.price);
  const discountedPrice = hasPromo ? originalPrice * (1 - promo.discountPercent / 100) : originalPrice;
  const cartQty = cartQtyByProduct.get(product.id) || 0;
@@ -954,6 +960,11 @@ export default function RestaurantCatalog() {
  -{promo.discountPercent}%
  </Badge>
  )}
+  {isRescue && (
+  <Badge className="bg-amber-500 text-white border-0 text-[9px] leading-tight px-1.5 py-0.5 whitespace-nowrap" data-testid={`badge-rescue-${product.id}`}>
+  {t("common", "rescue")}
+  </Badge>
+  )}
  {previouslyOrdered && (
  <CategoryIndicator
  icon={History}
@@ -994,6 +1005,12 @@ export default function RestaurantCatalog() {
  <span className="text-[10px] text-muted-foreground truncate block">
  {product.supplier?.companyName || product.supplier?.name}
  </span>
+  {isRescue && (
+  <span className="text-[9px] text-amber-700 dark:text-amber-400 truncate block" data-testid={`text-rescue-availability-${product.id}`}>
+  {promo.rescueAvailableQuantity ?? 0} {product.unit} {t("common", "rescueAvailable")}
+  {promo.rescueLifecycle ? ` · ${t("common", `rescueLifecycle_${promo.rescueLifecycle}` as any)}` : ""}
+  </span>
+  )}
  <div className="mt-auto pt-1 flex items-center justify-between gap-1.5">
  <div className="min-w-0">
  {hasPromo ? (
@@ -1270,6 +1287,28 @@ export default function RestaurantCatalog() {
  <Package className="h-3.5 w-3.5 md:h-4 md:w-4 mr-1.5" />
  {t("common", "onlyAvailable")}
  {onlyAvailable && <Check className="h-3.5 w-3.5 ml-1.5" />}
+ </Button>
+ <Button
+ variant={onlyRescue ? "default" : "outline"}
+ onClick={() => {
+ const next = !onlyRescue;
+ setOnlyRescue(next);
+ const p = new URLSearchParams(window.location.search);
+ if (next) p.set("rescue", "true");
+ else p.delete("rescue");
+ const qs = p.toString();
+ window.history.pushState(null, "", `/restaurant/catalog${qs ? `?${qs}` : ""}`);
+ }}
+ className={`text-xs md:text-sm toggle-elevate transition-all ${
+ onlyRescue
+ ? "bg-amber-500 text-white border-amber-500 font-semibold shadow-md ring-2 ring-amber-500/30 hover:bg-amber-600"
+ : "bg-white dark:bg-zinc-900 hover:bg-white dark:hover:bg-zinc-800"
+ }`}
+ data-testid="toggle-rescue-only"
+ >
+ <HeartHandshake className="h-3.5 w-3.5 md:h-4 md:w-4 mr-1.5" />
+ {t("common", "rescue")}
+ {onlyRescue && <Check className="h-3.5 w-3.5 ml-1.5" />}
  </Button>
  <Button
  variant={onlyPromotions ? "default" : "outline"}

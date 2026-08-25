@@ -1,5 +1,5 @@
 import { searchIncludes } from "@shared/searchText";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { HeroPortal } from "@/context/HeroContext";
 import { SectionTabs } from "@/components/SectionTabs";
 import PullToRefreshWrapper from "@/components/PullToRefreshWrapper";
@@ -35,7 +35,7 @@ import { InventoryRiskCard } from "@/components/InventoryRiskCard";
 import { InventoryRiskFormDialog } from "@/components/InventoryRiskFormDialog";
 import { InventoryRiskWizard } from "@/components/InventoryRiskWizard";
 import { INVENTORY_RISK_STATUSES, INVENTORY_RISK_QUALITY } from "@shared/schema";
-import type { Product, InventoryRiskRecordWithDetails } from "@shared/schema";
+import type { Product, InventoryRiskRecordWithDetails, User } from "@shared/schema";
 
 export default function SupplierInventoryRisk() {
   const { currentUser, currentMember } = useUser();
@@ -268,6 +268,7 @@ function CreatePromotionDialog({
   onOpenChange: (open: boolean) => void;
   onSuccess: () => void;
 }) {
+  const { currentUser } = useUser();
   const { lang } = useLanguage();
   const t = useT(lang);
   const { toast } = useToast();
@@ -277,6 +278,21 @@ function CreatePromotionDialog({
   const [discountPercent, setDiscountPercent] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  const [quantityLimit, setQuantityLimit] = useState("");
+  const [targetMode, setTargetMode] = useState<"all" | "specific">("all");
+  const [selectedRestaurantIds, setSelectedRestaurantIds] = useState<string[]>([]);
+
+  const { data: restaurants } = useQuery<User[]>({
+    queryKey: [`/api/supplier/restaurants?supplierId=${currentUser?.id}`],
+    enabled: !!record && !!currentUser?.id,
+  });
+
+  useEffect(() => {
+    if (!record) return;
+    setQuantityLimit(String(record.flaggedQuantity));
+    setTargetMode("all");
+    setSelectedRestaurantIds([]);
+  }, [record]);
 
   const mutation = useMutation({
     mutationFn: async () => {
@@ -285,8 +301,10 @@ function CreatePromotionDialog({
         name: name.trim() || undefined,
         description: description.trim() || undefined,
         discountPercent: Number(discountPercent),
+        quantityLimit: Number(quantityLimit),
         startDate: new Date(startDate).toISOString(),
         endDate: new Date(endDate).toISOString(),
+        targetRestaurantIds: targetMode === "specific" ? selectedRestaurantIds : null,
       });
     },
     onSuccess: () => {
@@ -297,21 +315,64 @@ function CreatePromotionDialog({
       setDiscountPercent("");
       setStartDate("");
       setEndDate("");
+      setQuantityLimit("");
+      setTargetMode("all");
+      setSelectedRestaurantIds([]);
       onSuccess();
     },
     onError: () => toast({ title: t("inventoryRisk", "actionError"), variant: "destructive" }),
   });
 
-  const canSubmit = Number(discountPercent) > 0 && Number(discountPercent) <= 100 && !!startDate && !!endDate;
+  const rescueQuantity = Number(quantityLimit);
+  const canSubmit =
+    Number(discountPercent) > 0 &&
+    Number(discountPercent) <= 100 &&
+    rescueQuantity > 0 &&
+    rescueQuantity <= (record?.flaggedQuantity ?? 0) &&
+    !!startDate &&
+    !!endDate &&
+    (targetMode === "all" || selectedRestaurantIds.length > 0);
 
   return (
     <Dialog open={!!record} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md" data-testid="dialog-create-promotion">
+      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto" data-testid="dialog-create-promotion">
         <DialogHeader>
-          <DialogTitle>{t("inventoryRisk", "createPromotion")}</DialogTitle>
-          <DialogDescription>{record?.product?.name}</DialogDescription>
+          <DialogTitle>{t("inventoryRisk", "createRescueOffer")}</DialogTitle>
+          <DialogDescription>{t("inventoryRisk", "createRescueOfferDesc")}</DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-2">
+          <div className="rounded-xl border bg-muted/30 p-3 grid grid-cols-2 gap-x-3 gap-y-2 text-sm">
+            <div className="col-span-2">
+              <span className="text-xs text-muted-foreground">{t("inventoryRisk", "product")}</span>
+              <p className="font-semibold" data-testid="text-rescue-product">{record?.product?.name ?? "—"}</p>
+            </div>
+            <div>
+              <span className="text-xs text-muted-foreground">{t("inventoryRisk", "riskSource")}</span>
+              <p className="font-medium">{record?.riskReason ? t("inventoryRisk", `reason_${record.riskReason}` as any) : "—"}</p>
+            </div>
+            <div>
+              <span className="text-xs text-muted-foreground">{t("inventoryRisk", "quality")}</span>
+              <p className="font-medium">{record?.qualityStatus ? t("inventoryRisk", `quality_${record.qualityStatus}` as any) : "—"}</p>
+            </div>
+            <div className="col-span-2">
+              <span className="text-xs text-muted-foreground">{t("inventoryRisk", "reportedQuantity")}</span>
+              <p className="font-medium">{record?.flaggedQuantity ?? "—"} {record?.product?.unit ?? ""}</p>
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <Label>{t("inventoryRisk", "rescueQuantity")} *</Label>
+            <Input
+              type="number"
+              min={1}
+              max={record?.flaggedQuantity}
+              value={quantityLimit}
+              onChange={(e) => setQuantityLimit(e.target.value)}
+              data-testid="input-rescue-quantity"
+            />
+            <p className="text-xs text-muted-foreground">
+              {t("inventoryRisk", "rescueQuantityHint")} {record?.flaggedQuantity ?? 0} {record?.product?.unit ?? ""}
+            </p>
+          </div>
           <div className="space-y-1.5">
             <Label>{t("inventoryRisk", "promoName")}</Label>
             <Input
@@ -352,6 +413,34 @@ function CreatePromotionDialog({
               <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} data-testid="input-promo-end" />
             </div>
           </div>
+          <div className="space-y-2">
+            <Label>{t("promotionsPage", "targetRestaurants")}</Label>
+            <div className="grid grid-cols-2 gap-2">
+              <Button type="button" variant={targetMode === "all" ? "default" : "outline"} onClick={() => setTargetMode("all")}>
+                {t("promotionsPage", "allRestaurants")}
+              </Button>
+              <Button type="button" variant={targetMode === "specific" ? "default" : "outline"} onClick={() => setTargetMode("specific")}>
+                {t("promotionsPage", "specificRestaurants")}
+              </Button>
+            </div>
+            {targetMode === "specific" && (
+              <div className="max-h-36 overflow-y-auto rounded-lg border p-2 space-y-1">
+                {(restaurants ?? []).map((restaurant) => {
+                  const selected = selectedRestaurantIds.includes(restaurant.id);
+                  return (
+                    <button
+                      key={restaurant.id}
+                      type="button"
+                      onClick={() => setSelectedRestaurantIds((ids) => selected ? ids.filter((id) => id !== restaurant.id) : [...ids, restaurant.id])}
+                      className={`w-full rounded-md px-2 py-2 text-left text-sm ${selected ? "bg-primary/10 font-medium" : "hover:bg-muted"}`}
+                    >
+                      {restaurant.companyName || restaurant.name}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} data-testid="button-cancel-promo">
@@ -359,7 +448,7 @@ function CreatePromotionDialog({
           </Button>
           <Button onClick={() => mutation.mutate()} disabled={!canSubmit || mutation.isPending} data-testid="button-confirm-promo">
             {mutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-            {t("inventoryRisk", "createPromotion")}
+            {t("inventoryRisk", "createRescueOffer")}
           </Button>
         </DialogFooter>
       </DialogContent>

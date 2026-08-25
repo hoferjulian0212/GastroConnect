@@ -1,5 +1,6 @@
 import { db } from "./db";
 import { applyBucketMovement } from "./stockBuckets";
+import { getRescueAllocationTarget, getRescuePromotionState } from "./rescuePromotion";
 import { eq, and, desc, or, sql, ne, inArray, notInArray, gt, gte, lte, isNull, isNotNull } from "drizzle-orm";
 import {
   users, products, orders, orderItems, cartItems, conversations, messages, complaints, notifications, orderNotificationRetries, complaintComments, documents,
@@ -18,8 +19,8 @@ import {
   type Document, type InsertDocument, type DocumentWithDetails,
   type OrderStatusHistory, type OrderStatusHistoryWithUser,
   type ComplaintStatusHistory, type ComplaintStatusHistoryWithUser,
-  type Promotion, type InsertPromotion, type PromotionWithProduct,
-  inventoryRiskRecords,
+  type Promotion, type InsertPromotion, type PromotionWithProduct, type PromotionWithRescueState,
+  inventoryRiskRecords, promotionAllocations,
   type InventoryRiskRecord, type InsertInventoryRiskRecord, type InventoryRiskRecordWithDetails,
   type DeliverySchedule, type InsertDeliverySchedule,
   type CustomMinOrderQuantity, type InsertCustomMinOrderQuantity,
@@ -444,8 +445,8 @@ export interface IStorage {
   getPromotion(id: string): Promise<Promotion | undefined>;
   getPromotionsByGroup(groupId: string): Promise<Promotion[]>;
   getPromotionsBySupplier(supplierId: string): Promise<PromotionWithProduct[]>;
-  getActivePromotionForProduct(productId: string, executor?: any): Promise<Promotion | undefined>;
-  getActivePromotions(): Promise<Promotion[]>;
+  getActivePromotionForProduct(productId: string, executor?: any, restaurantId?: string): Promise<PromotionWithRescueState | undefined>;
+  getActivePromotions(restaurantId?: string, executor?: any): Promise<PromotionWithRescueState[]>;
   createPromotion(promotion: InsertPromotion, executor?: any): Promise<Promotion>;
   updatePromotion(id: string, data: Partial<InsertPromotion>, executor?: any): Promise<Promotion | undefined>;
   deletePromotion(id: string): Promise<void>;
@@ -466,9 +467,10 @@ export interface IStorage {
   ): Promise<InventoryRiskRecord | undefined>;
   actionInventoryRiskRecord(
     recordId: string,
-    productId: string,
-    promotion: InsertPromotion,
+    supplierId: string,
+    input: Pick<InsertPromotion, "discountPercent" | "startDate" | "endDate" | "isActive" | "name" | "description" | "groupId" | "targetRestaurantIds"> & { quantityCap: number },
   ): Promise<{ record: InventoryRiskRecord; promotion: Promotion }>;
+  reconcileRescueAllocations(orderId: string, status: string, previousStatus: string, confirmedQuantitiesByItemId: Record<string, number> | undefined, executor: any): Promise<void>;
   getOpenInventoryRiskCount(supplierId: string): Promise<number>;
 
   // Custom Min Order Quantities
@@ -1217,7 +1219,10 @@ export class DatabaseStorage implements IStorage {
         const orderNumber = await this.generateUniqueOrderNumber();
         const [order] = await tx.insert(orders).values({ ...entry.order, orderNumber }).returning();
         for (const item of entry.items) {
-          await tx.insert(orderItems).values({ ...item, orderId: order.id });
+          const [insertedItem] = await tx.insert(orderItems).values({ ...item, orderId: order.id }).returning();
+          if (insertedItem.promotionId) {
+            await this.reserveRescueAllocation(tx, insertedItem.id, insertedItem.promotionId, insertedItem.productId, entry.order.supplierId, entry.order.restaurantId, insertedItem.quantity);
+          }
         }
 
         const reserveByProduct = new Map<string, { qty: number; name: string }>();
@@ -4455,32 +4460,59 @@ export class DatabaseStorage implements IStorage {
     for (const promo of promos) {
       const [product] = await db.select().from(products).where(eq(products.id, promo.productId));
       if (product) {
-        result.push({ ...promo, product });
+        result.push({ ...this.withRescueState(promo), product });
       }
     }
     return result;
   }
 
-  async getActivePromotionForProduct(productId: string, executor: any = db): Promise<Promotion | undefined> {
-    const [promo] = await executor.select().from(promotions)
-      .where(and(
-        eq(promotions.productId, productId),
-        eq(promotions.isActive, true),
-        sql`${promotions.startDate} <= NOW()`,
-        sql`${promotions.endDate} >= NOW()`
-      ))
-      .orderBy(desc(promotions.discountPercent))
-      .limit(1);
-    return promo;
+  private withRescueState(promo: Promotion): PromotionWithRescueState {
+    const state = getRescuePromotionState(promo);
+    return {
+      ...promo,
+      rescueAvailableQuantity: state.availableQuantity,
+      rescueLifecycle: state.lifecycle,
+    };
   }
 
-  async getActivePromotions(): Promise<Promotion[]> {
-    return db.select().from(promotions)
+  async getActivePromotionForProduct(productId: string, executor: any = db, restaurantId?: string): Promise<PromotionWithRescueState | undefined> {
+    const conditions: any[] = [
+      eq(promotions.productId, productId),
+      eq(promotions.isActive, true),
+      sql`${promotions.startDate} <= NOW()`,
+      sql`${promotions.endDate} >= NOW()`,
+      sql`(${promotions.promotionType} = 'generic' OR ${promotions.rescueReservedQuantity} + ${promotions.rescueSoldQuantity} < ${promotions.quantityCap})`,
+    ];
+    if (restaurantId) {
+      conditions.push(sql`(${promotions.targetRestaurantIds} IS NULL OR cardinality(${promotions.targetRestaurantIds}) = 0 OR ${restaurantId} = ANY(${promotions.targetRestaurantIds}))`);
+    }
+    const [promo] = await executor.select().from(promotions)
       .where(and(
-        eq(promotions.isActive, true),
-        sql`${promotions.startDate} <= NOW()`,
-        sql`${promotions.endDate} >= NOW()`
+        ...conditions
+      ))
+      .orderBy(
+        sql`CASE WHEN ${promotions.promotionType} = 'rescue' THEN 1 ELSE 0 END DESC`,
+        desc(promotions.discountPercent),
+      )
+      .limit(1);
+    return promo ? this.withRescueState(promo) : undefined;
+  }
+
+  async getActivePromotions(restaurantId?: string, executor: any = db): Promise<PromotionWithRescueState[]> {
+    const conditions: any[] = [
+      eq(promotions.isActive, true),
+      sql`${promotions.startDate} <= NOW()`,
+      sql`${promotions.endDate} >= NOW()`,
+      sql`(${promotions.promotionType} = 'generic' OR ${promotions.rescueReservedQuantity} + ${promotions.rescueSoldQuantity} < ${promotions.quantityCap})`,
+    ];
+    if (restaurantId) {
+      conditions.push(sql`(${promotions.targetRestaurantIds} IS NULL OR cardinality(${promotions.targetRestaurantIds}) = 0 OR ${restaurantId} = ANY(${promotions.targetRestaurantIds}))`);
+    }
+    const rows = await executor.select().from(promotions)
+      .where(and(
+        ...conditions
       ));
+    return rows.map((promo: Promotion) => this.withRescueState(promo));
   }
 
   async createPromotion(promotion: InsertPromotion, executor: any = db): Promise<Promotion> {
@@ -4494,11 +4526,25 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deletePromotion(id: string): Promise<void> {
+    const [promo] = await db.select().from(promotions).where(eq(promotions.id, id));
+    if (promo?.promotionType === "rescue") {
+      await db.update(promotions).set({ isActive: false }).where(eq(promotions.id, id));
+      return;
+    }
     await db.delete(promotions).where(eq(promotions.id, id));
   }
 
   async deletePromotionsByGroup(groupId: string): Promise<void> {
-    await db.delete(promotions).where(eq(promotions.groupId, groupId));
+    await db.transaction(async (tx) => {
+      await tx.update(promotions).set({ isActive: false }).where(and(
+        eq(promotions.groupId, groupId),
+        eq(promotions.promotionType, "rescue"),
+      ));
+      await tx.delete(promotions).where(and(
+        eq(promotions.groupId, groupId),
+        eq(promotions.promotionType, "generic"),
+      ));
+    });
   }
 
   // Inventory Risk Records
@@ -4554,24 +4600,111 @@ export class DatabaseStorage implements IStorage {
 
   async actionInventoryRiskRecord(
     recordId: string,
-    productId: string,
-    promotion: InsertPromotion,
+    supplierId: string,
+    input: Pick<InsertPromotion, "discountPercent" | "startDate" | "endDate" | "isActive" | "name" | "description" | "groupId" | "targetRestaurantIds"> & { quantityCap: number },
   ): Promise<{ record: InventoryRiskRecord; promotion: Promotion }> {
     return await db.transaction(async (tx) => {
-      // Reuse the shared promotion code path (getActivePromotionForProduct/
-      // updatePromotion/createPromotion) inside the transaction so risk-action
-      // promotions behave identically to ones created via /api/promotions.
-      const existingPromo = await this.getActivePromotionForProduct(productId, tx);
-      if (existingPromo) {
-        await this.updatePromotion(existingPromo.id, { isActive: false }, tx);
+      await tx.execute(sql`SELECT id FROM ${inventoryRiskRecords} WHERE id = ${recordId} FOR UPDATE`);
+      const [risk] = await tx.select().from(inventoryRiskRecords).where(eq(inventoryRiskRecords.id, recordId));
+      if (!risk || risk.supplierId !== supplierId) throw new Error("Inventory risk record not found");
+      if (risk.linkedPromotionId) {
+        const [existing] = await tx.select().from(promotions).where(eq(promotions.id, risk.linkedPromotionId));
+        if (existing) return { record: risk, promotion: existing };
       }
-      const createdPromo = await this.createPromotion(promotion, tx);
+      if (risk.status !== "Open") throw new Error("Only open records can be actioned");
+      if (!Number.isInteger(input.quantityCap) || input.quantityCap <= 0 || input.quantityCap > risk.flaggedQuantity) {
+        throw new Error("Invalid Rescue quantity");
+      }
+      const [createdPromo] = await tx.insert(promotions).values({
+        ...input,
+        productId: risk.productId,
+        supplierId: risk.supplierId,
+        promotionType: "rescue",
+        sourceRiskId: risk.id,
+        quantityCap: input.quantityCap,
+        rescueQuality: risk.qualityStatus,
+      }).returning();
       const [updatedRecord] = await tx.update(inventoryRiskRecords)
         .set({ status: "Action Taken", linkedPromotionId: createdPromo.id, updatedAt: new Date() })
         .where(eq(inventoryRiskRecords.id, recordId))
         .returning();
       return { record: updatedRecord, promotion: createdPromo };
     });
+  }
+
+  private async reserveRescueAllocation(tx: any, orderItemId: string, promotionId: string, productId: string, supplierId: string, restaurantId: string, quantity: number): Promise<void> {
+    await tx.execute(sql`SELECT id FROM ${promotions} WHERE id = ${promotionId} FOR UPDATE`);
+    const [promo] = await tx.select().from(promotions).where(eq(promotions.id, promotionId));
+    if (!promo || promo.promotionType !== "rescue") return;
+    const now = new Date();
+    const targeted = !promo.targetRestaurantIds?.length || promo.targetRestaurantIds.includes(restaurantId);
+    const available = (promo.quantityCap ?? 0) - promo.rescueReservedQuantity - promo.rescueSoldQuantity;
+    if (!promo.isActive || promo.startDate > now || promo.endDate < now || promo.productId !== productId || promo.supplierId !== supplierId || !targeted || quantity > available) {
+      throw new Error("rescue_capacity_unavailable");
+    }
+    await tx.update(promotions).set({ rescueReservedQuantity: promo.rescueReservedQuantity + quantity }).where(eq(promotions.id, promotionId));
+    await tx.insert(promotionAllocations).values({ promotionId, orderItemId, reservedQuantity: quantity });
+  }
+
+  async reconcileRescueAllocations(orderId: string, status: string, previousStatus: string, confirmedQuantitiesByItemId: Record<string, number> | undefined, tx: any): Promise<void> {
+    const rows = await tx.select({ allocation: promotionAllocations, item: orderItems })
+      .from(promotionAllocations)
+      .innerJoin(orderItems, eq(promotionAllocations.orderItemId, orderItems.id))
+      .where(eq(orderItems.orderId, orderId));
+    rows.sort((left: any, right: any) =>
+      String(left.allocation.promotionId).localeCompare(String(right.allocation.promotionId))
+      || String(left.allocation.id).localeCompare(String(right.allocation.id)));
+    for (const row of rows) {
+      const a = row.allocation;
+      const target = getRescueAllocationTarget({
+        status,
+        previousStatus,
+        itemQuantity: row.item.quantity,
+        confirmedQuantity: confirmedQuantitiesByItemId?.[a.orderItemId]
+          ?? row.item.confirmedQuantity
+          ?? undefined,
+        currentReserved: a.reservedQuantity,
+        currentSold: a.soldQuantity,
+      });
+      if (!target) continue;
+      const targetReserved = target.reserved;
+      const targetSold = target.sold;
+      const reservedDelta = targetReserved - a.reservedQuantity;
+      const soldDelta = targetSold - a.soldQuantity;
+      if (reservedDelta === 0 && soldDelta === 0) continue;
+      await tx.execute(sql`SELECT id FROM ${promotions} WHERE id = ${a.promotionId} FOR UPDATE`);
+      const [p] = await tx.select().from(promotions).where(eq(promotions.id, a.promotionId));
+      if (!p) continue;
+      const nextReserved = p.rescueReservedQuantity + reservedDelta;
+      const nextSold = p.rescueSoldQuantity + soldDelta;
+      await tx.update(promotions).set({
+        rescueReservedQuantity: nextReserved,
+        rescueSoldQuantity: nextSold,
+      }).where(eq(promotions.id, a.promotionId));
+      await tx.update(promotionAllocations).set({
+        reservedQuantity: targetReserved,
+        soldQuantity: targetSold,
+        releasedQuantity: a.releasedQuantity - reservedDelta - soldDelta,
+        updatedAt: new Date(),
+      }).where(eq(promotionAllocations.id, a.id));
+      if (p.sourceRiskId && p.quantityCap !== null) {
+        if (nextReserved + nextSold >= p.quantityCap) {
+          await tx.update(inventoryRiskRecords)
+            .set({ status: "Sold", updatedAt: new Date() })
+            .where(and(
+              eq(inventoryRiskRecords.id, p.sourceRiskId),
+              sql`${inventoryRiskRecords.status} NOT IN ('Expired', 'Dismissed')`,
+            ));
+        } else if (status === "cancelled" && previousStatus !== "delivered") {
+          await tx.update(inventoryRiskRecords)
+            .set({ status: "Action Taken", updatedAt: new Date() })
+            .where(and(
+              eq(inventoryRiskRecords.id, p.sourceRiskId),
+              eq(inventoryRiskRecords.status, "Sold"),
+            ));
+        }
+      }
+    }
   }
 
   async getOpenInventoryRiskCount(supplierId: string): Promise<number> {

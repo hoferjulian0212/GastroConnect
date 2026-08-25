@@ -48,6 +48,7 @@ import { registerAiSearchRoutes } from "./aiSearch";
 import { runAiKnowledgeMigration } from "./aiKnowledge";
 import { objectStorageClient, ObjectStorageService } from "./replit_integrations/object_storage/objectStorage";
 import { parseIdempotencyFingerprint, parseIdempotencyKey } from "./resilience";
+import { wouldIntroduceRescuePromotion } from "./rescuePromotion";
 import PDFDocument from "pdfkit";
 import { randomUUID, timingSafeEqual } from "crypto";
 import { z } from "zod";
@@ -58,6 +59,27 @@ function isOrderIdempotencyConflict(error: unknown): boolean {
   const dbError = (error as any)?.cause ?? error as any;
   return dbError?.code === "23505"
     && dbError?.constraint === "uniq_orders_restaurant_idempotency_supplier";
+}
+
+function shouldPreferPromotion(
+  existing: { promotionType: string; discountPercent: number } | undefined,
+  candidate: { promotionType: string; discountPercent: number },
+): boolean {
+  if (!existing) return true;
+  if (existing.promotionType !== candidate.promotionType) {
+    return candidate.promotionType === "rescue";
+  }
+  return candidate.discountPercent > existing.discountPercent;
+}
+
+async function hasValidPromotionTargets(
+  supplierId: string,
+  targetRestaurantIds: string[] | null | undefined,
+): Promise<boolean> {
+  if (!targetRestaurantIds?.length) return true;
+  const allowedRestaurants = await storage.getRestaurantsForSupplier(supplierId);
+  const allowedIds = new Set(allowedRestaurants.map((restaurant) => restaurant.id));
+  return targetRestaurantIds.every((restaurantId) => allowedIds.has(restaurantId));
 }
 
 type PublicStats = {
@@ -552,6 +574,14 @@ async function transitionOrderWithStock(opts: TransitionOpts) {
       }
     }
 
+    await storage.reconcileRescueAllocations(
+      opts.order.id,
+      opts.newStatus,
+      opts.previousStatus,
+      opts.confirmedQuantitiesByItemId,
+      tx,
+    );
+
     // Three-bucket stock movements (ITI model). order_returned / order_outbounded
     // release exactly what is still reserved (ITI) for this order, computed from
     // its own bucket movements. This is naturally idempotent: an already-released
@@ -636,7 +666,18 @@ const updatePromotionSchema = z.object({
   description: z.string().optional(),
   groupId: z.string().optional(),
   targetRestaurantIds: z.array(z.string()).optional(),
-});
+}).strict();
+
+const bulkPromotionSchema = z.object({
+  productIds: z.array(uuidField).min(1).max(200),
+  supplierId: uuidField,
+  discountPercent: z.number().int().min(1).max(100),
+  startDate: z.string(),
+  endDate: z.string(),
+  name: z.string().optional(),
+  description: z.string().optional(),
+  targetRestaurantIds: z.array(uuidField).nullable().optional(),
+}).strict();
 
 const timeField = z.string().regex(/^\d{2}:\d{2}$/).optional().nullable();
 const deliveryScheduleSchema = z.object({
@@ -2047,14 +2088,14 @@ export async function registerRoutes(
         return res.json(products);
       }
       const products = await storage.getProducts();
-      const activePromotions = await storage.getActivePromotions();
+      const activePromotions = await storage.getActivePromotions(restaurantId);
       const promoMap = new Map<string, typeof activePromotions[0]>();
       for (const promo of activePromotions) {
         if (promo.targetRestaurantIds && promo.targetRestaurantIds.length > 0 && restaurantId) {
           if (!promo.targetRestaurantIds.includes(restaurantId)) continue;
         }
         const existing = promoMap.get(promo.productId);
-        if (!existing || promo.discountPercent > existing.discountPercent) {
+        if (shouldPreferPromotion(existing, promo)) {
           promoMap.set(promo.productId, promo);
         }
       }
@@ -2493,6 +2534,13 @@ export async function registerRoutes(
       });
       const denied = checkActingCapability(req, validated.supplierId, "promotions.manage");
       if (denied) return res.status(denied.status).json(denied.body);
+      const product = await storage.getProduct(validated.productId);
+      if (!product || product.supplierId !== validated.supplierId) {
+        return res.status(400).json({ error: "Invalid product" });
+      }
+      if (!(await hasValidPromotionTargets(validated.supplierId, validated.targetRestaurantIds))) {
+        return res.status(400).json({ error: "Invalid target restaurants" });
+      }
       const promo = await storage.createPromotion(validated);
       res.status(201).json(promo);
     } catch (error) {
@@ -2502,7 +2550,7 @@ export async function registerRoutes(
 
   app.post("/api/promotions/bulk", async (req, res) => {
     try {
-      const { productIds, supplierId, discountPercent, startDate: startStr, endDate: endStr, name, description, targetRestaurantIds } = req.body;
+      const { productIds, supplierId, discountPercent, startDate: startStr, endDate: endStr, name, description, targetRestaurantIds } = bulkPromotionSchema.parse(req.body);
       const denied = checkActingCapability(req, supplierId, "promotions.manage");
       if (denied) return res.status(denied.status).json(denied.body);
       if (!productIds || !Array.isArray(productIds) || productIds.length === 0) {
@@ -2515,28 +2563,50 @@ export async function registerRoutes(
       if (startDate < today) return res.status(400).json({ error: "Start date cannot be in the past" });
       if (endDate < today) return res.status(400).json({ error: "End date cannot be in the past" });
       if (endDate <= startDate) return res.status(400).json({ error: "End date must be after start date" });
+      const supplierProducts = await db.select({ id: products.id, supplierId: products.supplierId })
+        .from(products)
+        .where(inArray(products.id, productIds));
+      if (
+        supplierProducts.length !== new Set(productIds).size
+        || supplierProducts.some((product) => product.supplierId !== supplierId)
+      ) {
+        return res.status(400).json({ error: "Invalid product selection" });
+      }
+      if (!(await hasValidPromotionTargets(supplierId, targetRestaurantIds))) {
+        return res.status(400).json({ error: "Invalid target restaurants" });
+      }
 
       const groupId = randomUUID();
-      const created = [];
-      for (const productId of productIds) {
-        const existingPromo = await storage.getActivePromotionForProduct(productId);
-        if (existingPromo) {
-          await storage.updatePromotion(existingPromo.id, { isActive: false });
+      const created = await db.transaction(async (tx) => {
+        const rows = [];
+        for (const productId of productIds) {
+          const existingGeneric = await tx.select().from(promotions)
+            .where(and(
+              eq(promotions.productId, productId),
+              eq(promotions.supplierId, supplierId),
+              eq(promotions.promotionType, "generic"),
+              eq(promotions.isActive, true),
+            ))
+            .orderBy(desc(promotions.discountPercent))
+            .limit(1);
+          if (existingGeneric[0]) {
+            await storage.updatePromotion(existingGeneric[0].id, { isActive: false }, tx);
+          }
+          rows.push(await storage.createPromotion({
+            productId,
+            supplierId,
+            discountPercent,
+            startDate,
+            endDate,
+            isActive: true,
+            name: name || null,
+            description: description || null,
+            groupId,
+            targetRestaurantIds: targetRestaurantIds || null,
+          }, tx));
         }
-        const promo = await storage.createPromotion({
-          productId,
-          supplierId,
-          discountPercent,
-          startDate,
-          endDate,
-          isActive: true,
-          name: name || null,
-          description: description || null,
-          groupId,
-          targetRestaurantIds: targetRestaurantIds || null,
-        });
-        created.push(promo);
-      }
+        return rows;
+      });
       res.status(201).json({ groupId, promotions: created });
     } catch (error) {
       res.status(400).json({ error: "Invalid promotion data" });
@@ -2550,6 +2620,9 @@ export async function registerRoutes(
       if (denied) return res.status(denied.status).json(denied.body);
       if (!supplierId || !restaurantIds || !Array.isArray(restaurantIds) || restaurantIds.length === 0 || !promotionData) {
         return res.status(400).json({ error: "Missing required fields" });
+      }
+      if (!(await hasValidPromotionTargets(supplierId, restaurantIds))) {
+        return res.status(400).json({ error: "Invalid target restaurants" });
       }
       for (const restaurantId of restaurantIds) {
         const conversation = await storage.getOrCreateConversation(restaurantId, supplierId);
@@ -2593,6 +2666,18 @@ export async function registerRoutes(
       const denied = checkActingCapability(req, existing.supplierId, "promotions.manage");
       if (denied) return res.status(denied.status).json(denied.body);
       const validated = updatePromotionSchema.parse(req.body);
+      if (existing.promotionType === "rescue" && validated.productId && validated.productId !== existing.productId) {
+        return res.status(400).json({ error: "Rescue source product is immutable" });
+      }
+      if (validated.productId) {
+        const product = await storage.getProduct(validated.productId);
+        if (!product || product.supplierId !== existing.supplierId) {
+          return res.status(400).json({ error: "Invalid product" });
+        }
+      }
+      if (!(await hasValidPromotionTargets(existing.supplierId, validated.targetRestaurantIds))) {
+        return res.status(400).json({ error: "Invalid target restaurants" });
+      }
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       if (validated.startDate && new Date(validated.startDate) < today) {
@@ -2841,7 +2926,8 @@ export async function registerRoutes(
     name: z.string().optional(),
     description: z.string().optional(),
     targetRestaurantIds: z.array(z.string()).nullable().optional(),
-  });
+    quantityLimit: z.number().int().positive(),
+  }).strict();
 
   app.post("/api/inventory-risks/:id/action", async (req, res) => {
     try {
@@ -2855,11 +2941,18 @@ export async function registerRoutes(
       // capability split between flagging risk and publishing promotions.
       const denied = checkActingCapability(req, existing.supplierId, "promotions.manage");
       if (denied) return res.status(denied.status).json(denied.body);
-      if (existing.status !== "Open") {
-        return res.status(400).json({ error: "Only open records can be actioned" });
+      if (existing.linkedPromotionId) {
+        const linked = await storage.getPromotion(existing.linkedPromotionId);
+        if (linked) return res.status(200).json({ record: existing, promotion: linked });
       }
-      const { discountPercent, startDate, endDate, name, description, targetRestaurantIds } =
+      const { discountPercent, startDate, endDate, name, description, targetRestaurantIds, quantityLimit } =
         inventoryRiskActionSchema.parse(req.body);
+      if (!(await hasValidPromotionTargets(existing.supplierId, targetRestaurantIds))) {
+        return res.status(400).json({ error: "Invalid target restaurants" });
+      }
+      if (quantityLimit > existing.flaggedQuantity) {
+        return res.status(400).json({ error: "Rescue quantity exceeds flagged quantity" });
+      }
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       if (startDate < today) return res.status(400).json({ error: "Start date cannot be in the past" });
@@ -2869,10 +2962,8 @@ export async function registerRoutes(
       // failure can never leave a promotion without a linked record (or vice versa).
       const { record: updated, promotion: promo } = await storage.actionInventoryRiskRecord(
         existing.id,
-        existing.productId,
+        existing.supplierId,
         {
-          productId: existing.productId,
-          supplierId: existing.supplierId,
           discountPercent,
           startDate,
           endDate,
@@ -2881,6 +2972,7 @@ export async function registerRoutes(
           description: description || null,
           groupId: randomUUID(),
           targetRestaurantIds: targetRestaurantIds || null,
+          quantityCap: quantityLimit,
         },
       );
       res.status(201).json({ record: updated, promotion: promo });
@@ -3171,11 +3263,11 @@ export async function registerRoutes(
       if (!req.auth) return res.status(401).json({ error: "unauthenticated" });
       const restaurantId = req.auth.organizationId;
       const items = await storage.getCartItems(restaurantId);
-      const activePromotions = await storage.getActivePromotions();
+      const activePromotions = await storage.getActivePromotions(restaurantId);
       const promoMap = new Map<string, typeof activePromotions[0]>();
       for (const promo of activePromotions) {
         const existing = promoMap.get(promo.productId);
-        if (!existing || promo.discountPercent > existing.discountPercent) {
+        if (shouldPreferPromotion(existing, promo)) {
           promoMap.set(promo.productId, promo);
         }
       }
@@ -3527,11 +3619,11 @@ export async function registerRoutes(
       }, {} as Record<string, typeof cartItems>);
 
       // Fetch active promotions for discounted pricing
-      const activePromotions = await storage.getActivePromotions();
+      const activePromotions = await storage.getActivePromotions(restaurantId);
       const promoMap = new Map<string, typeof activePromotions[0]>();
       for (const promo of activePromotions) {
         const existing = promoMap.get(promo.productId);
-        if (!existing || promo.discountPercent > existing.discountPercent) {
+        if (shouldPreferPromotion(existing, promo)) {
           promoMap.set(promo.productId, promo);
         }
       }
@@ -3609,7 +3701,8 @@ export async function registerRoutes(
             productName: item.product.name,
             quantity: item.quantity,
             unitPrice: unitPriceStr,
-            totalPrice: (effectivePrice * item.quantity).toFixed(2)
+            totalPrice: (effectivePrice * item.quantity).toFixed(2),
+            promotionId: promo?.id ?? null,
           };
         });
 
@@ -3703,6 +3796,12 @@ export async function registerRoutes(
           message: `Nicht genügend Lagerbestand: ${error.productName} (nur ${error.available} verfügbar).`,
         });
       }
+      if (error instanceof Error && error.message === "rescue_capacity_unavailable") {
+        return res.status(409).json({
+          error: "rescue_capacity_unavailable",
+          message: "Die verfügbare Rescue-Menge reicht für diese Bestellung nicht mehr aus.",
+        });
+      }
       if (idempotencyKey && restaurantId && isOrderIdempotencyConflict(error)) {
         const existing = await storage.getOrdersByIdempotencyKey(restaurantId, idempotencyKey);
         if (existing.length > 0) {
@@ -3758,11 +3857,12 @@ export async function registerRoutes(
       const products = await storage.getProductsBySupplier(supplierId);
       const productMap = new Map(products.map(p => [p.id, p]));
 
-      const activePromotions = await storage.getActivePromotions();
+      const activePromotions = (await storage.getActivePromotions(restaurantId))
+        .filter((promotion) => promotion.promotionType === "generic");
       const promoMap = new Map<string, typeof activePromotions[0]>();
       for (const promo of activePromotions) {
         const existing = promoMap.get(promo.productId);
-        if (!existing || promo.discountPercent > existing.discountPercent) {
+        if (shouldPreferPromotion(existing, promo)) {
           promoMap.set(promo.productId, promo);
         }
       }
@@ -4557,6 +4657,16 @@ export async function registerRoutes(
       if (order.status !== "pending") {
         return res.status(400).json({ error: "Only pending orders can be edited" });
       }
+      for (const item of order.items) {
+        if (!item.promotionId) continue;
+        const promotion = await storage.getPromotion(item.promotionId);
+        if (promotion?.promotionType === "rescue") {
+          return res.status(409).json({
+            error: "rescue_order_edit_not_supported",
+            message: "Bestellungen mit Rescue-Angeboten können nicht nachträglich bearbeitet werden.",
+          });
+        }
+      }
 
       // Server-side recomputation of unit prices from product master data
       // and currently-active promotions. The client-supplied unitPrice is
@@ -4574,13 +4684,27 @@ export async function registerRoutes(
       // Mirrors POST /api/orders promotion selection (no targetRestaurantIds
       // filtering) so that editing a pending order yields the same prices it
       // would have at order-creation time.
-      const activePromotions = await storage.getActivePromotions();
+      const activePromotions = await storage.getActivePromotions(restaurantId);
       const promoMap = new Map<string, typeof activePromotions[0]>();
       for (const promo of activePromotions) {
         const existing = promoMap.get(promo.productId);
-        if (!existing || promo.discountPercent > existing.discountPercent) {
+        if (shouldPreferPromotion(existing, promo)) {
           promoMap.set(promo.productId, promo);
         }
+      }
+      const promotionTypesByProduct = new Map(
+        Array.from(promoMap, ([productId, promotion]) => [productId, promotion.promotionType]),
+      );
+      const introducesRescue = wouldIntroduceRescuePromotion(
+        order.items.map((item) => item.productId),
+        items.map((item) => item.productId),
+        promotionTypesByProduct,
+      );
+      if (introducesRescue) {
+        return res.status(409).json({
+          error: "rescue_order_edit_not_supported",
+          message: "Rescue-Angebote können nur über eine neue Bestellung reserviert werden.",
+        });
       }
 
       // Validate all products before mapping so we can return precise 4xx
@@ -4617,10 +4741,12 @@ export async function registerRoutes(
         const product = productMap.get(item.productId)!;
         const lockedUnitPrice = existingUnitPriceByProduct.get(item.productId);
         let unitPriceStr: string;
+        let promotionId: string | null = null;
         if (lockedUnitPrice !== undefined) {
           unitPriceStr = lockedUnitPrice;
         } else {
           const promo = promoMap.get(item.productId);
+          promotionId = promo?.id ?? null;
           const originalPrice = parseFloat(product.price);
           const effectivePrice = promo
             ? originalPrice * (1 - promo.discountPercent / 100)
@@ -4633,7 +4759,8 @@ export async function registerRoutes(
           productName: product.name,
           quantity: item.quantity,
           unitPrice: unitPriceStr,
-          totalPrice: (unitPriceNum * item.quantity).toFixed(2)
+          totalPrice: (unitPriceNum * item.quantity).toFixed(2),
+          promotionId,
         };
       });
 

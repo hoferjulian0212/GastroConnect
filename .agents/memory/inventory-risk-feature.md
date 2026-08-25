@@ -22,3 +22,10 @@ the lifecycle and turn a flag into a promotion via the existing promotions syste
 
 ## Promotion guards moved
 Promotion routes are gated by `promotions.manage` (not `products.manage`) so vertreter can run promotions without catalog write access.
+
+## Rescue allocation invariants
+Rescue offers extend promotions but keep a separate quota ledger: checkout reserves quota, supplier confirmation consumes only accepted units, and cancellation releases units only before delivery. Rescue wins over a generic promotion while Rescue capacity is available.
+
+**Why:** physical stock and at-risk quantity have different meanings. Product stock remains authoritative, while the Rescue cap prevents the flagged subset from being oversold or silently re-consumed after partial rejection.
+
+**How to apply:** any new order-creation path that snapshots a Rescue promotion must reserve its quota in the same transaction. Pending-order edits must not introduce Rescue unless they also implement atomic allocation rebooking.

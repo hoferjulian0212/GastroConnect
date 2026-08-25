@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { Tag, Plus, Trash2, Package, Calendar, Percent, Loader2, Send, Check, ChevronRight, ChevronLeft, ChevronDown, Users, MessageSquare, Search, X, AlertTriangle, Clock, Hourglass, Archive, Flame } from "lucide-react";
+import { Tag, Plus, Trash2, Package, Calendar, Percent, Loader2, Send, Check, ChevronRight, ChevronLeft, ChevronDown, Users, MessageSquare, Search, X, AlertTriangle, Clock, Hourglass, Archive, Flame, PowerOff, HeartHandshake } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogContent,
@@ -157,24 +157,24 @@ export default function SupplierPromotions() {
   });
 
   const deleteGroupMutation = useMutation({
-    mutationFn: async (groupId: string) => {
+    mutationFn: async ({ groupId }: { groupId: string; isRescue: boolean }) => {
       return apiRequest("DELETE", `/api/promotions/group/${groupId}`);
     },
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: [`/api/promotions?supplierId=${currentUser?.id}`] });
       queryClient.invalidateQueries({ queryKey: ["/api/products"] });
-      toast({ title: t("promotionsPage", "promotionDeleted") });
+      toast({ title: t("promotionsPage", variables.isRescue ? "rescueDeactivated" : "promotionDeleted") });
     },
   });
 
   const deleteMutation = useMutation({
-    mutationFn: async (id: string) => {
+    mutationFn: async ({ id }: { id: string; isRescue: boolean }) => {
       return apiRequest("DELETE", `/api/promotions/${id}`);
     },
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: [`/api/promotions?supplierId=${currentUser?.id}`] });
       queryClient.invalidateQueries({ queryKey: ["/api/products"] });
-      toast({ title: t("promotionsPage", "promotionDeleted") });
+      toast({ title: t("promotionsPage", variables.isRescue ? "rescueDeactivated" : "promotionDeleted") });
     },
   });
 
@@ -408,6 +408,9 @@ export default function SupplierPromotions() {
             const remainingCount = group.promotions.length - previewProducts.length;
             const totalSavings = group.promotions.reduce((sum, p) => sum + (parseFloat(p.product.price) * group.discountPercent / 100), 0);
             const isExpired = sectionKey === "expired";
+            const rescuePromotions = group.promotions.filter((promo) => promo.promotionType === "rescue");
+            const isRescue = rescuePromotions.length > 0;
+            const rescue = rescuePromotions[0];
 
             return (
               <div
@@ -427,9 +430,17 @@ export default function SupplierPromotions() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0 flex-1">
-                          <h3 className="font-semibold text-sm md:text-base leading-tight truncate" data-testid={`text-promo-name-${group.groupId || group.promotions[0].id}`}>
-                            {group.name || group.promotions[0].product.name}
-                          </h3>
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <h3 className="font-semibold text-sm md:text-base leading-tight truncate" data-testid={`text-promo-name-${group.groupId || group.promotions[0].id}`}>
+                              {group.name || group.promotions[0].product.name}
+                            </h3>
+                            {isRescue && (
+                              <Badge className="shrink-0 border-0 bg-amber-500 text-white text-[10px] px-1.5 py-0">
+                                <HeartHandshake className="h-3 w-3 mr-1" />
+                                {t("promotionsPage", "rescue")}
+                              </Badge>
+                            )}
+                          </div>
                           {group.description && (
                             <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{group.description}</p>
                           )}
@@ -439,15 +450,36 @@ export default function SupplierPromotions() {
                           size="icon"
                           className="shrink-0 h-7 w-7 -mr-1 -mt-1 opacity-60 hover:opacity-100 hover:text-destructive"
                           onClick={() => {
-                            if (group.groupId) deleteGroupMutation.mutate(group.groupId);
-                            else deleteMutation.mutate(group.promotions[0].id);
+                            if (group.groupId) deleteGroupMutation.mutate({ groupId: group.groupId, isRescue });
+                            else deleteMutation.mutate({ id: group.promotions[0].id, isRescue });
                           }}
                           disabled={deleteGroupMutation.isPending || deleteMutation.isPending}
+                          aria-label={t("promotionsPage", isRescue ? "deactivateRescue" : "deletePromotion")}
+                          title={t("promotionsPage", isRescue ? "deactivateRescue" : "deletePromotion")}
                           data-testid={`button-delete-group-${group.groupId || group.promotions[0].id}`}
                         >
-                          <Trash2 className="h-3.5 w-3.5" />
+                          {isRescue ? <PowerOff className="h-3.5 w-3.5" /> : <Trash2 className="h-3.5 w-3.5" />}
                         </Button>
                       </div>
+                      {isRescue && rescue && (
+                        <div className="mt-2 flex flex-wrap gap-1.5 text-[11px]" data-testid={`rescue-meta-${rescue.id}`}>
+                          {rescue.rescueQuality && (
+                            <Badge variant="outline" className="text-[10px]">
+                              {t("promotionsPage", "quality")}: {t("inventoryRisk", `quality_${rescue.rescueQuality}` as any)}
+                            </Badge>
+                          )}
+                          <Badge variant="outline" className="text-[10px]">
+                            {t("promotionsPage", "rescueAvailable")}: {rescue.rescueAvailableQuantity ?? 0}
+                            {rescue.quantityCap != null ? ` / ${rescue.quantityCap}` : ""}
+                            {rescue.product.unit ? ` ${rescue.product.unit}` : ""}
+                          </Badge>
+                          {rescue.rescueLifecycle && (
+                            <Badge variant="secondary" className="text-[10px]">
+                              {t("promotionsPage", `rescueLifecycle_${rescue.rescueLifecycle}` as any)}
+                            </Badge>
+                          )}
+                        </div>
+                      )}
 
                       {/* Product image stack + meta */}
                       <div className="flex items-center gap-3 mt-2.5">

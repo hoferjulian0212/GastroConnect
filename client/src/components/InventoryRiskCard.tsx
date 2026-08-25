@@ -126,7 +126,7 @@ export function InventoryRiskCard({ record, canManage, canEdit, onCreatePromotio
               data-testid={`button-create-promotion-${record.id}`}
             >
               <Tag className="h-4 w-4 mr-1.5" />
-              {t("inventoryRisk", "createPromotion")}
+              {t("inventoryRisk", "createRescueOffer")}
             </Button>
           )}
           {canTransition && (

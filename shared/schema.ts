@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, integer, decimal, timestamp, boolean, pgEnum, index, uniqueIndex, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, decimal, timestamp, boolean, pgEnum, index, uniqueIndex, jsonb, check } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -254,6 +254,9 @@ export const orderItems = pgTable("order_items", {
   id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
   orderId: varchar("order_id", { length: 36 }).notNull().references(() => orders.id),
   productId: varchar("product_id", { length: 36 }).notNull().references(() => products.id),
+  // Price/offer snapshot chosen by the server at checkout. Null means no
+  // promotion (direct/replacement/reorder paths cannot implicitly consume one).
+  promotionId: varchar("promotion_id", { length: 36 }).references(() => promotions.id, { onDelete: "set null" }),
   productName: text("product_name").notNull(),
   quantity: integer("quantity").notNull(),
   confirmedQuantity: integer("confirmed_quantity"),
@@ -263,6 +266,7 @@ export const orderItems = pgTable("order_items", {
 }, (table) => [
   index("idx_order_items_order_id").on(table.orderId),
   index("idx_order_items_product_id").on(table.productId),
+  index("idx_order_items_promotion_id").on(table.promotionId),
 ]);
 
 export const cartItems = pgTable("cart_items", {
@@ -461,11 +465,25 @@ export const promotions = pgTable("promotions", {
   description: text("description"),
   groupId: varchar("group_id", { length: 36 }),
   targetRestaurantIds: text("target_restaurant_ids").array(),
+  // Rescue metadata is server-owned. Generic promotions keep the defaults.
+  promotionType: varchar("promotion_type", { length: 16 }).default("generic").notNull(),
+  sourceRiskId: varchar("source_risk_id", { length: 36 }),
+  quantityCap: integer("quantity_cap"),
+  rescueQuality: text("rescue_quality"),
+  rescueReservedQuantity: integer("rescue_reserved_quantity").default(0).notNull(),
+  rescueSoldQuantity: integer("rescue_sold_quantity").default(0).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => [
   index("idx_promotions_supplier_id").on(table.supplierId),
   index("idx_promotions_product_id").on(table.productId),
   index("idx_promotions_active").on(table.isActive),
+  uniqueIndex("uniq_promotions_source_risk").on(table.sourceRiskId),
+  check("chk_promotions_rescue_shape", sql`
+    (${table.promotionType} = 'generic' AND ${table.sourceRiskId} IS NULL AND ${table.quantityCap} IS NULL AND ${table.rescueQuality} IS NULL)
+    OR
+    (${table.promotionType} = 'rescue' AND ${table.sourceRiskId} IS NOT NULL AND ${table.quantityCap} > 0 AND ${table.rescueQuality} IS NOT NULL)
+  `),
+  check("chk_promotions_rescue_counters", sql`${table.rescueReservedQuantity} >= 0 AND ${table.rescueSoldQuantity} >= 0 AND (${table.quantityCap} IS NULL OR ${table.rescueReservedQuantity} + ${table.rescueSoldQuantity} <= ${table.quantityCap})`),
 ]);
 
 // Inventory Risk Management ("Smart Inventory"): a manual overlay on top of ERP
@@ -503,6 +521,21 @@ export const inventoryRiskRecords = pgTable("inventory_risk_records", {
   index("idx_irr_status").on(table.status),
   index("idx_irr_created_by").on(table.createdBy),
   index("idx_irr_supplier_status").on(table.supplierId, table.status),
+]);
+
+export const promotionAllocations = pgTable("promotion_allocations", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  promotionId: varchar("promotion_id", { length: 36 }).notNull().references(() => promotions.id),
+  orderItemId: varchar("order_item_id", { length: 36 }).notNull().references(() => orderItems.id),
+  reservedQuantity: integer("reserved_quantity").default(0).notNull(),
+  soldQuantity: integer("sold_quantity").default(0).notNull(),
+  releasedQuantity: integer("released_quantity").default(0).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex("uniq_promotion_allocations_order_item").on(table.orderItemId),
+  index("idx_promotion_allocations_promotion").on(table.promotionId),
+  check("chk_promotion_allocations_quantities", sql`${table.reservedQuantity} >= 0 AND ${table.soldQuantity} >= 0 AND ${table.releasedQuantity} >= 0`),
 ]);
 
 export const INVENTORY_RISK_QUALITY = ["Premium", "OK", "Risk", "Bad"] as const;
@@ -592,7 +625,19 @@ export const insertDocumentSchema = createInsertSchema(documents).omit({ id: tru
 export const insertOrderStatusHistorySchema = createInsertSchema(orderStatusHistory).omit({ id: true, createdAt: true });
 export const insertComplaintStatusHistorySchema = createInsertSchema(complaintStatusHistory).omit({ id: true, createdAt: true });
 export const insertDeliveryScheduleSchema = createInsertSchema(deliverySchedules).omit({ id: true, createdAt: true });
-export const insertPromotionSchema = createInsertSchema(promotions).omit({ id: true, createdAt: true });
+// Public/generic promotion input deliberately excludes all Rescue metadata.
+// Rescue offers are constructed by the server from an authenticated risk row.
+export const insertPromotionSchema = createInsertSchema(promotions).omit({
+  id: true,
+  createdAt: true,
+  promotionType: true,
+  sourceRiskId: true,
+  quantityCap: true,
+  rescueQuality: true,
+  rescueReservedQuantity: true,
+  rescueSoldQuantity: true,
+});
+export const insertPromotionAllocationSchema = createInsertSchema(promotionAllocations).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertCustomMinOrderQuantitySchema = createInsertSchema(customMinOrderQuantities).omit({ id: true, createdAt: true });
 export const insertCustomPriceSchema = createInsertSchema(customPrices).omit({ id: true, createdAt: true });
 export const insertStockMovementSchema = createInsertSchema(stockMovements).omit({ id: true, createdAt: true });
@@ -988,6 +1033,13 @@ export type InsertDeliverySchedule = z.infer<typeof insertDeliveryScheduleSchema
 export type DeliverySchedule = typeof deliverySchedules.$inferSelect;
 export type InsertPromotion = z.infer<typeof insertPromotionSchema>;
 export type Promotion = typeof promotions.$inferSelect;
+export type PromotionAllocation = typeof promotionAllocations.$inferSelect;
+export type InsertPromotionAllocation = z.infer<typeof insertPromotionAllocationSchema>;
+export type RescuePromotionLifecycle = "scheduled" | "active" | "sold_out" | "expired" | "deactivated";
+export type PromotionWithRescueState = Promotion & {
+  rescueAvailableQuantity: number | null;
+  rescueLifecycle: RescuePromotionLifecycle | null;
+};
 export type InsertCustomMinOrderQuantity = z.infer<typeof insertCustomMinOrderQuantitySchema>;
 export type CustomMinOrderQuantity = typeof customMinOrderQuantities.$inferSelect;
 export type InsertCustomPrice = z.infer<typeof insertCustomPriceSchema>;
@@ -1030,8 +1082,8 @@ export type ComplaintCommentWithUser = ComplaintComment & { user: User };
 export type DocumentWithDetails = Document & { order: Order; restaurant: User; supplier: User };
 export type OrderStatusHistoryWithUser = OrderStatusHistory & { changedByUser?: User; changedByMember?: Member | null };
 export type ComplaintStatusHistoryWithUser = ComplaintStatusHistory & { changedByUser?: User; changedByMember?: Member | null };
-export type PromotionWithProduct = Promotion & { product: Product };
-export type ProductWithSupplierAndPromotion = ProductWithSupplier & { activePromotion?: Promotion | null };
+export type PromotionWithProduct = PromotionWithRescueState & { product: Product };
+export type ProductWithSupplierAndPromotion = ProductWithSupplier & { activePromotion?: PromotionWithRescueState | null };
 export type StockMovementWithProduct = StockMovement & { product: Product };
 export type InsertOrderTemplate = z.infer<typeof insertOrderTemplateSchema>;
 export type OrderTemplate = typeof orderTemplates.$inferSelect;
