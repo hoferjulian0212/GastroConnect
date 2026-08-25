@@ -1,0 +1,645 @@
+GASTROCONNECT — IMPLEMENT THE ROOT-CAUSE FIX FROM FORENSIC AUDIT
+
+The forensic audit is complete.
+
+We now know the main problem:
+
+THE NEW LOCAL / SUSTAINABILITY IMPLEMENTATION EXISTS, BUT THE DATABASE WAS NEVER POPULATED WITH THE REQUIRED PRODUCT METADATA.
+
+Current findings:
+
+- 163 products
+- 0 products with origin data
+- 0 products with season data
+- 0 products with packaging data
+- 0 products with sustainability source
+- 0 products with evidence
+- 0 score-eligible products
+- 1,233 order items
+- 0 Local Impact snapshots
+- 4 monthly reports
+- 0 monthly reports with Local Impact
+- 0 Rescue promotions
+- 3 Risk Stock records
+- Local Score implementation exists
+- Catalog signals exist
+- Product detail impact exists
+- Cart impact exists
+- Restaurant dashboard impact exists
+- Supplier sustainability editor exists
+- Literal emojis DO NOT exist in the implementation
+- Local Spend is NOT implemented
+- Smart Quantity is NOT implemented
+- CO2 is NOT implemented
+- Delivery efficiency sustainability layer is NOT implemented
+
+The current application is using the current code and development database, so do NOT waste time trying to rebuild the entire application.
+
+We need to fix this properly.
+
+==================================================
+PHASE 1 — TARGETED SUSTAINABILITY DEMO DATA
+==================================================
+
+DO NOT rerun the existing destructive general demo seed.
+
+Create a NEW targeted, idempotent sustainability demo-data seed/import mechanism.
+
+It must be safe to run multiple times.
+
+It must NOT:
+
+- delete existing users
+- delete existing products
+- delete existing orders
+- delete existing suppliers
+- reset the database
+- destroy unrelated data
+
+It should UPDATE/INSERT ONLY the required demo sustainability data.
+
+Use the EXISTING canonical schema.
+
+Do NOT create duplicate fields.
+
+The canonical product metadata currently includes:
+
+- origin_country_code
+- origin_region
+- origin_locality
+- origin_postal_code
+- season_months
+- packaging_type
+- sustainability_source
+- evidence URL/note
+- verification timestamps
+
+Use these existing fields.
+
+==================================================
+PHASE 2 — POPULATE REALISTIC DEMO PRODUCT DATA
+==================================================
+
+Populate a meaningful subset of the existing catalog.
+
+Do NOT populate all 163 products identically.
+
+Create realistic variation.
+
+At minimum populate 30–50 existing products.
+
+Use realistic South Tyrol / regional / non-local scenarios.
+
+Examples:
+
+LOCAL SOUTH TYROL:
+
+Apples
+Potatoes
+Carrots
+Herbs
+Milk
+Cheese
+etc.
+
+REGIONAL:
+
+products from Trentino / Veneto / Northern Italy
+
+NON-LOCAL:
+
+products originating farther away
+
+The purpose is to create meaningful differences.
+
+Each populated product should have appropriate:
+
+- origin_country_code
+- origin_region
+- origin_locality
+- origin_postal_code
+- season_months
+- packaging_type
+- sustainability_source
+- evidence note/source
+- verification timestamp
+
+Do NOT fabricate precise supplier claims that the system cannot substantiate.
+
+For demo data, clearly mark the source as demo/test data if the existing model supports this.
+
+If there is no suitable source field for demo provenance, use the existing sustainability_source/evidence mechanism rather than creating another unnecessary field.
+
+==================================================
+PHASE 3 — CREATE DIFFERENT PRODUCT SCENARIOS
+==================================================
+
+Make sure the dataset contains:
+
+SCENARIO A:
+
+Local + seasonal + good packaging
+
+SCENARIO B:
+
+Local + non-seasonal
+
+SCENARIO C:
+
+Regional + seasonal
+
+SCENARIO D:
+
+Non-local + non-seasonal
+
+SCENARIO E:
+
+Local + reusable packaging
+
+SCENARIO F:
+
+Product with higher packaging impact
+
+SCENARIO G:
+
+Product suitable for Rescue
+
+This is essential because filters and badges cannot be tested if every product has the same attributes.
+
+==================================================
+PHASE 4 — VERIFY LOCAL SCORE
+==================================================
+
+After populating product data:
+
+Run the EXISTING Local Score calculation.
+
+Do NOT hardcode scores.
+
+Verify that populated products now produce actual scores.
+
+Test at least:
+
+- high Local Score
+- medium Local Score
+- low/no Local Score
+
+Verify consistency:
+
+Catalog
+→ Product Detail
+→ Cart
+→ Order
+
+The same underlying product must produce consistent information.
+
+If the score remains unavailable despite valid metadata, FIX THE CALCULATION.
+
+==================================================
+PHASE 5 — EMOJI IMPLEMENTATION
+==================================================
+
+The forensic audit confirmed:
+
+THE REQUESTED LITERAL EMOJIS WERE NEVER IMPLEMENTED.
+
+I want the original intended visual language implemented now.
+
+Use the emojis as compact informational markers:
+
+📍 Local / Origin
+🌱 Seasonal
+♻️ Waste / Sustainability
+🚚 Delivery / Logistics
+📦 Packaging
+💶 Local Spend
+⚡ Rescue
+
+IMPORTANT:
+
+Do NOT replace the existing Lucide icon system globally.
+
+Do NOT make the UI colorful.
+
+Do NOT place emojis everywhere.
+
+Use them selectively in the new sustainability/local information.
+
+CATALOG:
+
+Use compact indicators.
+
+Example:
+
+📍 🌱
+
+PRODUCT DETAIL:
+
+📍 South Tyrol
+🌱 Seasonal
+📦 Reusable packaging
+
+CART:
+
+🌱 Local impact
+
+RESCUE:
+
+⚡ Rescue
+
+DASHBOARD:
+
+📍 Local
+🌱 Seasonal
+♻️ Sustainability
+
+Use accessible text labels where necessary so the emoji is not the only semantic indicator.
+
+Check desktop and mobile.
+
+==================================================
+PHASE 6 — MAKE THE NEW FEATURES ACTUALLY VISIBLE
+==================================================
+
+The audit found that the Restaurant Manager/Admin Local Impact widget is:
+
+IMPLEMENTED
+
+but
+
+DISABLED BY DEFAULT.
+
+This needs to be fixed.
+
+For the DEMO MANAGER / ADMIN environment:
+
+ENABLE the Local Impact dashboard widget by default.
+
+Do not remove the optional nature of the feature for future users unless necessary.
+
+The goal is that when I log into the demo Manager account I can immediately see the new functionality.
+
+Do NOT create fake statistics.
+
+The widget must use the real populated data.
+
+==================================================
+PHASE 7 — CATALOG
+==================================================
+
+After data population, verify:
+
+- Local indicators appear
+- Seasonal indicators appear
+- Local Score appears where appropriate
+- badges appear
+- filters work
+
+Specifically test:
+
+Local filter
+
+Seasonal filter
+
+Low Waste / packaging filter if implemented
+
+Rescue filter
+
+There must be both matching and non-matching products.
+
+If a filter currently exists but returns no results after valid data is populated, fix it.
+
+==================================================
+PHASE 8 — PRODUCT DETAIL
+==================================================
+
+Open at least 5 different populated products.
+
+Verify:
+
+- origin
+- locality
+- season
+- packaging
+- Local Score
+- badges
+- impact information
+- evidence/source where appropriate
+
+The UI must clearly communicate when information is known versus unavailable.
+
+Do not display misleading claims.
+
+==================================================
+PHASE 9 — CREATE VALID DEMO ORDERS
+==================================================
+
+DO NOT fabricate Local Impact snapshots directly into old historical orders.
+
+The audit correctly identified that the 1,233 existing order items predate the snapshot system.
+
+Instead:
+
+Create a controlled set of NEW demo orders using the existing ordering workflow.
+
+Use populated products.
+
+Create at least:
+
+Order A:
+Mostly local + seasonal
+
+Order B:
+Mixed local + regional + non-local
+
+Order C:
+Mostly non-local
+
+Order D:
+Local + Rescue product
+
+Use the actual order creation process.
+
+The objective is for the existing system to generate its own Local Impact snapshots.
+
+Verify:
+
+Product
+→ Cart
+→ Checkout
+→ Order
+→ Local Impact Snapshot
+
+Do not manually fake the snapshot unless the existing architecture explicitly requires a backfill operation.
+
+==================================================
+PHASE 10 — CART
+==================================================
+
+Verify that the cart now displays real Local Impact.
+
+Test multiple carts:
+
+A: high local
+
+B: mixed
+
+C: low local
+
+The displayed information should change based on actual cart contents.
+
+Verify that this does not add unnecessary steps to checkout.
+
+No blocking popup.
+
+No unnecessary confirmation.
+
+No repeated information.
+
+==================================================
+PHASE 11 — MONTHLY / DASHBOARD DATA
+==================================================
+
+Because the existing historical orders predate the snapshot system:
+
+DO NOT fabricate historical Local Impact.
+
+Instead, determine how the existing monthly report system is designed to receive Local Impact data.
+
+Use the newly created valid demo orders to generate meaningful current-period data.
+
+If the report requires a minimum amount of history, create legitimate demo orders through the real workflow.
+
+Then verify:
+
+Manager Dashboard
+→ Local Impact
+
+and:
+
+Monthly Report
+→ Local Impact
+
+contain actual calculated values.
+
+==================================================
+PHASE 12 — RESCUE
+==================================================
+
+The audit found:
+
+3 Risk Stock records exist.
+
+But:
+
+0 Rescue promotions exist.
+
+Review the existing Risk Stock → Promotion flow.
+
+Create a legitimate demo Rescue promotion using the existing business logic.
+
+Example:
+
+⚡ Rescue
+
+Product:
+Apples
+
+Quantity:
+25 kg
+
+Reason:
+Near expiry
+
+Then verify:
+
+Risk Stock
+→ Rescue Offer
+→ Restaurant visibility
+→ Restaurant order
+→ inventory/order update
+
+Do NOT create a disconnected fake Rescue record.
+
+Also verify the Rescue filter works.
+
+==================================================
+PHASE 13 — SUPPLIER SUSTAINABILITY EDITOR
+==================================================
+
+The audit confirmed that Supplier Admin/Manager can already enter sustainability metadata.
+
+Verify the actual workflow:
+
+Supplier
+→ Product
+→ Edit sustainability data
+→ Save
+→ Product API
+→ Catalog
+→ Product Detail
+→ Local Score
+
+Use one demo supplier to test this manually.
+
+Make sure changes actually persist.
+
+==================================================
+PHASE 14 — ROLE TEST
+==================================================
+
+Test these existing demo roles:
+
+Restaurant Admin
+Restaurant Manager
+Restaurant Staff
+Supplier Admin
+Supplier Manager
+Supplier Representative
+Supplier Warehouse
+Driver
+Platform Admin
+
+Verify that each role sees the appropriate level of information.
+
+Restaurant Staff:
+
+Keep the ordering interface simple.
+
+They should see compact local/seasonal signals.
+
+They should NOT suddenly receive a huge analytics dashboard.
+
+Restaurant Manager/Admin:
+
+Should see Local Impact analytics.
+
+Supplier Admin/Manager:
+
+Should be able to manage sustainability metadata.
+
+Driver:
+
+Should NOT receive irrelevant product sustainability UI.
+
+==================================================
+PHASE 15 — DO NOT IMPLEMENT THE MISSING FEATURES YET
+==================================================
+
+The audit correctly found that these were NOT implemented:
+
+- Local Spend
+- Smart Quantity
+- CO2 per kg
+- delivery efficiency sustainability
+
+DO NOT suddenly implement them as part of this task.
+
+These require separate definitions/data models.
+
+For now:
+
+1. Make the already implemented Local/Sustainability system work.
+2. Populate it correctly.
+3. Make it visible.
+4. Make the existing Rescue flow demonstrable.
+5. Implement the requested emoji visual language.
+
+At the end, list these missing features separately as future work.
+
+==================================================
+PHASE 16 — MOBILE CHECK
+==================================================
+
+Check the new indicators on mobile.
+
+The catalog must remain minimalist.
+
+Do not make cards huge just to fit sustainability information.
+
+Use compact indicators and/or a small grouped information area.
+
+The user should be able to understand:
+
+📍 Local
+🌱 Seasonal
+
+without the product card becoming cluttered.
+
+==================================================
+PHASE 17 — FINAL VERIFICATION
+==================================================
+
+After implementation, ACTUALLY OPEN THE RUNNING APP.
+
+Do not just inspect code.
+
+Test:
+
+1. Catalog
+2. Product Detail
+3. Cart
+4. Checkout
+5. Order
+6. Restaurant Manager Dashboard
+7. Supplier Product Editor
+8. Risk Stock
+9. Rescue
+10. Monthly Report
+
+I should visibly be able to see:
+
+📍
+🌱
+♻️
+📦
+⚡
+
+where applicable.
+
+I should also be able to see actual:
+
+Local Score
+Origin
+Seasonality
+Packaging
+Local Impact
+Badges
+Rescue
+
+using real data.
+
+==================================================
+PHASE 18 — FINAL REPORT
+==================================================
+
+When complete, report:
+
+1. How many products were populated
+2. Which product categories/scenarios were created
+3. How many products now have valid Local Scores
+4. How many new demo orders were created
+5. Whether Local Impact snapshots were generated
+6. Whether the Manager Dashboard now displays Local Impact
+7. Whether Monthly Reports now display Local Impact
+8. Whether Rescue is now demonstrable
+9. Where emojis were implemented
+10. Which emojis are visible on which pages
+11. Which original features are still missing
+12. Any remaining bugs
+
+IMPORTANT:
+
+DO NOT say "implemented" merely because code exists.
+
+The success condition is:
+
+I LOG INTO GASTROCONNECT
+
+AND
+
+I CAN ACTUALLY SEE THE NEW LOCAL / SUSTAINABILITY FUNCTIONALITY.
+
+The previous failure was primarily DATA PROVISIONING.
+
+Fix the data provisioning first, then verify the existing implementation end-to-end.
