@@ -450,6 +450,37 @@ export const orderNotificationRetries = pgTable("order_notification_retries", {
   index("idx_order_notification_retries_pending").on(table.completedAt, table.nextAttemptAt),
 ]);
 
+// Durable outbox for restaurant delivery updates. Each lifecycle event has its
+// own key so retries never replay the in-app chat story or collapse distinct
+// status changes for the same order.
+export const deliveryNotificationRetries = pgTable("delivery_notification_retries", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  orderId: varchar("order_id", { length: 36 }).notNull().references(() => orders.id),
+  restaurantId: varchar("restaurant_id", { length: 36 }).notNull().references(() => users.id),
+  supplierId: varchar("supplier_id", { length: 36 }).notNull().references(() => users.id),
+  eventKey: varchar("event_key", { length: 100 }).notNull(),
+  payload: jsonb("payload").$type<{
+    title: string;
+    message: string;
+    titleIt: string;
+    messageIt: string;
+    url: string;
+    email: string | null;
+    pushPending: boolean;
+    emailPending: boolean;
+  }>().notNull(),
+  attempts: integer("attempts").default(0).notNull(),
+  nextAttemptAt: timestamp("next_attempt_at").defaultNow().notNull(),
+  leaseToken: varchar("lease_token", { length: 36 }),
+  lastError: text("last_error"),
+  failedAt: timestamp("failed_at"),
+  completedAt: timestamp("completed_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex("uniq_delivery_notification_retries_event").on(table.orderId, table.eventKey),
+  index("idx_delivery_notification_retries_pending").on(table.completedAt, table.nextAttemptAt),
+]);
+
 export const documents = pgTable("documents", {
   id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
   orderId: varchar("order_id", { length: 36 }).notNull().references(() => orders.id),
@@ -686,6 +717,7 @@ export const updateComplaintSchema = createInsertSchema(complaints).omit({ id: t
 export const insertComplaintCommentSchema = createInsertSchema(complaintComments).omit({ id: true, createdAt: true });
 export const insertNotificationSchema = createInsertSchema(notifications).omit({ id: true, createdAt: true, isRead: true });
 export const insertOrderNotificationRetrySchema = createInsertSchema(orderNotificationRetries).omit({ id: true, createdAt: true, attempts: true, nextAttemptAt: true, lastError: true, failedAt: true, completedAt: true });
+export const insertDeliveryNotificationRetrySchema = createInsertSchema(deliveryNotificationRetries).omit({ id: true, createdAt: true, attempts: true, nextAttemptAt: true, lastError: true, failedAt: true, completedAt: true });
 export const insertDocumentSchema = createInsertSchema(documents).omit({ id: true, createdAt: true });
 export const insertOrderStatusHistorySchema = createInsertSchema(orderStatusHistory).omit({ id: true, createdAt: true });
 export const insertComplaintStatusHistorySchema = createInsertSchema(complaintStatusHistory).omit({ id: true, createdAt: true });
@@ -1088,6 +1120,8 @@ export type InsertNotification = z.infer<typeof insertNotificationSchema>;
 export type Notification = typeof notifications.$inferSelect;
 export type InsertOrderNotificationRetry = z.infer<typeof insertOrderNotificationRetrySchema>;
 export type OrderNotificationRetry = typeof orderNotificationRetries.$inferSelect;
+export type InsertDeliveryNotificationRetry = z.infer<typeof insertDeliveryNotificationRetrySchema>;
+export type DeliveryNotificationRetry = typeof deliveryNotificationRetries.$inferSelect;
 export type InsertDocument = z.infer<typeof insertDocumentSchema>;
 export type Document = typeof documents.$inferSelect;
 export type InsertOrderStatusHistory = z.infer<typeof insertOrderStatusHistorySchema>;

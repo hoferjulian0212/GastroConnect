@@ -48,6 +48,14 @@ const checkoutMigrations = [
     name: "0014_delivery_constraints",
     file: path.join(migrationFolder, "0014_delivery_constraints.sql"),
   },
+  {
+    name: "0015_delivery_notification_outbox",
+    file: path.join(migrationFolder, "0015_delivery_notification_outbox.sql"),
+  },
+  {
+    name: "0016_delivery_notification_outbox_cascade",
+    file: path.join(migrationFolder, "0016_delivery_notification_outbox_cascade.sql"),
+  },
 ] as const;
 
 function parsePositiveTimeout(value: string | undefined, fallback: number): number {
@@ -252,6 +260,18 @@ const expectedIndexes: Record<string, ExpectedIndex> = {
     unique: false,
     predicate: null,
   },
+  uniq_delivery_notification_retries_event: {
+    table: "delivery_notification_retries",
+    columns: ["order_id", "event_key"],
+    unique: true,
+    predicate: null,
+  },
+  idx_delivery_notification_retries_pending: {
+    table: "delivery_notification_retries",
+    columns: ["completed_at", "next_attempt_at"],
+    unique: false,
+    predicate: null,
+  },
   uniq_supplier_delivery_zone_prefix: {
     table: "supplier_delivery_zones",
     columns: ["supplier_id", "postal_code_prefix"],
@@ -293,6 +313,9 @@ export async function verifyCheckoutMigration(client: Queryable = pool): Promise
   }
   if (!(await relationExists(client, "order_notification_retries"))) {
     missingColumns.push("order_notification_retries");
+  }
+  if (!(await relationExists(client, "delivery_notification_retries"))) {
+    missingColumns.push("delivery_notification_retries");
   }
   for (const column of [
     "promotion_type", "source_risk_id", "quantity_cap", "rescue_quality",

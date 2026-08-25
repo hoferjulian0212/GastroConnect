@@ -4,7 +4,7 @@ import { getRescueAllocationTarget, getRescuePromotionState } from "./rescueProm
 import { calculateLocalImpact } from "./localImpact";
 import { eq, and, desc, or, sql, ne, inArray, notInArray, gt, gte, lte, isNull, isNotNull } from "drizzle-orm";
 import {
-  users, products, orders, orderItems, cartItems, conversations, messages, complaints, notifications, orderNotificationRetries, complaintComments, documents,
+  users, products, orders, orderItems, cartItems, conversations, messages, complaints, notifications, orderNotificationRetries, deliveryNotificationRetries, complaintComments, documents,
   orderStatusHistory, complaintStatusHistory, promotions, deliverySchedules, customMinOrderQuantities, customPrices, stockMovements,
   orderTemplates, orderTemplateItems, costSettings, overnightStays, minimumOrderValues, supplierRatings, monthlyReports, priceChangeLog,
   platformAdmins, type PlatformAdmin, type InsertPlatformAdmin,
@@ -16,7 +16,7 @@ import {
   type ConversationWithUser, type CartItemWithProduct, type Complaint, type InsertComplaint,
   type ComplaintWithDetails, type Notification, type InsertNotification, type UpdateComplaint,
   type ComplaintComment, type InsertComplaintComment, type ComplaintCommentWithUser,
-  type InsertOrderNotificationRetry, type OrderNotificationRetry,
+  type InsertOrderNotificationRetry, type OrderNotificationRetry, type InsertDeliveryNotificationRetry, type DeliveryNotificationRetry,
   type Document, type InsertDocument, type DocumentWithDetails,
   type OrderStatusHistory, type OrderStatusHistoryWithUser,
   type ComplaintStatusHistory, type ComplaintStatusHistoryWithUser,
@@ -4381,6 +4381,54 @@ export class DatabaseStorage implements IStorage {
     if (updated?.failedAt) {
       console.error(`[order-notify] terminal delivery failure for order ${updated.orderId} after ${updated.attempts} attempts`);
     }
+  }
+
+  async enqueueDeliveryNotificationRetry(retry: InsertDeliveryNotificationRetry): Promise<DeliveryNotificationRetry> {
+    const [created] = await db.insert(deliveryNotificationRetries)
+      .values(retry)
+      .onConflictDoUpdate({
+        target: [deliveryNotificationRetries.orderId, deliveryNotificationRetries.eventKey],
+        set: { payload: retry.payload, completedAt: null, failedAt: null, nextAttemptAt: new Date(), lastError: null, leaseToken: null },
+      })
+      .returning();
+    return created;
+  }
+
+  async getPendingDeliveryNotificationRetries(limit = 25): Promise<DeliveryNotificationRetry[]> {
+    return db.select().from(deliveryNotificationRetries)
+      .where(and(isNull(deliveryNotificationRetries.completedAt), isNull(deliveryNotificationRetries.failedAt), lte(deliveryNotificationRetries.nextAttemptAt, new Date())))
+      .orderBy(deliveryNotificationRetries.createdAt)
+      .limit(limit);
+  }
+
+  async claimDeliveryNotificationRetry(id: string): Promise<string | undefined> {
+    const leaseToken = randomUUID();
+    const [claimed] = await db.update(deliveryNotificationRetries)
+      .set({ nextAttemptAt: new Date(Date.now() + 5 * 60 * 1000), leaseToken })
+      .where(and(eq(deliveryNotificationRetries.id, id), isNull(deliveryNotificationRetries.completedAt), isNull(deliveryNotificationRetries.failedAt), lte(deliveryNotificationRetries.nextAttemptAt, new Date())))
+      .returning({ id: deliveryNotificationRetries.id });
+    return claimed ? leaseToken : undefined;
+  }
+
+  async markDeliveryNotificationRetryCompleted(id: string, leaseToken: string, payload: DeliveryNotificationRetry["payload"]): Promise<void> {
+    await db.update(deliveryNotificationRetries)
+      .set({ payload, completedAt: new Date(), failedAt: null, lastError: null, leaseToken: null })
+      .where(and(eq(deliveryNotificationRetries.id, id), eq(deliveryNotificationRetries.leaseToken, leaseToken)));
+  }
+
+  async markDeliveryNotificationRetryFailed(id: string, leaseToken: string, error: string, payload?: DeliveryNotificationRetry["payload"]): Promise<void> {
+    const [updated] = await db.update(deliveryNotificationRetries)
+      .set({
+        ...(payload ? { payload } : {}),
+        attempts: sql`${deliveryNotificationRetries.attempts} + 1`,
+        nextAttemptAt: sql`CASE WHEN ${deliveryNotificationRetries.attempts} + 1 >= 10 THEN now() ELSE now() + LEAST((2 ^ LEAST(${deliveryNotificationRetries.attempts} + 1, 6)) * interval '30 seconds', interval '30 minutes') END`,
+        lastError: error.slice(0, 1000),
+        failedAt: sql`CASE WHEN ${deliveryNotificationRetries.attempts} + 1 >= 10 THEN now() ELSE NULL END`,
+        leaseToken: null,
+      })
+      .where(and(eq(deliveryNotificationRetries.id, id), eq(deliveryNotificationRetries.leaseToken, leaseToken)))
+      .returning({ orderId: deliveryNotificationRetries.orderId, attempts: deliveryNotificationRetries.attempts, failedAt: deliveryNotificationRetries.failedAt });
+    if (updated?.failedAt) console.error(`[delivery-notify] terminal failure for order ${updated.orderId} after ${updated.attempts} attempts`);
   }
 
   async hasOrderMessage(orderId: string): Promise<boolean> {

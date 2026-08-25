@@ -17,7 +17,7 @@ import { getErpProviderAdapter } from "./erpProviders";
 import { isErpCredentialsKeyConfigured, maskHint } from "./erpCrypto";
 import { runSyncForConnection, startErpSyncScheduler, testErpConnection, ErpSyncRunningError, ErpSyncConfigError } from "./erpSync";
 import { sendAdminEmail, isAdminEmailConfigured } from "./adminNotify";
-import { sendEmail, renderNotificationEmail } from "./emailService";
+import { sendEmail, renderNotificationEmail, isEmailConfigured } from "./emailService";
 import { registerAuthRoutes } from "./auth/routes";
 import { createClerkClient } from "@clerk/express";
 import { registerAdminAuthRoutes, bootstrapPlatformAdmin, bootstrapDemoWarehouseMember, bootstrapDemoDriverMembers, bootstrapDemoRoleMembers, DEMO_ROLE_LOGINS, DEMO_WAREHOUSE_EMAIL, DEMO_DRIVER_EMAIL, DEMO_DRIVER_PASSWORD, DEMO_WAREHOUSE_PASSWORD } from "./auth/adminAuth";
@@ -312,7 +312,7 @@ async function createNotificationWithPush(
     ? await storage.createNewOrderNotificationOnce(localizedNotification)
     : { notification: await storage.createNotification(localizedNotification), created: true };
   const created = notificationResult.notification;
-  if (!notificationResult.created) return created;
+  if (!notificationResult.created) return { notification: created, pushPending: false, emailPending: false, url: "" };
   const urlRole = role || "restaurant";
   let url = "/";
   switch (notification.type) {
@@ -364,42 +364,51 @@ async function createNotificationWithPush(
   const prefKey = notificationPrefKey(notification.type);
 
   const pushAllowed = prefKey ? (prefs.push?.[prefKey] ?? DEFAULT_NOTIFICATION_PREFS.push[prefKey]) : true;
+  let pushPending = false;
   if (pushAllowed) {
-    sendPushNotification(notification.userId, {
+    try {
+      const result = await sendPushNotification(notification.userId, {
       title: localTitle,
       message: localMsg,
       url,
       type: notification.type,
-    }).catch((err) => {
+      });
+      pushPending = result.failed > 0;
+    } catch (err: any) {
       console.error("[push] createNotificationWithPush dispatch failed", {
         userId: notification.userId,
         type: notification.type,
         referenceId: notification.referenceId,
         error: err?.message ?? String(err),
       });
-    });
+      pushPending = true;
+    }
   }
 
   const emailAllowed = prefKey ? (prefs.email?.[prefKey] ?? DEFAULT_NOTIFICATION_PREFS.email[prefKey]) : true;
-  if (emailAllowed && recipient?.email) {
-    sendEmail({
-      to: recipient.email,
-      subject: localTitle,
-      html: renderNotificationEmail({
-        title: localTitle,
-        message: localMsg,
-        linkPath: url,
-      }),
-    }).catch((err) => {
+  let emailPending = false;
+  if (emailAllowed && recipient?.email && isEmailConfigured()) {
+    try {
+      emailPending = !(await sendEmail({
+        to: recipient.email,
+        subject: localTitle,
+        html: renderNotificationEmail({
+          title: localTitle,
+          message: localMsg,
+          linkPath: url,
+        }),
+      }));
+    } catch (err: any) {
       console.error("[email] createNotificationWithPush dispatch failed", {
         userId: notification.userId,
         type: notification.type,
         referenceId: notification.referenceId,
         error: err?.message ?? String(err),
       });
-    });
+      emailPending = true;
+    }
   }
-  return created;
+  return { notification: created, pushPending, emailPending, url };
 }
 
 type OrderNotificationRetryPayload = {
@@ -449,6 +458,102 @@ export async function processOrderNotificationRetries(): Promise<void> {
     } catch (error: any) {
       await storage.markOrderNotificationRetryFailed(retry.id, leaseToken, error?.message ?? String(error));
       console.error(`[order-notify] retry failed for order ${retry.orderId}:`, error);
+    }
+  }
+}
+
+type DeliveryNotificationRetryPayload = {
+  title: string;
+  message: string;
+  titleIt: string;
+  messageIt: string;
+  url: string;
+  email: string | null;
+  pushPending: boolean;
+  emailPending: boolean;
+};
+
+async function queueDeliveryNotificationRetry(
+  order: any,
+  eventKey: string,
+  notification: InsertNotification,
+  role: string,
+  i18n: { title_it: string; message_it: string },
+  delivery: { pushPending: boolean; emailPending: boolean; url: string },
+) {
+  if (!delivery.pushPending && !delivery.emailPending) return;
+  const recipient = await storage.getUser(notification.userId);
+  await storage.enqueueDeliveryNotificationRetry({
+    orderId: order.id,
+    restaurantId: order.restaurantId,
+    supplierId: order.supplierId,
+    eventKey,
+    payload: {
+      title: recipient?.language === "it" ? i18n.title_it : notification.title,
+      message: recipient?.language === "it" ? i18n.message_it : notification.message,
+      titleIt: i18n.title_it,
+      messageIt: i18n.message_it,
+      url: delivery.url || `/${role}/orders/${order.id}`,
+      email: recipient?.email ?? null,
+      pushPending: delivery.pushPending,
+      emailPending: delivery.emailPending,
+    },
+  });
+}
+
+async function notifyDeliveryUpdate(
+  order: any,
+  eventKey: string,
+  title: string,
+  message: string,
+  i18n: { title_it: string; message_it: string },
+) {
+  const notification = {
+    userId: order.restaurantId,
+    type: "delivery_update" as const,
+    title,
+    message,
+    referenceId: order.id,
+  };
+  const delivery = await createNotificationWithPush(notification, "restaurant", i18n);
+  await queueDeliveryNotificationRetry(order, eventKey, notification, "restaurant", i18n, delivery);
+}
+
+export async function processDeliveryNotificationRetries(): Promise<void> {
+  const retries = await storage.getPendingDeliveryNotificationRetries();
+  for (const retry of retries) {
+    const leaseToken = await storage.claimDeliveryNotificationRetry(retry.id);
+    if (!leaseToken) continue;
+    try {
+      const payload = retry.payload as DeliveryNotificationRetryPayload;
+      let pushPending = payload.pushPending;
+      let emailPending = payload.emailPending;
+      if (pushPending) {
+        const result = await sendPushNotification(retry.restaurantId, {
+          title: payload.title,
+          message: payload.message,
+          url: payload.url,
+          type: "delivery_update",
+        });
+        pushPending = result.failed > 0;
+      }
+      if (emailPending && payload.email && isEmailConfigured()) {
+        emailPending = !(await sendEmail({
+          to: payload.email,
+          subject: payload.title,
+          html: renderNotificationEmail({ title: payload.title, message: payload.message, linkPath: payload.url }),
+        }));
+      } else if (emailPending && !isEmailConfigured()) {
+        emailPending = false;
+      }
+      if (pushPending || emailPending) {
+        await storage.markDeliveryNotificationRetryFailed(retry.id, leaseToken, "one or more notification channels remain unavailable", { ...payload, pushPending, emailPending });
+      } else {
+        await storage.markDeliveryNotificationRetryCompleted(retry.id, leaseToken, { ...payload, pushPending, emailPending });
+      }
+    } catch (error: any) {
+      await storage.markDeliveryNotificationRetryFailed(retry.id, leaseToken, error?.message ?? String(error));
+      console.error(`[delivery-notify] retry failed for order ${retry.orderId}:`, error);
     }
   }
 }
@@ -1021,6 +1126,15 @@ export async function registerRoutes(
   orderNotificationRetryTimer.unref();
   processOrderNotificationRetries().catch((error) => {
     console.error("[order-notify] startup retry batch failed:", error);
+  });
+  const deliveryNotificationRetryTimer = setInterval(() => {
+    processDeliveryNotificationRetries().catch((error) => {
+      console.error("[delivery-notify] retry batch failed:", error);
+    });
+  }, 30_000);
+  deliveryNotificationRetryTimer.unref();
+  processDeliveryNotificationRetries().catch((error) => {
+    console.error("[delivery-notify] startup retry batch failed:", error);
   });
   // Backfill article numbers for any existing products that lack one
   try {
@@ -6735,7 +6849,7 @@ export async function registerRoutes(
         return res.status(403).json({ error: "forbidden" });
       }
       const notification = await createNotificationWithPush(validated, req.auth.org.role);
-      res.status(201).json(notification);
+      res.status(201).json(notification.notification ?? notification);
     } catch (error) {
       res.status(500).json({ error: "Failed to create notification" });
     }
@@ -9138,16 +9252,15 @@ export async function registerRoutes(
   async function notifyRouteDeparture(assignment: any, actorName = "Ihr Fahrer") {
     const order = await storage.getOrder(assignment.orderId);
     if (!order) return;
-    await createNotificationWithPush({
-      userId: order.restaurantId,
-      type: "delivery_update",
-      title: `Lieferung unterwegs #${formatOrderNumber(order)}`,
-      message: `${order.restaurant?.companyName || order.restaurant?.name || "Ihre Bestellung"} ist jetzt unterwegs.`,
-      referenceId: order.id,
-    }, "restaurant", {
+    try {
+      await notifyDeliveryUpdate(order, "en_route", `Lieferung unterwegs #${formatOrderNumber(order)}`,
+        `${order.restaurant?.companyName || order.restaurant?.name || "Ihre Bestellung"} ist jetzt unterwegs.`, {
       title_it: `Consegna in corso #${formatOrderNumber(order)}`,
       message_it: `Il tuo ordine #${formatOrderNumber(order)} è in viaggio.`,
-    });
+      });
+    } catch (err) {
+      console.error("[delivery] external notification queue failed:", err);
+    }
     try {
       const conversation = await storage.getOrCreateConversation(order.restaurantId, order.supplierId);
       await storage.sendMessage({
@@ -9790,16 +9903,17 @@ export async function registerRoutes(
           en_route: `Il tuo ordine #${formatOrderNumber(order)} è in viaggio.`,
           arriving: `Il tuo conducente arriverà a breve con l'ordine #${formatOrderNumber(order)}.`,
         };
-        await createNotificationWithPush({
-          userId: order.restaurantId,
-          type: "delivery_update",
-          title: titles[status],
-          message: bodies[status],
-          referenceId: order.id,
-        }, "restaurant", {
-          title_it: titlesIT[status],
-          message_it: bodiesIT[status],
-        });
+        try {
+          await notifyDeliveryUpdate(order, status, titles[status], bodies[status], {
+            title_it: titlesIT[status],
+            message_it: bodiesIT[status],
+          });
+        } catch (err) {
+          // The lifecycle update and chat story are already committed. A
+          // temporary outbox/provider failure must not make the driver retry
+          // the status transition and create duplicate stories.
+          console.error("[delivery] external notification queue failed:", err);
+        }
       }
       res.json(updated);
     } catch (error: any) {
