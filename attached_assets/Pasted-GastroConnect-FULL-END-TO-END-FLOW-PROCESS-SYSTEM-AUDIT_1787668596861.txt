@@ -1,0 +1,1466 @@
+GastroConnect – FULL END-TO-END FLOW, PROCESS & SYSTEM AUDIT
+
+ROLE
+
+Act as a combination of:
+
+* Senior Full-Stack Engineer
+* QA Lead
+* Product Architect
+* UX/UI Auditor
+* Process/Workflow Designer
+* Database/Data Model Auditor
+* Logistics Workflow Specialist
+* Role & Permission Auditor
+
+You are auditing the entire existing GastroConnect application after the latest Local / Sustainability / Zero-Waste / Logistics Intelligence implementation.
+
+This is NOT a feature-development task.
+
+This is a deep audit and correction task.
+
+Your goal is to find anything that:
+
+* breaks a workflow
+* creates conflicting choices
+* creates duplicate functionality
+* creates dead ends
+* creates unnecessary steps
+* creates confusing UX
+* creates inconsistent states
+* creates impossible states
+* creates duplicate data
+* creates unused code
+* creates unused features
+* creates dead UI
+* creates missing functionality
+* creates incorrect permissions
+* creates inconsistent business logic
+* creates broken transitions
+* creates regressions
+* creates problems specifically caused by the latest implementation
+
+Then fix the problems where appropriate.
+
+⸻
+
+1. DO NOT START BY RANDOMLY CLICKING AROUND
+
+First understand the complete application architecture.
+
+Audit:
+
+* all routes
+* all pages
+* all user roles
+* all permissions
+* all workflows
+* all order states
+* all delivery states
+* all inventory states
+* all supplier states
+* all driver states
+* all existing Local/Sustainability features
+* all database models
+* all API/backend functions
+* all relevant components
+* all status transitions
+* all notifications
+* all modals
+* all forms
+* all buttons/actions
+* all conditional rendering
+* all route calculations
+* all delivery date/time logic
+
+Create an internal mental/process map before changing anything.
+
+⸻
+
+2. CORE PRINCIPLE
+
+The entire application must behave like one coherent system.
+
+There must never be a situation where:
+
+* one page says an order is confirmed
+* another page says it is pending
+* another page still allows confirmation
+* another page allows cancellation
+* the supplier sees one status
+* the restaurant sees another status
+* the driver sees a different state
+
+All state transitions must be consistent across the entire application.
+
+⸻
+
+3. CRITICAL RULE: ONE CLEAR ACTION PER STATE
+
+Audit every workflow state.
+
+For example:
+
+Supplier receives order
+
+The interface should make the next logical action obvious.
+
+It must NOT contain:
+
+* two competing confirmation buttons
+* duplicate buttons with slightly different meanings
+* old and new confirmation flows
+* actions that lead to the same result
+* actions that appear available but are invalid
+
+For every important state:
+
+What is the one thing this user should logically do next?
+
+The UI should make that obvious.
+
+Secondary actions should exist only when genuinely necessary.
+
+⸻
+
+4. COMPLETE ORDER LIFECYCLE AUDIT
+
+Audit the entire order process from beginning to end.
+
+FLOW A – RESTAURANT CREATES ORDER
+
+Start from:
+
+Restaurant login
+
+→ Catalog
+
+→ Search
+
+→ Product
+
+→ Product details
+
+→ Quantity
+
+→ Cart
+
+→ Delivery options
+
+→ Delivery date/time
+
+→ Checkout
+
+→ Order submission
+
+→ Order confirmation
+
+Check:
+
+* Can the order always be completed?
+* Are required fields actually required?
+* Are unnecessary fields blocking the order?
+* Can a user accidentally create duplicate orders?
+* Can quantities become invalid?
+* Can unavailable products still be ordered?
+* Can delivery dates become invalid?
+* Can delivery windows conflict with restaurant availability?
+* Does ASAP work correctly?
+* Does fixed delivery date work correctly?
+* Does the order summary match the submitted order?
+* Are Local/Sustainability features slowing the process?
+* Can AI recommendations be dismissed?
+* Are there unnecessary popups?
+* Are there duplicate confirmations?
+
+The ordering process must remain fast.
+
+⸻
+
+5. ORDER SUBMISSION
+
+After clicking:
+
+PLACE ORDER
+
+there must be a clear transition.
+
+Check:
+
+* loading state
+* duplicate-click protection
+* order creation
+* database transaction
+* order number
+* confirmation
+* notification
+* supplier visibility
+* restaurant order history
+
+The user must never be able to accidentally create:
+
+Order #1234
+
+and
+
+Order #1235
+
+from one action.
+
+⸻
+
+6. SUPPLIER ORDER RECEIVING FLOW
+
+Audit:
+
+Supplier
+
+→ New Order
+
+→ Order Details
+
+→ Accept / Reject
+
+→ Delivery date
+
+→ Preparation
+
+→ Ready
+
+→ Dispatch / Driver
+
+Every state must have a clear logical next step.
+
+Look specifically for:
+
+* duplicate accept buttons
+* accept + confirm buttons that do the same thing
+* multiple delivery-date controls
+* conflicting status changes
+* actions available after an order should be locked
+* buttons that remain visible after state transition
+* old UI elements
+* actions that are no longer valid
+
+Once an order is accepted, the interface should clearly move to the next logical state.
+
+⸻
+
+7. ORDER STATUS STATE MACHINE
+
+Create an actual logical state map.
+
+Example:
+
+DRAFT
+↓
+SUBMITTED
+↓
+RECEIVED
+↓
+CONFIRMED
+↓
+SCHEDULED
+↓
+PREPARING
+↓
+READY
+↓
+DISPATCHED
+↓
+OUT_FOR_DELIVERY
+↓
+DELIVERED
+↓
+COMPLETED
+
+Use the application’s actual states.
+
+Do NOT invent new states just for the audit.
+
+For every existing state identify:
+
+* who can enter it
+* who can leave it
+* which action triggers transition
+* which roles can perform it
+* which actions become unavailable
+* what notification is triggered
+* what happens to the driver workflow
+* what happens to restaurant workflow
+* what happens to supplier workflow
+
+Identify impossible transitions.
+
+Examples:
+
+* Delivered → Preparing
+* Dispatched → change delivery date
+* Cancelled → Confirmed
+* Completed → Dispatch
+* Accepted → Accept again
+
+These must be prevented.
+
+⸻
+
+8. DRIVER END-TO-END FLOW
+
+This is a major audit area.
+
+Start from:
+
+Supplier has confirmed order
+
+→ Driver receives assignment
+
+→ Driver sees route
+
+→ Driver accepts/starts route
+
+→ Navigation
+
+→ Arrives at restaurant
+
+→ Delivery
+
+→ Proof of Delivery
+
+→ Complete stop
+
+→ Next stop
+
+→ Final stop
+
+→ Route completed
+
+Audit the entire driver experience.
+
+⸻
+
+9. DRIVER FLOW – NO DEAD ENDS
+
+At every step ask:
+
+What does the driver do next?
+
+There must always be an obvious answer.
+
+Check:
+
+* route assignment
+* route acceptance
+* start route
+* stop selection
+* navigation
+* arrival
+* delivery confirmation
+* proof of delivery
+* failed delivery
+* partial delivery
+* customer unavailable
+* damaged goods
+* missing items
+* returnable packaging
+* route completion
+
+If a delivery cannot be completed, there must be a clear exception workflow.
+
+Do not leave the driver stranded on a page.
+
+⸻
+
+10. DRIVER STATUS SYNCHRONIZATION
+
+When driver changes:
+
+OUT FOR DELIVERY
+
+Restaurant should see the appropriate status.
+
+When driver changes:
+
+DELIVERED
+
+Supplier and restaurant should update correctly.
+
+Check all synchronization.
+
+No stale statuses.
+
+No duplicated status logic.
+
+No conflicting local state vs backend state.
+
+⸻
+
+11. DELIVERY DATE / DELIVERY WINDOW AUDIT
+
+This is especially important.
+
+Orders may have:
+
+ASAP
+
+or
+
+Specific date
+
+or
+
+Specific time window
+
+Restaurants must have availability windows.
+
+Audit:
+
+* ASAP logic
+* fixed date logic
+* time window logic
+* restaurant availability
+* supplier availability
+* driver availability
+* route compatibility
+
+A route optimizer must NEVER violate:
+
+* fixed delivery date
+* fixed delivery window
+* restaurant closed time
+* supplier constraints
+* driver constraints
+
+Optimization can only operate inside valid constraints.
+
+⸻
+
+12. ROUTE OPTIMIZATION AUDIT
+
+The current application already has routing.
+
+Do not replace it blindly.
+
+Audit:
+
+* existing route calculation
+* ETA
+* distance
+* stops
+* delivery zones
+* route ordering
+* consolidation
+* route efficiency
+* CO₂ calculations
+* new sustainability layer
+
+Check whether the new features introduced:
+
+* duplicated distance calculations
+* duplicated ETA calculations
+* different distance values in different pages
+* inconsistent route logic
+* conflicting route statuses
+
+There should be ONE source of truth wherever possible.
+
+⸻
+
+13. CO₂ / SUSTAINABILITY AUDIT
+
+Because this was introduced recently, audit it particularly carefully.
+
+Check:
+
+* where data comes from
+* how distance is calculated
+* how emissions are estimated
+* whether the value is labelled as estimated
+* whether missing data produces false values
+* whether scores are calculated consistently
+* whether Local Score is calculated consistently
+* whether product cards and product details show the same score
+* whether cart and dashboard show compatible information
+
+Never display fabricated precision.
+
+If data is insufficient:
+
+show unavailable / estimated / low confidence
+
+rather than inventing a number.
+
+⸻
+
+14. LOCAL SCORE AUDIT
+
+Check:
+
+* formula
+* inputs
+* data source
+* weights
+* missing data
+* supplier-provided data
+* distance
+* origin
+* seasonality
+* packaging
+* logistics
+
+The score must be deterministic.
+
+The same product should not randomly have:
+
+91 on one page
+
+and
+
+87 on another.
+
+One source of truth.
+
+⸻
+
+15. LOCAL / SUSTAINABILITY UI AUDIT
+
+The new features must NOT destroy the existing minimalist design.
+
+Audit:
+
+Catalog
+
+Is it too crowded?
+
+Product Detail
+
+Is it clear?
+
+Cart
+
+Is it distracting?
+
+Checkout
+
+Does it slow the user down?
+
+Dashboard
+
+Is there too much information?
+
+Mobile
+
+Are badges overflowing?
+
+Desktop
+
+Is information density appropriate?
+
+Popups
+
+Are there too many?
+
+AI hints
+
+Can they be dismissed?
+
+Emojis
+
+Are they useful or decorative clutter?
+
+The goal is:
+
+Progressive disclosure.
+
+Simple first.
+
+More information only when requested.
+
+⸻
+
+16. ROLE-BASED UX AUDIT
+
+Every role must see only what it needs.
+
+Audit separately:
+
+Restaurant Buyer / Chef
+
+Should primarily see:
+
+* products
+* prices
+* availability
+* delivery
+* compact local indicators
+
+The chef should NOT be overwhelmed by analytics.
+
+⸻
+
+Restaurant Manager / Owner
+
+Should see:
+
+* order quality
+* local statistics
+* waste
+* sustainability
+* local spend
+* employee/order trends
+* relevant reports
+
+⸻
+
+Warehouse Worker
+
+Should primarily see:
+
+* inventory
+* risk stock
+* expiry
+* quantities
+* actions
+
+⸻
+
+Supplier Office / Manager
+
+Should see:
+
+* orders
+* confirmations
+* delivery scheduling
+* risk stock
+* rescue
+* routes
+* logistics statistics
+
+⸻
+
+Driver
+
+Should see:
+
+* assigned route
+* stops
+* navigation
+* delivery
+* proof
+* exceptions
+* packaging returns
+
+Nothing unnecessary.
+
+⸻
+
+Admin
+
+Should have system-wide control.
+
+⸻
+
+17. PERMISSION AUDIT
+
+For every sensitive action check:
+
+Who can:
+
+* create order
+* edit order
+* cancel order
+* accept order
+* reject order
+* change delivery date
+* dispatch order
+* assign driver
+* modify stock
+* report risk stock
+* create rescue offer
+* modify product information
+* change Local Score data
+* modify supplier data
+* access restaurant analytics
+
+Check both:
+
+Frontend permission
+
+and
+
+Backend permission.
+
+Hiding a button is NOT sufficient security.
+
+⸻
+
+18. RISK STOCK / RESCUE AUDIT
+
+Audit the new connection between:
+
+Warehouse
+
+→ Risk Stock
+
+→ Manager/Supplier Office
+
+→ Rescue
+
+→ Restaurant
+
+Check:
+
+* duplicate inventory data
+* stale stock
+* rescue product still available after sold
+* rescue quantity exceeding stock
+* expired products still visible
+* normal product and rescue product duplication
+* incorrect pricing
+* permissions
+* status synchronization
+
+This must be a logical extension of existing inventory functionality.
+
+⸻
+
+19. ORDER DATA CONSISTENCY
+
+Take a real order and follow its data through the entire system.
+
+Example:
+
+Restaurant creates:
+
+10 kg apples
+
+Trace the same order through:
+
+Restaurant
+
+→ Database
+
+→ Supplier
+
+→ Warehouse
+
+→ Driver
+
+→ Route
+
+→ Delivery
+
+→ Completed Order
+
+Verify:
+
+* quantity
+* price
+* supplier
+* delivery date
+* delivery window
+* address
+* status
+* timestamps
+* Local Score
+* route data
+* CO₂ estimate
+* rescue information if applicable
+
+Nothing should mysteriously change.
+
+⸻
+
+20. DUPLICATES
+
+Search the entire application for duplicate:
+
+* components
+* functions
+* APIs
+* calculations
+* database fields
+* status definitions
+* buttons
+* pages
+* filters
+* hooks
+* utilities
+* route calculations
+* score calculations
+
+If two functions perform essentially the same operation:
+
+Identify whether they should be unified.
+
+Do not blindly delete code.
+
+First verify dependencies.
+
+⸻
+
+21. DEAD CODE
+
+Find:
+
+* unused components
+* unused functions
+* unused imports
+* unused state
+* unused database fields
+* obsolete modals
+* obsolete routes
+* abandoned features
+* commented-out code
+* old implementations
+* duplicate implementations
+
+Classify:
+
+SAFE TO REMOVE
+
+NEEDS VERIFICATION
+
+KEEP
+
+Do not delete anything critical without verifying references.
+
+⸻
+
+22. DEAD FEATURES / UNUSED UI
+
+Look for UI that:
+
+* appears clickable but does nothing
+* leads nowhere
+* is visually present but not functional
+* references old functionality
+* is no longer connected to backend
+* is duplicated elsewhere
+* is unnecessary
+
+Every visible button should have a meaningful result.
+
+Every link should lead somewhere valid.
+
+Every modal should have a purpose.
+
+⸻
+
+23. MISSING FUNCTIONALITY
+
+Do not only look for bugs.
+
+Look for things that logically need to exist but don’t.
+
+Examples:
+
+* missing error states
+* missing loading states
+* missing empty states
+* missing cancellation handling
+* missing failed delivery flow
+* missing stock conflict handling
+* missing permission handling
+* missing validation
+* missing route exception handling
+* missing delivery-window validation
+* missing synchronization
+* missing confirmation
+* missing recovery after errors
+
+Ask:
+
+If this goes wrong in the real world, what does the user do?
+
+If the answer is:
+
+nothing / stuck / refresh page / contact admin manually
+
+then the workflow is incomplete.
+
+⸻
+
+24. REAL-WORLD FAILURE SCENARIOS
+
+Test realistic situations.
+
+Restaurant
+
+* closes before delivery
+* orders unavailable product
+* changes quantity
+* cancels
+* orders duplicate
+* selects ASAP
+* selects fixed delivery date
+* delivery window conflicts
+
+Supplier
+
+* rejects order
+* accepts then cannot fulfill
+* stock insufficient
+* changes delivery date
+* has risk stock
+* creates rescue offer
+* order is cancelled
+
+Driver
+
+* restaurant unavailable
+* partial delivery
+* damaged product
+* missing product
+* wrong address
+* failed delivery
+* route changes
+* internet connection issue
+
+Warehouse
+
+* stock mismatch
+* risk stock already sold
+* expired stock
+* quantity conflict
+
+Every failure scenario must have a defined path.
+
+⸻
+
+25. LOADING / ERROR / EMPTY STATES
+
+Audit every important asynchronous action.
+
+There must be clear states for:
+
+Loading
+
+User knows something is happening.
+
+Success
+
+User knows it worked.
+
+Error
+
+User knows what happened and what to do.
+
+Empty
+
+User knows there is simply nothing available.
+
+Avoid:
+
+* blank screens
+* infinite loading
+* buttons that appear frozen
+* silent failures
+* generic errors where possible
+
+⸻
+
+26. DOUBLE ACTION PROTECTION
+
+This is critical.
+
+Buttons such as:
+
+* Place Order
+* Accept Order
+* Confirm
+* Dispatch
+* Deliver
+* Cancel
+* Create Rescue Offer
+
+must be protected against:
+
+* double clicks
+* slow network
+* duplicate requests
+* stale UI state
+
+After successful action:
+
+* disable/replace action
+* update state immediately
+* synchronize backend
+* prevent second submission
+
+⸻
+
+27. NO CONFLICTING ACTIONS
+
+For every screen ask:
+
+Are there two buttons that could logically compete?
+
+Example:
+
+Accept
+
+and
+
+Confirm Order
+
+if they effectively perform the same thing.
+
+If yes:
+
+Simplify.
+
+The application should not force users to understand internal technical distinctions that do not matter to them.
+
+⸻
+
+28. UX PAIN POINT AUDIT
+
+Do not only ask:
+
+Does it work?
+
+Ask:
+
+Is this the easiest possible way to do it?
+
+Identify:
+
+* unnecessary clicks
+* unnecessary typing
+* unnecessary navigation
+* repeated information
+* confusing terminology
+* excessive popups
+* redundant confirmation
+* unclear next actions
+* hidden important information
+* overly dense dashboards
+
+Classify each:
+
+Critical
+High
+Medium
+Low
+
+⸻
+
+29. PROCESS ALIGNMENT
+
+The entire app must follow one coherent process.
+
+For example:
+
+Restaurant:
+
+Order
+
+Supplier:
+
+Confirm
+
+Warehouse:
+
+Prepare
+
+Driver:
+
+Deliver
+
+Restaurant:
+
+Receive
+
+System:
+
+Complete
+
+If the terminology differs between roles, verify whether it is intentional.
+
+Avoid situations where:
+
+Supplier calls it:
+
+Confirmed
+
+Driver calls it:
+
+Assigned
+
+Restaurant calls it:
+
+Processing
+
+while all three actually mean the same state.
+
+Where possible, establish consistent terminology.
+
+⸻
+
+30. AUDIT THE RECENT LOCAL/SUSTAINABILITY UPDATE ESPECIALLY
+
+Everything introduced in the latest implementation must be reviewed.
+
+Specifically:
+
+* Local Score
+* Sustainability Score
+* Local badges
+* Seasonal badges
+* Local First filter
+* product metadata
+* product cards
+* product details
+* cart impact
+* order impact
+* monthly statistics
+* restaurant statistics
+* supplier statistics
+* route efficiency
+* CO₂
+* smart quantity recommendations
+* risk stock integration
+* rescue
+* delivery consolidation
+* delivery-window logic
+* role-specific visibility
+
+For each feature ask:
+
+Does it work?
+
+Is it actually useful?
+
+Does it duplicate existing functionality?
+
+Does it slow down the user?
+
+Does it create new data inconsistencies?
+
+Does it fit the existing UX?
+
+Does it work on mobile?
+
+Does it respect permissions?
+
+Does it have proper empty/error states?
+
+Does it have a clear purpose?
+
+If not, fix or simplify it.
+
+⸻
+
+31. DATA MODEL AUDIT
+
+Inspect the database after the latest changes.
+
+Look for:
+
+* duplicate fields
+* redundant tables
+* inconsistent naming
+* orphaned records
+* nullable fields that shouldn’t be nullable
+* missing relationships
+* duplicated calculated values
+* values stored that should be calculated
+* values calculated repeatedly that should have one source of truth
+
+For derived values such as:
+
+Local Score
+
+Route Efficiency
+
+CO₂
+
+prefer a centralized calculation/service rather than multiple page-specific calculations.
+
+⸻
+
+32. PERFORMANCE AUDIT
+
+The new intelligence layer must not make the app slow.
+
+Check:
+
+* unnecessary API calls
+* repeated calculations
+* duplicate database queries
+* N+1 queries
+* large dashboard queries
+* route recalculation
+* unnecessary rerenders
+* expensive calculations on mobile
+* unnecessary AI calls
+
+Especially ensure that:
+
+A normal product catalog does not perform expensive sustainability/AI calculations for every product on every render.
+
+Use appropriate caching / precomputation / lazy loading where sensible.
+
+⸻
+
+33. FINAL AUDIT REPORT
+
+After investigating everything, create a structured report.
+
+A. CRITICAL ISSUES
+
+Things that can:
+
+* break orders
+* lose data
+* create duplicate orders
+* create impossible states
+* break deliveries
+* compromise permissions
+* break financial/order data
+
+⸻
+
+B. HIGH PRIORITY
+
+Major UX/process problems.
+
+⸻
+
+C. MEDIUM
+
+Usability, consistency and technical problems.
+
+⸻
+
+D. LOW
+
+Polish / cleanup.
+
+⸻
+
+34. PROCESS MAP
+
+Provide the final actual flow diagrams in text.
+
+Example:
+
+RESTAURANT
+Browse
+↓
+Product
+↓
+Cart
+↓
+Delivery options
+↓
+Place Order
+↓
+ORDER CREATED
+        ↓
+SUPPLIER
+Receive
+↓
+Accept
+↓
+Schedule
+↓
+Prepare
+↓
+Ready
+        ↓
+DRIVER
+Assignment
+↓
+Route
+↓
+Stop
+↓
+Deliver
+↓
+Proof
+↓
+Complete
+        ↓
+RESTAURANT
+Delivered
+↓
+Completed
+
+Use the application’s actual states.
+
+⸻
+
+35. FINAL SCORE
+
+At the end rate the application:
+
+Ordering
+
+__/10
+
+Supplier Order Processing
+
+__/10
+
+Warehouse
+
+__/10
+
+Driver
+
+__/10
+
+Delivery
+
+__/10
+
+Routing
+
+__/10
+
+Local/Sustainability
+
+__/10
+
+Role Separation
+
+__/10
+
+UX Simplicity
+
+__/10
+
+Data Consistency
+
+__/10
+
+Error Handling
+
+__/10
+
+Performance
+
+__/10
+
+Overall
+
+__/10
+
+Explain every score briefly.
+
+⸻
+
+36. MOST IMPORTANT: FIX, DON’T JUST REPORT
+
+This is not a report-only exercise.
+
+For issues that can be safely fixed without changing intended business logic:
+
+FIX THEM.
+
+Examples:
+
+* duplicate buttons
+* broken transitions
+* missing loading states
+* broken validation
+* duplicate API calls
+* stale UI
+* obvious dead code
+* inconsistent labels
+* broken responsive UI
+* duplicate calculations
+* missing error handling
+* invalid action availability
+
+For changes that could alter core business logic:
+
+DO NOT silently change them.
+
+Flag them for review.
+
+⸻
+
+37. DO NOT CREATE NEW FEATURES JUST TO FIX SOMETHING
+
+If the problem can be solved by:
+
+* removing a button
+* reusing an existing function
+* simplifying a flow
+* extending an existing component
+* fixing a state transition
+* correcting a permission
+* improving validation
+
+do that.
+
+Do not create another page or system.
+
+⸻
+
+38. FINAL PRINCIPLE
+
+The best GastroConnect flow is:
+
+Simple for the user. Complex behind the scenes.
+
+The user should not have to understand:
+
+* routing algorithms
+* Local Score calculations
+* CO₂ calculations
+* database states
+* supplier logistics
+* inventory logic
+* sustainability methodology
+
+The system should handle complexity internally.
+
+The user should see:
+
+What do I need to do next?
+
+And the answer should always be obvious.
+
+⸻
+
+FINAL INSTRUCTION
+
+Before declaring the audit complete:
+
+1. Audit the existing architecture.
+2. Audit all roles.
+3. Audit all order flows.
+4. Audit supplier processing.
+5. Audit warehouse flows.
+6. Audit driver flows.
+7. Audit delivery.
+8. Audit routing.
+9. Audit delivery dates/windows.
+10. Audit Local/Sustainability changes.
+11. Audit Risk Stock → Rescue.
+12. Audit permissions.
+13. Audit data consistency.
+14. Audit duplicate logic.
+15. Audit dead code.
+16. Audit dead features.
+17. Audit missing functionality.
+18. Audit error states.
+19. Audit mobile UX.
+20. Audit performance.
+21. Test realistic failure scenarios.
+22. Fix safe issues.
+23. Document issues requiring product decisions.
+24. Produce the final process map and audit report.
+
+DO NOT declare the app “done” simply because all pages render.
+
+A feature is only complete when the entire workflow around it works coherently from the perspective of every affected user role.
+
+The ultimate goal is:
+
+No broken flows. No conflicting actions. No unnecessary steps. No duplicated logic. No dead ends. No hidden process contradictions.
+
+GastroConnect should feel like one unified system, not a collection of independently built features.
