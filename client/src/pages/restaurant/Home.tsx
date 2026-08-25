@@ -1010,7 +1010,7 @@ export default function RestaurantHome() {
         }}
         sections={[
           ...(can(currentMember?.role, "impact.analytics") ? [{
-            id: "w-local-impact", optional: true, defaultEnabled: false, defaultSize: "half" as const, queryKeys: [["/api/restaurant/local-impact-summary"]],
+            id: "w-local-impact", optional: true, defaultEnabled: true, defaultSize: "half" as const, queryKeys: [["/api/restaurant/local-impact-summary"]],
             title: lang === "de" ? "Bestellwirkung" : "Impatto degli ordini",
             description: lang === "de" ? "Versionierte Local- und Wirkungssignale" : "Segnali locali e di impatto con versione",
             content: <LocalImpactWidget restaurantId={currentUser?.id || ""} lang={lang} />,

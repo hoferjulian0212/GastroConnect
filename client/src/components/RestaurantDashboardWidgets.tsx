@@ -83,7 +83,7 @@ export function LocalImpactWidget({ lang }: { restaurantId: string; lang: "de" |
     <div className={CARD_BASE} data-testid="widget-local-impact">
       <div className={HEADER}>
         <WidgetTitle
-          icon={<Leaf className="h-4 w-4 text-green-600" />}
+          icon={<span aria-hidden="true" className="text-base leading-none">🌱</span>}
           title={lang === "de" ? "Bestellwirkung" : "Impatto degli ordini"}
           desc={lang === "de" ? "Local-, Saison- und Low-Waste-Signale" : "Segnali locali, stagionali e meno sprechi"}
           testId="text-widget-local-impact-title"
@@ -94,14 +94,14 @@ export function LocalImpactWidget({ lang }: { restaurantId: string; lang: "de" |
           <>
             <div className="grid grid-cols-4 gap-2 text-center">
               {[
-                [lang === "de" ? "Score" : "Punteggio", data?.score],
-                ["Local", data?.localItemCount],
-                [lang === "de" ? "Saisonal" : "Stagionale", data?.seasonalItemCount],
-                ["Low Waste", data?.lowWasteItemCount],
-              ].map(([label, value]) => (
+                ["", lang === "de" ? "Score" : "Punteggio", data?.score],
+                ["📍", lang === "de" ? "Lokal" : "Locale", data?.localItemCount],
+                ["🌱", lang === "de" ? "Saisonal" : "Stagionale", data?.seasonalItemCount],
+                ["♻️", "Low Waste", data?.lowWasteItemCount],
+              ].map(([emoji, label, value]) => (
                 <div key={String(label)} className="rounded-xl bg-muted/40 p-2">
                   <div className="font-bold">{value === null || value === undefined ? "—" : value}</div>
-                  <div className="text-[10px] text-muted-foreground">{label}</div>
+                  <div className="text-[10px] text-muted-foreground"><span aria-hidden="true">{emoji} </span>{label}</div>
                 </div>
               ))}
             </div>

@@ -511,7 +511,7 @@ export default function ProductDetail() {
                 <div className="flex items-start justify-between gap-3 mb-4">
                   <div>
                     <h2 className="text-base md:text-lg font-semibold flex items-center gap-2">
-                      <MapPin className="h-5 w-5 text-green-600 dark:text-green-400" />
+                      <span aria-hidden="true" className="text-lg leading-none">🌱</span>
                       {lang === "de" ? "Local & Wirkung" : "Locale e impatto"}
                     </h2>
                     <p className="text-xs text-muted-foreground mt-1">
@@ -526,15 +526,14 @@ export default function ProductDetail() {
                 </div>
                 <div className="grid sm:grid-cols-2 gap-x-6">
                   {[
-                    [lang === "de" ? "Herkunft" : "Origine", product.localImpact.originLabel, MapPin],
-                    [lang === "de" ? "Saison" : "Stagione", product.localImpact.isSeasonal === null ? null : product.localImpact.isSeasonal ? (lang === "de" ? "Aktuell saisonal" : "Attualmente stagionale") : (lang === "de" ? "Außerhalb der Saison" : "Fuori stagione"), CalendarDays],
-                    [lang === "de" ? "Verpackung" : "Imballaggio", product.localImpact.packagingType, Recycle],
-                    [lang === "de" ? "Entfernung" : "Distanza", product.localImpact.distanceKm === null ? null : `ca. ${product.localImpact.distanceKm} km`, MapPin],
-                  ].map(([label, value, Icon]) => {
-                    const RowIcon = Icon as typeof MapPin;
+                    ["📍", lang === "de" ? "Herkunft" : "Origine", product.localImpact.originLabel],
+                    ["🌱", lang === "de" ? "Saison" : "Stagione", product.localImpact.isSeasonal === null ? null : product.localImpact.isSeasonal ? (lang === "de" ? "Aktuell saisonal" : "Attualmente stagionale") : (lang === "de" ? "Außerhalb der Saison" : "Fuori stagione")],
+                    ["♻️", lang === "de" ? "Verpackung" : "Imballaggio", product.localImpact.packagingType],
+                    ["📍", lang === "de" ? "Entfernung" : "Distanza", product.localImpact.distanceKm === null ? null : `ca. ${product.localImpact.distanceKm} km`],
+                  ].map(([emoji, label, value]) => {
                     return (
                     <div key={String(label)} className="flex items-center justify-between gap-3 py-2.5 border-b">
-                      <span className="flex items-center gap-2 text-sm text-muted-foreground"><RowIcon className="h-4 w-4" />{label as string}</span>
+                      <span className="flex items-center gap-2 text-sm text-muted-foreground"><span aria-hidden="true">{emoji as string}</span>{label as string}</span>
                       <span className="text-sm font-medium text-right">{(value as string | null) ?? (lang === "de" ? "Nicht verfügbar" : "Non disponibile")}</span>
                     </div>
                     );

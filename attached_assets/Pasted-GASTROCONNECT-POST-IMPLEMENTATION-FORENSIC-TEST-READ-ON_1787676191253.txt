@@ -1,0 +1,636 @@
+GASTROCONNECT — POST-IMPLEMENTATION FORENSIC TEST
+READ-ONLY — DO NOT MODIFY ANYTHING
+
+The previous task was supposed to fix the root cause identified by the forensic audit:
+
+- sustainability data was missing from products
+- Local Score had no eligible inputs
+- Local/Seasonal/Packaging signals therefore did not render
+- no Local Impact snapshots existed
+- Manager Local Impact dashboard was disabled
+- no Rescue promotions existed
+- requested literal emojis were never implemented
+
+The previous task was specifically instructed to:
+
+1. create targeted, idempotent sustainability demo data
+2. populate existing products with realistic sustainability metadata
+3. create different local/regional/non-local scenarios
+4. verify Local Score
+5. implement the requested emoji visual language
+6. make Manager/Admin Local Impact visible
+7. create legitimate new demo orders through the existing workflow
+8. verify Local Impact snapshots
+9. make dashboard/monthly data visible
+10. create a legitimate Rescue flow
+11. verify Supplier sustainability editing
+12. verify all relevant user roles
+13. keep the UI minimalist
+14. NOT implement Local Spend, Smart Quantity, CO2/kg or delivery-efficiency sustainability yet
+
+NOW PERFORM A COMPLETE READ-ONLY VERIFICATION.
+
+DO NOT MODIFY CODE.
+DO NOT MODIFY DATABASE.
+DO NOT SEED DATA.
+DO NOT FIX BUGS.
+
+I want to know whether the previous implementation ACTUALLY worked.
+
+==================================================
+1. DATABASE VERIFICATION
+==================================================
+
+Inspect the current development database.
+
+Report:
+
+Total products:
+Products with origin:
+Products with season data:
+Products with packaging:
+Products with sustainability source:
+Products with evidence:
+Products with valid Local Score inputs:
+Products with calculated Local Score:
+
+Compare these numbers to the previous audit:
+
+BEFORE:
+163 products
+0 sustainability metadata
+
+I want the AFTER numbers.
+
+If they are still 0 or nearly 0, the previous task failed.
+
+==================================================
+2. PRODUCT SAMPLE VERIFICATION
+==================================================
+
+Inspect at least 15 actual products.
+
+Create a table:
+
+| Product | Origin | Region | Locality | Season | Packaging | Source | Evidence | Local Score |
+|---|---|---|---|---|---|---|---|---|
+
+Do NOT show what the code is SUPPOSED to contain.
+
+Show what the CURRENT DATABASE ACTUALLY contains.
+
+The sample MUST include:
+
+- local product
+- regional product
+- non-local product
+- seasonal product
+- non-seasonal product
+- reusable packaging
+- different packaging
+- high Local Score
+- medium Local Score
+- low/no Local Score
+
+If the database does not contain these scenarios, explicitly say so.
+
+==================================================
+3. EMOJI FORENSIC VERIFICATION
+==================================================
+
+This is CRITICAL.
+
+The previous audit established that the literal emojis were NOT implemented.
+
+Now search the actual application source code for these exact characters:
+
+📍
+🌱
+♻️
+🚚
+📦
+💶
+⚡
+
+Report:
+
+- which files contain them
+- which components use them
+- whether those components are actually imported
+- whether they are actually rendered
+- which pages display them
+
+Then distinguish:
+
+CODE EXISTS
+
+from
+
+ACTUALLY VISIBLE IN RUNNING UI.
+
+Do NOT say "emoji support exists" because an emoji appears in a comment, test, documentation, unused component, or source file.
+
+==================================================
+4. RUNNING UI VERIFICATION
+==================================================
+
+Actually open/test the running application.
+
+Check these pages as a real user:
+
+1. Catalog
+2. Product Detail
+3. Cart
+4. Checkout
+5. Order Detail
+6. Restaurant Manager Dashboard
+7. Supplier Product Editor
+8. Risk Stock
+9. Rescue
+10. Monthly Report
+
+For each page answer:
+
+VISIBLE:
+YES / NO
+
+If YES:
+What exactly is visible?
+
+If NO:
+Why?
+
+I want concrete observations.
+
+==================================================
+5. CATALOG TEST
+==================================================
+
+Test the catalog with actual populated products.
+
+Verify that I can visibly see:
+
+📍 Local
+🌱 Seasonal
+♻️ Sustainability / waste where applicable
+📦 Packaging where applicable
+
+Verify:
+
+Local filter
+Seasonal filter
+Rescue filter if implemented
+other sustainability filters if implemented
+
+Test both:
+
+A product that SHOULD qualify
+
+and
+
+A product that SHOULD NOT qualify.
+
+Report the result.
+
+==================================================
+6. PRODUCT DETAIL TEST
+==================================================
+
+Open at least 5 products with different sustainability profiles.
+
+Verify that Product Detail actually displays:
+
+Origin
+Local/Regional status
+Seasonality
+Packaging
+Local Score
+Badges
+Impact information
+
+Record what is actually visible.
+
+If the database has the information but the UI doesn't display it, identify that exact break.
+
+==================================================
+7. LOCAL SCORE TEST
+==================================================
+
+Select:
+
+1 high-local product
+1 medium-local product
+1 non-local product
+
+Verify the Local Score.
+
+Then trace:
+
+DATABASE
+→ API
+→ calculation
+→ frontend
+→ displayed score
+
+Make sure the displayed score corresponds to the actual underlying data.
+
+Check that the score is NOT hardcoded.
+
+==================================================
+8. CART TEST
+==================================================
+
+Create/test three carts:
+
+CART A:
+mostly local/seasonal
+
+CART B:
+mixed
+
+CART C:
+mostly non-local
+
+Verify that the Local Impact information changes between carts.
+
+Check:
+
+- Local Impact
+- badges
+- sustainability information
+- any AI insight
+- no unnecessary popups
+- no additional checkout steps
+
+==================================================
+9. ORDER SNAPSHOT TEST
+==================================================
+
+Inspect newly created demo orders.
+
+Report:
+
+Number of orders created by previous task:
+Number of order items:
+Number with Local Impact snapshot:
+
+Compare against:
+
+BEFORE:
+1,233 order items
+0 snapshots
+
+The new orders should have real snapshots generated through the existing checkout/order workflow.
+
+DO NOT count manually inserted fake snapshots as successful implementation.
+
+==================================================
+10. MANAGER DASHBOARD TEST
+==================================================
+
+Log in/use the Restaurant Manager demo account.
+
+Verify that the Local Impact dashboard widget is now visible.
+
+Check:
+
+- Local Score
+- Local %
+- Local Impact
+- sustainability
+- waste where implemented
+- order impact
+- monthly impact
+
+If the widget is still invisible, determine why.
+
+Check whether it is:
+
+- disabled
+- hidden
+- empty
+- role restricted
+- missing data
+- not rendered
+
+==================================================
+11. MONTHLY REPORT TEST
+==================================================
+
+Inspect the monthly report.
+
+Report:
+
+Number of monthly reports:
+Number containing Local Impact:
+
+Compare against:
+
+BEFORE:
+4 reports
+0 containing Local Impact
+
+If no report has Local Impact, determine why.
+
+Do not accept "the component exists" as an answer.
+
+==================================================
+12. RESCUE TEST
+==================================================
+
+Inspect current Risk Stock.
+
+Report:
+
+Risk Stock records:
+Rescue promotions:
+Rescue-eligible products:
+
+The previous audit found:
+
+3 Risk Stock records
+0 Rescue promotions
+
+Verify whether the previous task actually created a real Rescue promotion.
+
+Then trace:
+
+Risk Stock
+→ Rescue Offer
+→ Catalog
+→ Restaurant
+→ Order
+→ Inventory update
+
+If any step is missing, identify it.
+
+==================================================
+13. SUPPLIER EDITOR TEST
+==================================================
+
+Use Supplier Admin/Manager.
+
+Open an existing product.
+
+Enter/change:
+
+Origin
+Region
+Season
+Packaging
+Evidence
+
+Save.
+
+Then verify:
+
+Database
+→ API
+→ Catalog
+→ Product Detail
+→ Local Score
+
+Do not change anything during this audit.
+
+We only want to verify whether the existing workflow works.
+
+==================================================
+14. ROLE VISIBILITY TEST
+==================================================
+
+Verify these roles:
+
+Restaurant Admin
+Restaurant Manager
+Restaurant Staff
+Supplier Admin
+Supplier Manager
+Supplier Representative
+Supplier Warehouse
+Driver
+Platform Admin
+
+Create a table:
+
+| Role | Catalog signals | Product details | Analytics | Sustainability editing | Rescue | Relevant |
+|---|---|---|---|---|---|---|
+
+Confirm that permissions are logical.
+
+Especially verify:
+
+Restaurant Staff should NOT be overwhelmed with manager analytics.
+
+Restaurant Manager/Admin should see the new analytics.
+
+Supplier Admin/Manager should be able to manage sustainability metadata.
+
+Driver should not see irrelevant sustainability management.
+
+==================================================
+15. DATA SOURCE / DEMO DATA VERIFICATION
+==================================================
+
+Determine exactly how the previous task populated the data.
+
+Find:
+
+- targeted seed/import file
+- command used
+- timestamp
+- number of records affected
+- whether it is idempotent
+- whether it actually modified the CURRENT development database
+
+Do not simply inspect the code.
+
+Compare actual database values.
+
+==================================================
+16. CHECK FOR FAKE / HARDCODED DATA
+==================================================
+
+Search the implementation for suspicious hardcoded values such as:
+
+Local Score = 90
+Local % = 70
+CO2 = ...
+waste = ...
+monthly impact = ...
+
+Determine whether any dashboard/product data is hardcoded merely to make the UI look populated.
+
+If found, report:
+
+FILE
+COMPONENT
+HARDCODED VALUE
+WHAT SHOULD PROVIDE THE REAL VALUE
+
+Do NOT modify it.
+
+==================================================
+17. CHECK THAT WE DID NOT ACCIDENTALLY IMPLEMENT THE WRONG THING
+==================================================
+
+Verify that the previous task did NOT:
+
+- duplicate product fields
+- duplicate sustainability models
+- create a second Local Score system
+- create a second badge system
+- bypass permissions
+- create fake orders
+- create fake snapshots
+- break existing ordering
+- replace existing icons globally
+- clutter the catalog
+- create unnecessary pages
+
+Report anything suspicious.
+
+==================================================
+18. MOBILE UI TEST
+==================================================
+
+Check the new catalog/product indicators on mobile.
+
+Verify:
+
+- no overflowing cards
+- no giant product cards
+- no broken layout
+- emojis/indicators remain readable
+- ordering remains fast
+- no excessive badges
+- no unnecessary popup
+
+==================================================
+19. REGRESSION CHECK
+==================================================
+
+Verify that the existing core GastroConnect functionality still works:
+
+Restaurant:
+
+Catalog
+→ Product
+→ Cart
+→ Checkout
+→ Order
+
+Supplier:
+
+Order
+→ Accept
+→ Prepare
+→ Schedule
+→ Dispatch
+
+Warehouse:
+
+Inventory
+→ Risk Stock
+
+Driver:
+
+Assigned Order
+→ Route
+→ Stop
+→ Delivery
+→ Completion
+
+Manager:
+
+Dashboard
+→ Orders
+→ Analytics
+
+The sustainability implementation must NOT have broken existing flows.
+
+==================================================
+20. FINAL BEFORE vs AFTER TABLE
+==================================================
+
+This is mandatory.
+
+Create:
+
+| Metric | BEFORE previous fix | CURRENT | Status |
+|---|---:|---:|---|
+| Products | 163 | ? | |
+| Products with origin | 0 | ? | |
+| Products with season | 0 | ? | |
+| Products with packaging | 0 | ? | |
+| Products with sustainability source | 0 | ? | |
+| Score-eligible products | 0 | ? | |
+| Local Impact snapshots | 0 | ? | |
+| Rescue promotions | 0 | ? | |
+| Monthly reports with Local Impact | 0 | ? | |
+| Literal emoji implementation | 0 | ? | |
+
+==================================================
+21. FINAL VERDICT
+==================================================
+
+Give a strict verdict:
+
+🟢 COMPLETE
+🟡 PARTIALLY COMPLETE
+🔴 FAILED
+
+Then explain why.
+
+Use this definition:
+
+🟢 COMPLETE
+
+Only if:
+
+- real product data exists
+- Local Score works
+- catalog signals are visible
+- product details show the information
+- emojis are actually visible
+- cart impact works
+- new orders generate snapshots
+- Manager dashboard shows Local Impact
+- Rescue is demonstrable
+- no major regression exists
+
+🟡 PARTIALLY COMPLETE
+
+If some of the above works but specific parts remain incomplete.
+
+🔴 FAILED
+
+If the application still looks essentially like the old version or the database remains largely empty.
+
+==================================================
+FINAL RULE
+
+DO NOT FIX ANYTHING.
+
+DO NOT SEED ANYTHING.
+
+DO NOT MODIFY ANYTHING.
+
+This is a TEST ONLY.
+
+I want hard evidence from:
+
+DATABASE
+CODE
+API
+FRONTEND
+RUNNING UI
+ROLES
+ORDERS
+
+Do not tell me something is implemented simply because code exists.
+
+The only question is:
+
+"Can I open GastroConnect RIGHT NOW and visibly use the new functionality with real interconnected demo data?"
+
+Give me the evidence.

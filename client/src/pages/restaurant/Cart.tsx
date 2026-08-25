@@ -620,7 +620,7 @@ export default function RestaurantCart() {
         return (
           <details className="rounded-xl border bg-card" data-testid="cart-impact-summary">
             <summary className="cursor-pointer list-none px-4 py-3 flex items-center gap-2 text-sm font-semibold">
-              <Leaf className="h-4 w-4 text-green-600" />
+              <span aria-hidden="true">🌱</span>
               {lang === "de" ? "Wirkung dieser Bestellung" : "Impatto di questo ordine"}
               <span className="ml-auto text-xs font-normal text-muted-foreground">
                 {impact.score === null ? (lang === "de" ? "Nicht verfügbar" : "Non disponibile") : `${impact.score}/100`}
@@ -628,13 +628,13 @@ export default function RestaurantCart() {
             </summary>
             <div className="border-t px-4 py-3 grid grid-cols-3 gap-3 text-center">
               {[
-                [lang === "de" ? "Local" : "Locale", impact.localItemCount],
-                [lang === "de" ? "Saisonal" : "Stagionale", impact.seasonalItemCount],
-                ["Low Waste", impact.lowWasteItemCount],
-              ].map(([label, value]) => (
+                ["📍", lang === "de" ? "Lokal" : "Locale", impact.localItemCount],
+                ["🌱", lang === "de" ? "Saisonal" : "Stagionale", impact.seasonalItemCount],
+                ["♻️", "Low Waste", impact.lowWasteItemCount],
+              ].map(([emoji, label, value]) => (
                 <div key={String(label)}>
                   <div className="font-semibold">{value === null ? "—" : value}</div>
-                  <div className="text-[11px] text-muted-foreground">{label}</div>
+                  <div className="text-[11px] text-muted-foreground"><span aria-hidden="true">{emoji} </span>{label}</div>
                 </div>
               ))}
               <p className="col-span-3 text-[11px] text-left text-muted-foreground">

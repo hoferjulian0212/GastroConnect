@@ -169,6 +169,7 @@ export type SustainabilityDemoSeedResult = {
   alreadySeededProducts: number;
   createdOrders: number;
   existingOrders: number;
+  dashboardWidgetAdded: boolean;
   reportMonth: string;
   reportScore: number | null;
   reportItemCount: number;
@@ -239,6 +240,19 @@ export async function seedSustainabilityDemoData(): Promise<SustainabilityDemoSe
     }
   });
 
+  // Existing demo accounts can have a saved layout created before Local Impact
+  // was available. Preserve every chosen widget while adding this one once.
+  const savedWidgets = restaurant.dashboardWidgets?.restaurant ?? [];
+  const savedLayout = restaurant.dashboardLayouts?.restaurant ?? [];
+  const dashboardWidgetAdded = savedWidgets.length > 0 && !savedWidgets.includes("w-local-impact");
+  if (dashboardWidgetAdded) {
+    await storage.setDashboardWidgets(restaurant.id, "restaurant", [...savedWidgets, "w-local-impact"]);
+    await storage.setDashboardLayout(restaurant.id, "restaurant", [
+      ...savedLayout,
+      ...(savedLayout.some((item) => item.id === "w-local-impact") ? [] : [{ id: "w-local-impact", size: "half" as const }]),
+    ]);
+  }
+
   let createdOrders = 0;
   let existingOrders = 0;
   for (const plan of ORDER_PLANS) {
@@ -295,6 +309,7 @@ export async function seedSustainabilityDemoData(): Promise<SustainabilityDemoSe
     alreadySeededProducts,
     createdOrders,
     existingOrders,
+    dashboardWidgetAdded,
     reportMonth,
     reportScore: payload.localImpact?.score ?? null,
     reportItemCount: payload.localImpact?.itemCount ?? 0,

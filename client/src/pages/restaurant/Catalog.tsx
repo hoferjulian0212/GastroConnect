@@ -31,6 +31,27 @@ type CatalogProduct = Omit<ProductWithLocalImpact, "activePromotion"> & {
  activePromotion?: PromotionWithRescueState | null;
 };
 
+export function ImpactMarkers({ product, lang }: { product: CatalogProduct; lang: string }) {
+  const markers = [
+    product.localImpact?.isLocal === true && { emoji: "📍", label: lang === "de" ? "Lokal" : "Locale" },
+    product.localImpact?.isSeasonal === true && { emoji: "🌱", label: lang === "de" ? "Saisonal" : "Stagionale" },
+    product.localImpact?.lowWaste === true && { emoji: "♻️", label: lang === "de" ? "Wenig Verpackung" : "Meno imballaggio" },
+  ].filter(Boolean) as Array<{ emoji: string; label: string }>;
+
+  if (markers.length === 0) return null;
+  const labels = markers.map((marker) => marker.label).join(", ");
+  return (
+    <div
+      className="absolute bottom-1.5 left-1.5 z-10 inline-flex items-center rounded-full bg-black/70 px-1.5 py-0.5 text-[11px] leading-none text-white backdrop-blur-sm"
+      data-testid={`impact-signal-${product.id}`}
+      aria-label={labels}
+    >
+      <span aria-hidden="true">{markers.map((marker) => marker.emoji).join(" ")}</span>
+      <span className="sr-only">{labels}</span>
+    </div>
+  );
+}
+
 function CategoryIndicator({
   icon: Icon,
   bg,
@@ -1007,19 +1028,7 @@ export default function RestaurantCatalog() {
  <QuickAddBar product={product} lang={lang} t={t} />
  </div>
  )}
- {product.localImpact?.signal && (
- <div
- className="absolute bottom-1.5 left-1.5 z-10 inline-flex items-center gap-1 rounded-full bg-black/70 px-1.5 py-0.5 text-[9px] font-medium text-white backdrop-blur-sm"
- data-testid={`impact-signal-${product.id}`}
- >
- {product.localImpact.signal === "local" ? <MapPin className="h-2.5 w-2.5" /> : product.localImpact.signal === "seasonal" ? <Leaf className="h-2.5 w-2.5" /> : <Recycle className="h-2.5 w-2.5" />}
- {product.localImpact.signal === "local"
- ? (lang === "de" ? "Local" : "Locale")
- : product.localImpact.signal === "seasonal"
- ? (lang === "de" ? "Saisonal" : "Stagionale")
- : (lang === "de" ? "Low Waste" : "Meno sprechi")}
- </div>
- )}
+  <ImpactMarkers product={product} lang={lang} />
  </div>
  <div className="p-2 flex flex-col gap-0.5 flex-1 overflow-hidden min-w-0">
  <span className="text-xs font-semibold truncate block">{product.name}</span>
