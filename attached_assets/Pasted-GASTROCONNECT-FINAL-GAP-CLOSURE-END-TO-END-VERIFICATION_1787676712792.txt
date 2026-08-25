@@ -1,0 +1,388 @@
+GASTROCONNECT — FINAL GAP CLOSURE + END-TO-END VERIFICATION
+
+The forensic audit is accepted.
+
+Current status is 🟡 PARTIALLY COMPLETE.
+
+The core Local Impact implementation and data provisioning are working.
+
+DO NOT rebuild or redesign the existing sustainability system.
+
+DO NOT create duplicate models, fields, score systems, badge systems, or dashboards.
+
+We now need to close ONLY the remaining verified gaps.
+
+==================================================
+1. RESCUE — MUST BE MADE DEMONSTRABLE
+==================================================
+
+Current state:
+
+Risk Stock = 3 records
+Rescue promotions = 0
+
+The Rescue implementation exists in code but has not been demonstrated with actual data.
+
+Use the EXISTING Risk Stock → Rescue workflow.
+
+Create a legitimate demo scenario using the existing business logic.
+
+Do NOT manually insert a fake Rescue promotion that bypasses the actual workflow.
+
+Create/prepare a valid at-risk product and follow the real flow:
+
+Risk Stock
+→ Action
+→ Rescue Promotion
+→ Catalog
+→ Restaurant
+→ Checkout
+→ Allocation/reservation
+→ Order
+
+Use the existing models and APIs.
+
+After implementation verify:
+
+- Rescue promotion exists
+- promotionType is actually "rescue"
+- product appears in Rescue filter
+- restaurant can see it
+- restaurant can order it
+- allocation/reservation works
+- stock counters update correctly
+- duplicate/overselling protection still works
+
+Do not break normal promotions.
+
+==================================================
+2. PACKAGING EMOJI
+==================================================
+
+The audit confirmed:
+
+📍 = implemented
+🌱 = implemented
+♻️ = implemented
+📦 = NOT implemented in sustainability UI
+
+Packaging is already a real sustainability attribute.
+
+Add:
+
+📦 Packaging
+
+to the EXISTING sustainability visual system.
+
+Do not create another badge system.
+
+Use the same compact visual language as:
+
+📍
+🌱
+♻️
+
+It should appear where packaging information is already shown:
+
+Product Detail
+and wherever the existing sustainability markers are appropriate.
+
+Keep it minimalist.
+
+Do NOT add emojis everywhere.
+
+==================================================
+3. RESCUE EMOJI
+==================================================
+
+Once the real Rescue flow exists:
+
+Use:
+
+⚡ Rescue
+
+as the compact Rescue marker.
+
+Only show it when the product/order/promotion is actually Rescue.
+
+Never show ⚡ merely because a product is at risk.
+
+==================================================
+4. DO NOT IMPLEMENT THESE YET
+==================================================
+
+Do NOT implement:
+
+💶 Local Spend
+🚚 Sustainability Delivery
+CO2
+Smart Quantity
+Route Fill Efficiency
+
+These remain future features because their underlying definitions/data are not sufficiently specified.
+
+Do not create placeholder UI pretending they exist.
+
+==================================================
+5. AUTHENTICATED END-TO-END TEST
+==================================================
+
+The previous audit could not authenticate through the browser.
+
+This MUST now be tested using the existing demo accounts / existing authentication mechanism.
+
+Do NOT create a new authentication architecture.
+
+Use the existing demo Restaurant Manager/Admin account.
+
+Actually navigate through the running application.
+
+Verify visually:
+
+/restaurant/catalog
+
+→ product with 📍 🌱 ♻️ 📦
+
+→ Product Detail
+
+→ Cart
+
+→ Checkout
+
+→ Order
+
+→ Order Detail
+
+Then:
+
+Manager Dashboard
+
+→ Local Impact widget
+
+Then:
+
+Monthly Reports
+
+→ Local Impact
+
+Then test:
+
+Risk Stock
+→ Rescue
+
+Then:
+
+Supplier Product Editor
+→ modify sustainability metadata
+→ save
+→ verify catalog/product detail updates
+
+==================================================
+6. TEST DIFFERENT PRODUCT SCENARIOS
+==================================================
+
+Visually verify at least:
+
+A. High-local product
+
+Should show:
+
+📍
+🌱 where seasonal
+♻️ where low waste
+📦 packaging
+
+B. Local but out-of-season product
+
+Should show:
+
+📍
+
+but NOT incorrectly show 🌱.
+
+C. Non-local product
+
+Should NOT show 📍.
+
+D. Rescue product
+
+Should show:
+
+⚡
+
+E. Different packaging
+
+Should display correct 📦 information.
+
+==================================================
+7. MOBILE
+==================================================
+
+Actually inspect the catalog and product detail at mobile width.
+
+Verify:
+
+- no overflow
+- no giant cards
+- no broken badges
+- no excessive visual noise
+- markers remain understandable
+- ordering remains fast
+
+Do not redesign the application.
+
+==================================================
+8. REGRESSION TEST
+==================================================
+
+Verify the existing core flows have NOT been broken:
+
+RESTAURANT
+
+Catalog
+→ Product
+→ Cart
+→ Checkout
+→ Order
+
+SUPPLIER
+
+Incoming Order
+→ Accept
+→ Process
+→ Delivery Date
+→ Dispatch
+
+DRIVER
+
+Assigned Order
+→ Route
+→ Stop
+→ Delivery
+→ Complete
+
+WAREHOUSE
+
+Inventory
+→ Risk Stock
+→ Action
+
+MANAGER
+
+Dashboard
+→ Orders
+→ Analytics
+
+Sustainability must remain an enhancement to these flows, NOT become a separate workflow that complicates ordering.
+
+==================================================
+9. IMPORTANT UX RULE
+==================================================
+
+The sustainability functionality must remain passive and informative.
+
+The chef ordering something should NOT have to:
+
+click through badges
+dismiss popups
+confirm sustainability
+read long explanations
+complete additional steps
+
+The normal order process must remain exactly as fast/simple as before.
+
+Sustainability should appear as information alongside the existing process.
+
+==================================================
+10. FINAL REPORT
+==================================================
+
+After completing the remaining implementation and verification, provide:
+
+A. DATABASE
+
+Products with sustainability metadata:
+Products with Local Score:
+Order snapshots:
+Rescue promotions:
+Monthly reports with Local Impact:
+
+B. EMOJI
+
+📍 = where visible
+🌱 = where visible
+♻️ = where visible
+📦 = where visible
+⚡ = where visible
+
+C. AUTHENTICATED UI TEST
+
+For each:
+
+Catalog
+Product Detail
+Cart
+Checkout
+Order Detail
+Manager Dashboard
+Monthly Report
+Supplier Editor
+Risk Stock
+Rescue
+
+report:
+
+PASS / FAIL
+
+D. ROLE TEST
+
+Restaurant Admin
+Restaurant Manager
+Restaurant Staff
+Supplier Admin
+Supplier Manager
+Supplier Representative
+Supplier Warehouse
+Driver
+
+E. REGRESSION
+
+Restaurant ordering = PASS/FAIL
+Supplier order processing = PASS/FAIL
+Driver delivery = PASS/FAIL
+Warehouse = PASS/FAIL
+Manager dashboard = PASS/FAIL
+
+F. REMAINING FUTURE FEATURES
+
+Explicitly list:
+
+Local Spend
+CO2
+Smart Quantity
+Delivery efficiency
+
+Do not implement these.
+
+==================================================
+FINAL SUCCESS CONDITION
+
+The implementation is COMPLETE only if:
+
+1. Local sustainability data exists.
+2. Local Score works.
+3. 📍 🌱 ♻️ 📦 are visible where appropriate.
+4. Rescue is actually demonstrable end-to-end.
+5. ⚡ is visible on actual Rescue items.
+6. Cart and order snapshots work.
+7. Manager dashboard works.
+8. Monthly report works.
+9. Supplier editing works.
+10. Authenticated browser testing passes.
+11. Mobile layout passes.
+12. Existing ordering/delivery flows still work.
+13. No unnecessary steps were added to ordering.
+
+DO NOT declare success based solely on source-code inspection.
+
+The running authenticated application must pass the test.
