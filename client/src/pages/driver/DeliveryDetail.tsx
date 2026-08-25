@@ -59,7 +59,7 @@ export default function DriverDeliveryDetail() {
   const [delayMinutes, setDelayMinutes] = useState<number>(15);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const { data: delivery, isLoading } = useQuery<DeliveryAssignmentWithDetails>({
+  const { data: delivery, isLoading, isError, refetch } = useQuery<DeliveryAssignmentWithDetails>({
     queryKey: ["/api/driver/deliveries", id],
     enabled: !!id,
     refetchInterval: 30_000,
@@ -184,12 +184,62 @@ export default function DriverDeliveryDetail() {
     }
   };
 
-  if (isLoading || !delivery) {
+  if (isLoading) {
     return (
       <div className="space-y-4 pt-2 pb-[var(--mobile-bottom-pad)] md:pb-6">
         <Skeleton className="h-10 w-32 rounded-full" />
         <Skeleton className="h-44 rounded-2xl" />
         <Skeleton className="h-64 rounded-2xl" />
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="space-y-4 pt-2 pb-[var(--mobile-bottom-pad)] md:pb-6" data-testid="delivery-load-error">
+        <button
+          onClick={() => setLocation("/supplier")}
+          className="inline-flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-sm font-medium hover:bg-muted/50 transition-colors"
+          data-testid="button-back"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          {lang === "de" ? "Zurück" : "Indietro"}
+        </button>
+        <div className="rounded-2xl border bg-card p-6 text-center space-y-3">
+          <AlertTriangle className="mx-auto h-8 w-8 text-destructive" />
+          <div>
+            <h1 className="font-semibold">{lang === "de" ? "Lieferung konnte nicht geladen werden" : "Impossibile caricare la consegna"}</h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {lang === "de" ? "Prüfen Sie Ihre Verbindung und versuchen Sie es erneut." : "Controlla la connessione e riprova."}
+            </p>
+          </div>
+          <Button onClick={() => refetch()}>{lang === "de" ? "Erneut versuchen" : "Riprova"}</Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!delivery) {
+    return (
+      <div className="space-y-4 pt-2 pb-[var(--mobile-bottom-pad)] md:pb-6" data-testid="delivery-not-found">
+        <button
+          onClick={() => setLocation("/supplier")}
+          className="inline-flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-sm font-medium hover:bg-muted/50 transition-colors"
+          data-testid="button-back"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          {lang === "de" ? "Zurück" : "Indietro"}
+        </button>
+        <div className="rounded-2xl border bg-card p-6 text-center space-y-3">
+          <Package className="mx-auto h-8 w-8 text-muted-foreground" />
+          <div>
+            <h1 className="font-semibold">{lang === "de" ? "Lieferung nicht gefunden" : "Consegna non trovata"}</h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {lang === "de" ? "Sie wurde möglicherweise bereits neu geplant oder entfernt." : "Potrebbe essere stata già ripianificata o rimossa."}
+            </p>
+          </div>
+          <Button onClick={() => setLocation("/supplier")}>{lang === "de" ? "Zur Übersicht" : "Vai alla panoramica"}</Button>
+        </div>
       </div>
     );
   }

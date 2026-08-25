@@ -1,0 +1,96 @@
+Do all four, but in this order:
+
+1. Compare the audit against the current codebase first.
+    * Verify every finding against the actual implementation.
+    * Do not assume the audit is correct.
+    * Identify what already works, what is partially implemented, what is duplicated, what is broken, and what is genuinely missing.
+    * Pay special attention to all flows affected by the latest Local / Sustainability / Zero-Waste / Logistics changes.
+2. Summarize the verified findings.
+    Give me a concise priority list:
+    * 🔴 Critical – breaks orders, delivery, data integrity, permissions or core workflows
+    * 🟠 High – major UX/process problems or inconsistencies
+    * 🟡 Medium – usability, duplication, missing edge cases, technical debt
+    * ⚪ Low – polish/cleanup
+3. Implement the highest-priority verified issues directly.
+    Fix anything that can safely be fixed without changing intended business logic:
+    * conflicting/duplicate buttons
+    * broken state transitions
+    * dead ends
+    * duplicate requests
+    * missing validation
+    * incorrect permissions
+    * stale UI
+    * broken loading/error states
+    * duplicated calculations
+    * obvious dead code/features
+    * responsive/mobile problems
+    * inconsistencies introduced by the latest update
+    Do not create new systems just to fix something that can be solved by extending or reusing existing logic.
+4. Convert remaining actionable findings into project tasks.
+    For anything that requires a product/business decision or deeper architectural change, create a structured task with:
+    * problem
+    * affected role(s)
+    * affected flow
+    * current behavior
+    * desired behavior
+    * priority
+    * dependencies
+    * recommended implementation approach
+
+VERY IMPORTANT
+
+Do not just optimize individual pages.
+
+Trace each issue through the complete workflow.
+
+For example:
+
+Restaurant creates order
+→ Supplier receives
+→ Supplier accepts
+→ Delivery date/window
+→ Warehouse preparation
+→ Driver assignment
+→ Route
+→ Driver delivery
+→ Proof of delivery
+→ Restaurant receives
+→ Order completed
+
+Check that every state transition, permission, button, notification and piece of data remains consistent across ALL roles.
+
+Also specifically audit the new features from the previous implementation:
+
+Local Score → Product → Cart → Order → Supplier → Route → Driver → Delivery → Statistics
+
+and:
+
+Risk Stock → Rescue → Restaurant ordering → Stock update
+
+and:
+
+Restaurant delivery availability → Order delivery requirement → Route optimization → Driver route
+
+Make sure these new features integrate with existing logic instead of creating parallel or duplicate systems.
+
+MOST IMPORTANT PRODUCT RULE
+
+Do not add complexity just because the audit identifies something that could technically be added.
+
+GastroConnect should remain:
+
+simple for the user, complex behind the scenes.
+
+Every important screen should have one obvious next action. There should never be two buttons that effectively perform the same state transition, and users should never be forced through unnecessary popups, confirmations or analytics.
+
+After completing the work, give me:
+
+A. Verified findings
+B. Fixes implemented
+C. Remaining issues/tasks
+D. Complete end-to-end flow map
+E. Any architectural/data-model concerns
+F. Any regressions found from the latest Local/Sustainability implementation
+G. Final score for ordering, supplier processing, warehouse, driver, delivery, routing, UX, data consistency and overall system
+
+Do the codebase comparison first before making changes.

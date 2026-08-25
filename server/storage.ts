@@ -62,6 +62,10 @@ import {
 import { randomUUID } from "crypto";
 import { encryptJson, decryptJson } from "./erpCrypto";
 
+// Platform GMV excludes scheduled orders: they can still be changed or
+// cancelled before goods are in transit. Keep every admin rollup consistent.
+const PLATFORM_GMV_STATUSES = sql`('delivered','confirmed','in_delivery','partially_confirmed')`;
+
 export interface ReorderSuggestion {
   productId: string;
   productName: string;
@@ -6084,14 +6088,13 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllOrgsWithStats(): Promise<Array<User & { memberCount: number; orderCount: number; gmv: number; lastActivityAt: string | null }>> {
-    const VALID = sql`('delivered','confirmed','in_delivery','partially_confirmed','scheduled')`;
     const [allUsers, allMembers, orderStats] = await Promise.all([
       db.select().from(users).orderBy(users.name),
       db.select({ organizationId: members.organizationId }).from(members),
       db.execute(sql`
         SELECT org_id,
           COUNT(*) as order_count,
-          COALESCE(SUM(CAST(total_amount AS DECIMAL)) FILTER (WHERE status IN ${VALID}), 0) as gmv,
+          COALESCE(SUM(CAST(total_amount AS DECIMAL)) FILTER (WHERE status IN ${PLATFORM_GMV_STATUSES}), 0) as gmv,
           MAX(created_at) as last_activity_at
         FROM (
           SELECT restaurant_id as org_id, status, total_amount, created_at FROM orders
@@ -6145,8 +6148,6 @@ export class DatabaseStorage implements IStorage {
     const startThisMonth = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
     const startLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1, 0, 0, 0, 0);
     const activeSince = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-    const VALID = sql`('delivered','confirmed','in_delivery','partially_confirmed','scheduled')`;
-
     const [orgRes, memberRes, orderRes, complaintRes] = await Promise.all([
       db.execute(sql`
         SELECT role,
@@ -6164,9 +6165,9 @@ export class DatabaseStorage implements IStorage {
           COUNT(*) as total_orders,
           COUNT(*) FILTER (WHERE created_at >= ${startThisMonth}) as orders_this_month,
           COUNT(*) FILTER (WHERE created_at >= ${startLastMonth} AND created_at < ${startThisMonth}) as orders_last_month,
-          COALESCE(SUM(CAST(total_amount AS DECIMAL)) FILTER (WHERE status IN ${VALID}), 0) as gmv_total,
-          COALESCE(SUM(CAST(total_amount AS DECIMAL)) FILTER (WHERE status IN ${VALID} AND created_at >= ${startThisMonth}), 0) as gmv_this_month,
-          COALESCE(SUM(CAST(total_amount AS DECIMAL)) FILTER (WHERE status IN ${VALID} AND created_at >= ${startLastMonth} AND created_at < ${startThisMonth}), 0) as gmv_last_month
+          COALESCE(SUM(CAST(total_amount AS DECIMAL)) FILTER (WHERE status IN ${PLATFORM_GMV_STATUSES}), 0) as gmv_total,
+          COALESCE(SUM(CAST(total_amount AS DECIMAL)) FILTER (WHERE status IN ${PLATFORM_GMV_STATUSES} AND created_at >= ${startThisMonth}), 0) as gmv_this_month,
+          COALESCE(SUM(CAST(total_amount AS DECIMAL)) FILTER (WHERE status IN ${PLATFORM_GMV_STATUSES} AND created_at >= ${startLastMonth} AND created_at < ${startThisMonth}), 0) as gmv_last_month
         FROM orders
       `),
       db.execute(sql`SELECT COUNT(*) as cnt FROM complaints WHERE status IN ('open','in_progress','partially_resolved')`),
@@ -6205,13 +6206,12 @@ export class DatabaseStorage implements IStorage {
   async getPlatformTimeSeries(): Promise<{ month: string; orders: number; gmv: number; newOrgs: number }[]> {
     const now = new Date();
     const from = new Date(now.getFullYear(), now.getMonth() - 5, 1, 0, 0, 0, 0);
-    const VALID = sql`('delivered','confirmed','in_delivery','partially_confirmed','scheduled')`;
 
     const [orderRes, orgRes] = await Promise.all([
       db.execute(sql`
         SELECT TO_CHAR(created_at, 'YYYY-MM') as month,
           COUNT(*) as orders,
-          COALESCE(SUM(CAST(total_amount AS DECIMAL)) FILTER (WHERE status IN ${VALID}), 0) as gmv
+          COALESCE(SUM(CAST(total_amount AS DECIMAL)) FILTER (WHERE status IN ${PLATFORM_GMV_STATUSES}), 0) as gmv
         FROM orders WHERE created_at >= ${from}
         GROUP BY 1
       `),
@@ -6519,7 +6519,6 @@ export class DatabaseStorage implements IStorage {
     topSuppliers: { id: string; name: string; orders: number; revenue: number }[];
     topRestaurants: { id: string; name: string; orders: number; spend: number }[];
   }> {
-    const VALID = sql`('delivered','confirmed','in_delivery','partially_confirmed','scheduled')`;
     const [supRes, restRes] = await Promise.all([
       db.execute(sql`
         SELECT o.supplier_id as id,
@@ -6528,7 +6527,7 @@ export class DatabaseStorage implements IStorage {
           COALESCE(SUM(CAST(o.total_amount AS DECIMAL)), 0) as revenue
         FROM orders o
         LEFT JOIN users u ON u.id = o.supplier_id
-        WHERE o.status IN ${VALID}
+        WHERE o.status IN ${PLATFORM_GMV_STATUSES}
         GROUP BY o.supplier_id
         ORDER BY revenue DESC LIMIT 5
       `),
@@ -6539,7 +6538,7 @@ export class DatabaseStorage implements IStorage {
           COALESCE(SUM(CAST(o.total_amount AS DECIMAL)), 0) as spend
         FROM orders o
         LEFT JOIN users u ON u.id = o.restaurant_id
-        WHERE o.status IN ${VALID}
+        WHERE o.status IN ${PLATFORM_GMV_STATUSES}
         GROUP BY o.restaurant_id
         ORDER BY spend DESC LIMIT 5
       `),
@@ -6575,7 +6574,6 @@ export class DatabaseStorage implements IStorage {
     const isSupplier = org.role === "supplier";
     const selfCol = isSupplier ? sql`supplier_id` : sql`restaurant_id`;
     const partnerCol = isSupplier ? sql`restaurant_id` : sql`supplier_id`;
-    const VALID = sql`('delivered','confirmed','in_delivery','partially_confirmed','scheduled')`;
     const now = new Date();
     const from = new Date(now.getFullYear(), now.getMonth() - 5, 1, 0, 0, 0, 0);
 
@@ -6583,14 +6581,14 @@ export class DatabaseStorage implements IStorage {
       db.execute(sql`
         SELECT
           COUNT(*) as total_orders,
-          COALESCE(SUM(CAST(total_amount AS DECIMAL)) FILTER (WHERE status IN ${VALID}), 0) as gmv,
-          COUNT(DISTINCT ${partnerCol}) FILTER (WHERE status IN ${VALID}) as active_partners
+          COALESCE(SUM(CAST(total_amount AS DECIMAL)) FILTER (WHERE status IN ${PLATFORM_GMV_STATUSES}), 0) as gmv,
+          COUNT(DISTINCT ${partnerCol}) FILTER (WHERE status IN ${PLATFORM_GMV_STATUSES}) as active_partners
         FROM orders WHERE ${selfCol} = ${orgId}
       `),
       db.execute(sql`
         SELECT TO_CHAR(created_at, 'YYYY-MM') as month,
           COUNT(*) as orders,
-          COALESCE(SUM(CAST(total_amount AS DECIMAL)) FILTER (WHERE status IN ${VALID}), 0) as gmv
+          COALESCE(SUM(CAST(total_amount AS DECIMAL)) FILTER (WHERE status IN ${PLATFORM_GMV_STATUSES}), 0) as gmv
         FROM orders WHERE ${selfCol} = ${orgId} AND created_at >= ${from}
         GROUP BY 1
       `),
@@ -6606,7 +6604,7 @@ export class DatabaseStorage implements IStorage {
           COALESCE(SUM(CAST(o.total_amount AS DECIMAL)), 0) as amount
         FROM orders o
         LEFT JOIN users u ON u.id = o.${partnerCol}
-        WHERE o.${selfCol} = ${orgId} AND o.status IN ${VALID}
+        WHERE o.${selfCol} = ${orgId} AND o.status IN ${PLATFORM_GMV_STATUSES}
         GROUP BY o.${partnerCol}
         ORDER BY amount DESC LIMIT 5
       `),
@@ -6639,7 +6637,7 @@ export class DatabaseStorage implements IStorage {
     const totalOrders = Number(agg.total_orders) || 0;
     const gmv = Number(agg.gmv) || 0;
     const validOrderCount = (statusRes.rows || []).reduce((sum, r: any) => {
-      const valid = ["delivered", "confirmed", "in_delivery", "partially_confirmed", "scheduled"];
+      const valid = ["delivered", "confirmed", "in_delivery", "partially_confirmed"];
       return valid.includes(String(r.status)) ? sum + (Number(r.count) || 0) : sum;
     }, 0);
 
