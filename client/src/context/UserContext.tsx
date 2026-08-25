@@ -152,7 +152,11 @@ export function UserProvider({ children }: { children: ReactNode }) {
     && !isFetchedAfterMount
     && (!clerkLoaded || isSignedIn)
   );
-  const isAuthenticated = !!me?.authenticated || hasRestorableSession;
+  // An explicit logout wins over cached /api/auth/me data until Clerk has
+  // finished signing out. Without this guard, the landing route sees the
+  // stale authenticated query result and immediately redirects to the
+  // dashboard the user just left.
+  const isAuthenticated = !logoutRequested && (!!me?.authenticated || hasRestorableSession);
   // Clerk is signed in but the server has no member row for this email.
   const isClerkSignedInButUnauthorized = clerkLoaded && !!isSignedIn && !isAuthenticated && !meLoading;
 
