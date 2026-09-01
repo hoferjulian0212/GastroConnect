@@ -60,6 +60,17 @@ describe("delivery promise constraints", () => {
     });
   });
 
+  test("keeps a committed date usable when opening hours are not configured yet", async () => {
+    await db.delete(restaurantAvailability).where(eq(restaurantAvailability.restaurantId, restaurantId));
+    const result = await validateDeliveryPromise(supplierId, restaurantId, DATE);
+    assert.deepEqual(result, {
+      valid: true,
+      timeZone: "Europe/Rome",
+      timeWindow: { from: "09:00", to: "12:00" },
+    });
+    await db.insert(restaurantAvailability).values({ restaurantId, dayOfWeek: DAY, opensAt: "08:00", closesAt: "18:00" });
+  });
+
   test("rejects a holiday closure and an excluded delivery zone", async () => {
     await db.insert(restaurantAvailabilityExceptions).values({ restaurantId, date: DATE, isClosed: true, note: "Holiday" });
     const closed = await validateDeliveryPromise(supplierId, restaurantId, DATE);

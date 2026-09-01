@@ -20,7 +20,6 @@ import SwipeToReply from "@/components/SwipeToReply";
 import { getMessageReplyPreview } from "@/lib/messageReplyPreview";
 import { VoiceRecorder } from "@/components/chat/VoiceRecorder";
 import { VoiceMessage } from "@/components/chat/VoiceMessage";
-import { useUpload } from "@/hooks/use-upload";
 import { AttachmentPopover, AttachmentMessageCard, ChatDropZone } from "@/components/ChatAttachment";
 import { DeliveryNoteCard } from "@/components/DeliveryNoteCard";
 import { StatusTimeline } from "@/components/StatusTimeline";
@@ -199,6 +198,7 @@ export default function RestaurantInbox() {
   const [orderSubmitted, setOrderSubmitted] = useState(false);
   const orderCloseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [orderDetailId, setOrderDetailId] = useState<string | null>(null);
+  const [isUploadingVoice, setIsUploadingVoice] = useState(false);
   const [cardWizard, setCardWizard] = useState<{ orderId: string; action: string; reason?: string } | null>(null);
   const [editingOrderInbox, setEditingOrderInbox] = useState<OrderWithDetails | null>(null);
   const [editItemsInbox, setEditItemsInbox] = useState<EditableItem[]>([]);
@@ -1084,28 +1084,39 @@ export default function RestaurantInbox() {
     }
   };
 
-  const { uploadFile: uploadVoice, isUploading: isUploadingVoice } = useUpload();
   const handleSendVoice = async (blob: Blob, durationMs: number) => {
     if (!selectedConversation) return;
+    setIsUploadingVoice(true);
     try {
-      const file = new File([blob], `voice-${Date.now()}.webm`, { type: blob.type || "audio/webm" });
-      const res = await uploadVoice(file);
-      if (!res) {
-        toast({
-          title: lang === "de" ? "Sprachnachricht konnte nicht hochgeladen werden" : "Impossibile caricare il messaggio vocale",
-          variant: "destructive",
-        });
-        return;
-      }
-      await sendMessageMutation.mutateAsync({
-        content: "",
-        messageType: "voice",
-        priority: messagePriority,
-        audioUrl: res.objectPath,
-        audioDurationMs: Math.round(durationMs),
+      const response = await fetch(`/api/conversations/${selectedConversation}/voice`, {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": blob.type || "audio/webm",
+          "X-Audio-Duration-Ms": String(Math.round(durationMs)),
+          "X-Message-Priority": messagePriority,
+        },
+        body: blob,
       });
-    } catch {
-      // sendMessageMutation.onError already shows the localized error.
+      if (!response.ok) {
+        const errorBody = await response.json().catch(() => ({}));
+        throw new Error(errorBody.error || "Voice message could not be sent");
+      }
+      queryClient.invalidateQueries({ queryKey: [`/api/conversations/${selectedConversation}/messages`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/conversations?userId=${currentUser?.id}`] });
+      setMessagePriority("standard");
+      setAttachedOrderRef(null);
+      setAttachedComplaintRef(null);
+      setReplyToMessage(null);
+      setTimeout(scrollToBottom, 100);
+    } catch (error) {
+      toast({
+        title: lang === "de" ? "Sprachnachricht konnte nicht gesendet werden" : "Impossibile inviare il messaggio vocale",
+        description: error instanceof Error ? error.message : undefined,
+        variant: "destructive",
+      });
+    } finally {
+      setIsUploadingVoice(false);
     }
   };
 

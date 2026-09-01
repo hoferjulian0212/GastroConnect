@@ -3245,10 +3245,24 @@ export async function registerRoutes(
   app.get("/api/delivery-schedules/restaurant", async (req, res) => {
     try {
       if (!req.auth) return res.status(401).json({ error: "unauthenticated" });
-      const supplierId = req.query.supplierId as string;
-      const restaurantId = req.auth.organizationId;
-      if (!supplierId) {
-        return res.status(400).json({ error: "Supplier ID required" });
+      const requestedSupplierId = typeof req.query.supplierId === "string" ? req.query.supplierId : "";
+      const requestedRestaurantId = typeof req.query.restaurantId === "string" ? req.query.restaurantId : "";
+      let supplierId: string;
+      let restaurantId: string;
+      if (req.auth.org.role === "supplier") {
+        if (requestedSupplierId && requestedSupplierId !== req.auth.organizationId) {
+          return res.status(403).json({ error: "forbidden" });
+        }
+        supplierId = req.auth.organizationId;
+        restaurantId = requestedRestaurantId;
+      } else if (req.auth.org.role === "restaurant") {
+        supplierId = requestedSupplierId;
+        restaurantId = req.auth.organizationId;
+      } else {
+        return res.status(403).json({ error: "forbidden" });
+      }
+      if (!supplierId || !restaurantId) {
+        return res.status(400).json({ error: "Supplier and restaurant IDs required" });
       }
       const schedules = await storage.getDeliverySchedulesForRestaurant(supplierId, restaurantId);
       res.json(schedules);
@@ -5726,6 +5740,77 @@ export async function registerRoutes(
       res.status(500).json({ error: "Failed to send message" });
     }
   });
+
+  // Voice messages use a bounded raw-body endpoint instead of the generic
+  // object-storage presigner. The storage signer is unavailable in some
+  // Replit runtimes, but the message itself must still be deliverable.
+  app.post(
+    "/api/conversations/:id/voice",
+    express.raw({
+      type: (req) => String(req.headers["content-type"] || "").toLowerCase().startsWith("audio/"),
+      limit: "2mb",
+    }),
+    async (req, res) => {
+      try {
+        if (!req.auth) return res.status(401).json({ error: "unauthenticated" });
+        const conversation = await storage.getConversation(req.params.id);
+        if (!conversation) return res.status(404).json({ error: "Conversation not found" });
+        const messageDenied = checkActingCapabilityIfProvided(req, [conversation.restaurantId, conversation.supplierId], "chat");
+        if (messageDenied) return res.status(messageDenied.status).json(messageDenied.body);
+
+        const contentType = String(req.headers["content-type"] || "").split(";")[0].toLowerCase();
+        const allowedVoiceTypes = new Set(["audio/webm", "audio/ogg", "audio/mp4", "audio/mpeg", "audio/wav"]);
+        if (!allowedVoiceTypes.has(contentType)) {
+          return res.status(400).json({ error: "Unsupported voice message format" });
+        }
+        const audioBuffer = Buffer.isBuffer(req.body) ? req.body : Buffer.alloc(0);
+        if (audioBuffer.length === 0) return res.status(400).json({ error: "Voice message is empty" });
+
+        const durationHeader = Number(req.headers["x-audio-duration-ms"]);
+        const audioDurationMs = Number.isFinite(durationHeader)
+          ? Math.max(0, Math.min(60 * 60 * 1000, Math.round(durationHeader)))
+          : undefined;
+        const requestedPriority = String(req.headers["x-message-priority"] || "standard");
+        const priority = requestedPriority === "important" ? "important" : "standard";
+        const senderId = req.auth.organizationId;
+        const message = await storage.sendMessage({
+          conversationId: req.params.id,
+          senderId,
+          senderMemberId: req.auth.memberId,
+          messageType: "voice",
+          content: "",
+          priority,
+          audioUrl: `data:${contentType};base64,${audioBuffer.toString("base64")}`,
+          audioDurationMs,
+        });
+
+        try {
+          const recipientId = conversation.restaurantId === senderId
+            ? conversation.supplierId
+            : conversation.restaurantId;
+          const sender = await storage.getUser(senderId);
+          const recipientRole = recipientId === conversation.restaurantId ? "restaurant" : "supplier";
+          await createNotificationWithPush({
+            userId: recipientId,
+            type: "new_message",
+            title: "Neue Nachricht",
+            message: `${sender?.companyName || sender?.name || "Jemand"} hat Ihnen eine Nachricht gesendet`,
+            referenceId: req.params.id,
+          }, recipientRole, {
+            title_it: "Nuovo messaggio",
+            message_it: `${sender?.companyName || sender?.name || "Qualcuno"} ti ha inviato un messaggio`,
+          });
+        } catch (notificationError) {
+          console.error("Voice message saved but notification failed:", notificationError);
+        }
+
+        return res.status(201).json(message);
+      } catch (error) {
+        console.error("Failed to send voice message:", error);
+        return res.status(500).json({ error: "Failed to send voice message" });
+      }
+    },
+  );
 
   app.post("/api/conversations/:id/read", async (req, res) => {
     try {

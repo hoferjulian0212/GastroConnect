@@ -108,14 +108,33 @@ export async function validateDeliveryPromise(
       eq(restaurantAvailability.restaurantId, restaurantId),
       eq(restaurantAvailability.dayOfWeek, weekday(date)),
     ));
-  if (openings.length === 0) {
-    return { valid: false, code: "no_opening_hours", message: "Für diesen Tag sind keine Öffnungszeiten hinterlegt.", timeZone };
+  const validSchedules = schedules
+    .map((schedule) => ({
+      schedule,
+      from: schedule.deliveryTimeFrom ? minutes(schedule.deliveryTimeFrom) : null,
+      to: schedule.deliveryTimeTo ? minutes(schedule.deliveryTimeTo) : null,
+    }))
+    .filter((entry): entry is typeof entry & { from: number; to: number } =>
+      entry.from !== null && entry.to !== null && entry.from < entry.to,
+    );
+  if (validSchedules.length === 0) {
+    return { valid: false, code: "no_supplier_commitment", message: "Für diesen Tag gibt es keine gültige Lieferzusage.", timeZone };
   }
 
-  for (const schedule of schedules) {
-    const from = schedule.deliveryTimeFrom ? minutes(schedule.deliveryTimeFrom) : null;
-    const to = schedule.deliveryTimeTo ? minutes(schedule.deliveryTimeTo) : null;
-    if (from === null || to === null || from >= to) continue;
+  // Older restaurants may have supplier delivery plans but no opening-hours
+  // rows yet. The supplier's committed window is still an explicit promise,
+  // so keep existing confirmed orders schedulable until the restaurant adds
+  // opening hours. Once rows exist, every committed window must fit them.
+  if (openings.length === 0) {
+    const { schedule, from, to } = validSchedules[0];
+    return {
+      valid: true,
+      timeZone,
+      timeWindow: { from: schedule.deliveryTimeFrom!, to: schedule.deliveryTimeTo! },
+    };
+  }
+
+  for (const { schedule, from, to } of validSchedules) {
     if (openings.some((opening) => {
       const openFrom = minutes(opening.opensAt);
       const openTo = minutes(opening.closesAt);

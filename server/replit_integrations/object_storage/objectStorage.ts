@@ -131,7 +131,7 @@ export class ObjectStorageService {
   }
 
   // Gets the upload URL for an object entity.
-  async getObjectEntityUploadURL(prefix?: string, contentType?: string): Promise<string> {
+  async getObjectEntityUploadURL(prefix?: string): Promise<string> {
     const privateObjectDir = this.getPrivateObjectDir();
     if (!privateObjectDir) {
       throw new Error(
@@ -145,20 +145,16 @@ export class ObjectStorageService {
     const fullPath = `${privateObjectDir}/${safePrefix}/${objectId}`;
 
     const { bucketName, objectName } = parseObjectPath(fullPath);
-    const bucket = objectStorageClient.bucket(bucketName);
-    const file = bucket.file(objectName);
 
-    // Sign directly through the configured Storage client. The local
-    // sidecar signer is not available in every Replit runtime (and returns
-    // 401 there), while this is the same signing path used by chat
-    // attachments.
-    const [uploadURL] = await file.getSignedUrl({
-      version: "v4",
-      action: "write",
-      expires: Date.now() + 15 * 60 * 1000,
-      ...(contentType ? { contentType } : {}),
+    // Sign through the Replit Object Storage sidecar. This preserves the
+    // platform-managed upload flow used by existing profile and document
+    // uploads.
+    return signObjectURL({
+      bucketName,
+      objectName,
+      method: "PUT",
+      ttlSec: 900,
     });
-    return uploadURL;
   }
 
   // Gets the object entity file from the object path.
