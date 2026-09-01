@@ -3207,7 +3207,7 @@ export async function registerRoutes(
       // failure can never leave a promotion without a linked record (or vice versa).
       const { record: updated, promotion: promo } = await storage.actionInventoryRiskRecord(
         existing.id,
-        existing.supplierId,
+        req.auth.organizationId,
         {
           discountPercent,
           startDate,

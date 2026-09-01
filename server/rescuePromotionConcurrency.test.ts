@@ -101,6 +101,9 @@ test("concurrent Rescue checkouts cannot oversell one promotion and retries stay
       quantityCap: 5,
     });
     promotionId = actioned.promotion.id;
+    assert.equal(actioned.promotion.supplierId, supplierId);
+    assert.equal(actioned.promotion.productId, productId);
+    assert.equal(actioned.promotion.sourceRiskId, riskId);
 
     await db.insert(cartItems).values(restaurants.map((restaurant) => ({
       restaurantId: restaurant.id,
