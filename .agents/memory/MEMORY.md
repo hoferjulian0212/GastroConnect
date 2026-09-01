@@ -34,3 +34,4 @@
 - [Local sustainability data governance](local-sustainability-data-governance.md) — Local/impact claims require shared versioned calculations, provenance, coverage and explicit unknowns.
 - [Delivery promise constraints](delivery-promise-constraints.md) — explicit dates require a configured supplier commitment, zone eligibility, and restaurant availability; ASAP remains unpromised.
 - [Delivery notification outbox](delivery-notification-outbox.md) — persist the in-app delivery story independently; retry failed push/email channels by event without replaying chat.
+- [Inbox send acknowledgement](inbox-send-acknowledgement.md) — once a message is persisted, notification failures must never turn its API response into a send failure.

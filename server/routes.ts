@@ -5696,12 +5696,15 @@ export async function registerRoutes(
         audioDurationMs: validated.audioDurationMs,
       });
       
-      {
+      // Notifications are a side effect. They must not turn a successfully
+      // persisted message into a 500 response (the client would then keep the
+      // message out of its cache even though it already exists in the inbox).
+      try {
         // Determine recipient: if sender is restaurant, recipient is supplier, and vice versa
-        const recipientId = conversation.restaurantId === senderId 
-          ? conversation.supplierId 
+        const recipientId = conversation.restaurantId === senderId
+          ? conversation.supplierId
           : conversation.restaurantId;
-        
+
         const sender = await storage.getUser(senderId);
         const recipientRole = recipientId === conversation.restaurantId ? "restaurant" : "supplier";
         await createNotificationWithPush({
@@ -5714,6 +5717,8 @@ export async function registerRoutes(
           title_it: "Nuovo messaggio",
           message_it: `${sender?.companyName || sender?.name || "Qualcuno"} ti ha inviato un messaggio`,
         });
+      } catch (notificationError) {
+        console.error("Message saved but notification failed:", notificationError);
       }
       
       res.status(201).json(message);

@@ -744,6 +744,13 @@ export default function SupplierInbox() {
       setAttachedComplaintRef(null);
       setTimeout(scrollToBottom, 100);
     },
+    onError: (error) => {
+      toast({
+        title: lang === "de" ? "Nachricht konnte nicht gesendet werden" : "Impossibile inviare il messaggio",
+        description: error instanceof Error ? error.message : undefined,
+        variant: "destructive",
+      });
+    },
   });
 
   useEffect(() => {
@@ -915,16 +922,26 @@ export default function SupplierInbox() {
   const { uploadFile: uploadVoice, isUploading: isUploadingVoice } = useUpload();
   const handleSendVoice = async (blob: Blob, durationMs: number) => {
     if (!selectedConversation) return;
-    const file = new File([blob], `voice-${Date.now()}.webm`, { type: blob.type || "audio/webm" });
-    const res = await uploadVoice(file);
-    if (!res) return;
-    sendMessageMutation.mutate({
-      content: "",
-      messageType: "voice",
-      priority: messagePriority,
-      audioUrl: res.objectPath,
-      audioDurationMs: Math.round(durationMs),
-    });
+    try {
+      const file = new File([blob], `voice-${Date.now()}.webm`, { type: blob.type || "audio/webm" });
+      const res = await uploadVoice(file);
+      if (!res) {
+        toast({
+          title: lang === "de" ? "Sprachnachricht konnte nicht hochgeladen werden" : "Impossibile caricare il messaggio vocale",
+          variant: "destructive",
+        });
+        return;
+      }
+      await sendMessageMutation.mutateAsync({
+        content: "",
+        messageType: "voice",
+        priority: messagePriority,
+        audioUrl: res.objectPath,
+        audioDurationMs: Math.round(durationMs),
+      });
+    } catch {
+      // sendMessageMutation.onError already shows the localized error.
+    }
   };
 
   const pinConvMutation = useMutation({
@@ -1570,11 +1587,11 @@ export default function SupplierInbox() {
                                                 variant="ghost"
                                                 size="sm"
                                                 className="h-6 px-2 text-[10px]"
-                                                onClick={() => setOrderDetailId(message.orderId)}
+                                                 onClick={() => setLocation(`/supplier/orders/${message.orderId}`)}
                                                 data-testid={`button-order-details-${message.id}`}
                                               >
                                                 <Eye className="h-3 w-3 mr-1" />
-                                                Details
+                                                 Bestellung öffnen
                                               </Button>
                                             )}
                                           </div>
@@ -1672,9 +1689,9 @@ export default function SupplierInbox() {
                                             </div>
                                           ) : (
                                             <div className="grid grid-cols-2 gap-1.5">
-                                              <Button size="sm" variant="outline" className="text-xs h-8 min-w-0 truncate" onClick={() => setOrderDetailId(message.orderId)} data-testid={`button-order-details-${message.id}`}>
+                                               <Button size="sm" variant="outline" className="text-xs h-8 min-w-0 truncate" onClick={() => setLocation(`/supplier/orders/${message.orderId}`)} data-testid={`button-order-details-${message.id}`}>
                                                 <Eye className="h-3.5 w-3.5 mr-1 shrink-0" />
-                                                <span className="truncate">Details</span>
+                                                 <span className="truncate">Bestellung öffnen</span>
                                               </Button>
                                               {orderStatus === "pending" && (
                                                 <Button size="sm" variant="outline" className="text-xs h-8 min-w-0 truncate" onClick={async () => {

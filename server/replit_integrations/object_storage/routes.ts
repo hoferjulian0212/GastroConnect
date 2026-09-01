@@ -51,7 +51,10 @@ export function registerObjectStorageRoutes(app: Express): void {
         });
       }
 
-      const uploadURL = await objectStorageService.getObjectEntityUploadURL(typeof prefix === "string" ? prefix : undefined);
+       const uploadURL = await objectStorageService.getObjectEntityUploadURL(
+         typeof prefix === "string" ? prefix : undefined,
+         typeof contentType === "string" ? contentType : undefined,
+       );
 
       // Extract object path from the presigned URL for later reference
       const objectPath = objectStorageService.normalizeObjectEntityPath(uploadURL);
