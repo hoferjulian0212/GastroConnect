@@ -60,7 +60,7 @@ export default function RestaurantHistory() {
 
   const getStatusLabel = (status: string) => {
     switch (status) {
-      case "pending": return "Ausstehend";
+      case "pending": return "Neu";
       case "confirmed": return "Bestätigt";
       case "scheduled": return "Geplant";
       case "in_delivery": return "Unterwegs";

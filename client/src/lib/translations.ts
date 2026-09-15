@@ -123,7 +123,7 @@ const t = {
     refreshAll: { de: "Alle aktualisieren", it: "Aggiorna tutto" },
   },
   orderStatus: {
-    pending: { de: "Ausstehend", it: "In attesa" },
+    pending: { de: "Neu", it: "Nuovo" },
     confirmed: { de: "Bestätigt", it: "Confermato" },
     partially_confirmed: { de: "Teilbestätigt", it: "Parzialmente confermato" },
     scheduled: { de: "Geplant", it: "Pianificato" },
@@ -200,7 +200,7 @@ const t = {
     complaintStatus_in_progress: { de: "In Bearbeitung", it: "In lavorazione" },
     complaintStatus_resolved: { de: "Gelöst", it: "Risolto" },
     complaintStatus_closed: { de: "Geschlossen", it: "Chiuso" },
-    orderStatus_pending: { de: "Ausstehend", it: "In attesa" },
+    orderStatus_pending: { de: "Neu", it: "Nuovo" },
     orderStatus_confirmed: { de: "Bestätigt", it: "Confermato" },
     orderStatus_partially_confirmed: { de: "Teilbestätigt", it: "Parzialmente confermato" },
     orderStatus_scheduled: { de: "Geplant", it: "Pianificato" },

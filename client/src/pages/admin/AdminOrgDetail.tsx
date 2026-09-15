@@ -84,7 +84,7 @@ interface OrgNote {
 }
 
 const STATUS_LABELS: Record<string, string> = {
-  pending: "Ausstehend",
+  pending: "Neu",
   confirmed: "Bestätigt",
   partially_confirmed: "Teilweise bestätigt",
   in_delivery: "In Lieferung",

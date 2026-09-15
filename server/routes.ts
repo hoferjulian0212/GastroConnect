@@ -3882,7 +3882,7 @@ export async function registerRoutes(
       });
 
       const statusLabels: Record<string, string> = {
-        pending: "Ausstehend",
+        pending: "Neu",
         confirmed: "Bestätigt",
         partially_confirmed: "Teilbestätigt",
         in_delivery: "In Lieferung",

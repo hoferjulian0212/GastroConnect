@@ -318,7 +318,7 @@ export default function ProductDetail() {
 
   const statusLabel = (status: ProductPurchaseHistoryEntry["status"]) => {
     const map: Record<string, { de: string; it: string }> = {
-      pending: { de: "Ausstehend", it: "In attesa" },
+      pending: { de: "Neu", it: "Nuovo" },
       confirmed: { de: "Bestätigt", it: "Confermato" },
       partially_confirmed: { de: "Teilbestätigt", it: "Parz. confermato" },
       scheduled: { de: "Geplant", it: "Pianificato" },

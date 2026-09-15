@@ -925,8 +925,8 @@ export default function OrderDetail() {
                     const completed = i <= currentStepIndex;
                     const isCurrent = i === currentStepIndex;
                     const stepLabels: Record<string, string> = lang === "de"
-                      ? { pending: "Bestellt", confirmed: "Bestätigt", scheduled: "Geplant", in_delivery: "Unterwegs", delivered: "Geliefert" }
-                      : { pending: "Effettuato", confirmed: "Confermato", scheduled: "Pianificato", in_delivery: "In consegna", delivered: "Consegnato" };
+                      ? { pending: "Neu", confirmed: "Bestätigt", scheduled: "Geplant", in_delivery: "Unterwegs", delivered: "Geliefert" }
+                      : { pending: "Nuovo", confirmed: "Confermato", scheduled: "Pianificato", in_delivery: "In consegna", delivered: "Consegnato" };
                     const stepEntry = timeline.find((e: any) => e.toStatus === step || (step === "confirmed" && e.toStatus === "partially_confirmed"));
                     const isLast = i === statusSteps.length - 1;
                     return (
@@ -986,8 +986,8 @@ export default function OrderDetail() {
                     const completed = i <= currentStepIndex;
                     const isCurrent = i === currentStepIndex;
                     const stepLabels: Record<string, string> = lang === "de"
-                      ? { pending: "Bestellt", confirmed: "Bestätigt", scheduled: "Geplant", in_delivery: "Unterwegs", delivered: "Geliefert" }
-                      : { pending: "Effettuato", confirmed: "Confermato", scheduled: "Pianificato", in_delivery: "In consegna", delivered: "Consegnato" };
+                      ? { pending: "Neu", confirmed: "Bestätigt", scheduled: "Geplant", in_delivery: "Unterwegs", delivered: "Geliefert" }
+                      : { pending: "Nuovo", confirmed: "Confermato", scheduled: "Pianificato", in_delivery: "In consegna", delivered: "Consegnato" };
                     const stepEntry = timeline.find((e: any) => e.toStatus === step || (step === "confirmed" && e.toStatus === "partially_confirmed"));
                     const nodes = [
                       <div key={`step-${step}`} className="flex flex-col items-center gap-2 shrink-0 w-20" data-testid={`stepper-${step}`}>
