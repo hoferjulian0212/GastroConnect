@@ -35,6 +35,7 @@ const STATUS_FILTERS: { key: string; labelDe: string; labelIt: string }[] = [
   { key: "in_delivery", labelDe: "Unterwegs", labelIt: "In viaggio" },
   { key: "delivered", labelDe: "Geliefert", labelIt: "Consegnati" },
   { key: "cancelled", labelDe: "Storniert", labelIt: "Annullati" },
+  { key: "not_deliverable", labelDe: "Nicht zustellbar", labelIt: "Non consegnabili" },
 ];
 
 export default function RestaurantOrdersMobile({

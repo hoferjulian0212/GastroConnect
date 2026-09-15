@@ -64,7 +64,7 @@ test("Rescue state reports sold out from reserved plus sold quota", () => {
 test("confirmation consumes accepted Rescue units and releases the rest", () => {
   assert.deepEqual(
     getRescueAllocationTarget({
-      status: "partially_confirmed",
+      status: "confirmed",
       previousStatus: "pending",
       itemQuantity: 8,
       confirmedQuantity: 5,
@@ -79,7 +79,7 @@ test("a later confirmed status keeps the persisted partial quantity", () => {
   assert.deepEqual(
     getRescueAllocationTarget({
       status: "confirmed",
-      previousStatus: "partially_confirmed",
+      previousStatus: "confirmed",
       itemQuantity: 8,
       confirmedQuantity: 5,
       currentReserved: 0,

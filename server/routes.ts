@@ -888,7 +888,7 @@ const reorderSchema = z.object({
 }).strict();
 
 const updateOrderStatusSchema = z.object({
-  status: z.enum(["pending", "confirmed", "partially_confirmed", "scheduled", "in_delivery", "delivered", "cancelled"]),
+  status: z.enum(["pending", "confirmed", "scheduled", "in_delivery", "delivered", "cancelled", "not_deliverable"]),
   changedBy: uuidField.optional(),
   actingMemberId: uuidField.optional().nullable(),
   requestedDeliveryDate: safeShortString.optional().nullable(),
@@ -3687,7 +3687,7 @@ export async function registerRoutes(
         .innerJoin(orders, eq(orderItems.orderId, orders.id))
         .where(and(
           eq(orders.restaurantId, req.auth.organizationId),
-          inArray(orders.status, ["confirmed", "partially_confirmed", "scheduled", "in_delivery", "delivered"]),
+          inArray(orders.status, ["confirmed", "scheduled", "in_delivery", "delivered", "not_deliverable"]),
         ));
       const summary = summarizeLocalImpact(rows.map((row) => ({
         impact: row.localImpactSnapshot ?? unavailableLocalImpact(),
@@ -3847,8 +3847,8 @@ export async function registerRoutes(
       }
 
       const allOrders = role === "restaurant"
-        ? await storage.getOrdersByRestaurant(userId, { status: ["delivered", "confirmed", "in_delivery", "partially_confirmed", "cancelled"] })
-        : await storage.getOrdersBySupplier(userId, { status: ["delivered", "confirmed", "in_delivery", "partially_confirmed", "cancelled"] });
+        ? await storage.getOrdersByRestaurant(userId, { status: ["delivered", "confirmed", "in_delivery", "cancelled", "not_deliverable"] })
+        : await storage.getOrdersBySupplier(userId, { status: ["delivered", "confirmed", "in_delivery", "cancelled", "not_deliverable"] });
 
       let filtered = allOrders;
 
@@ -3884,10 +3884,10 @@ export async function registerRoutes(
       const statusLabels: Record<string, string> = {
         pending: "Neu",
         confirmed: "Bestätigt",
-        partially_confirmed: "Teilbestätigt",
-        in_delivery: "In Lieferung",
+        in_delivery: "Unterwegs",
         delivered: "Geliefert",
         cancelled: "Storniert",
+        not_deliverable: "Nicht zustellbar",
       };
 
       if (format === "csv") {
@@ -4582,6 +4582,12 @@ export async function registerRoutes(
           message: "Der Status 'Unterwegs' wird automatisch gesetzt, wenn der Fahrer die Tour startet.",
         });
       }
+      if (status === "not_deliverable") {
+        return res.status(400).json({
+          error: "not_deliverable_via_driver_only",
+          message: "Nicht zustellbar kann nur aus einer gestarteten eigenen Fahrerlieferung gesetzt werden.",
+        });
+      }
       const statusDenied = checkActingCapabilityIfProvided(
         req,
         [order.restaurantId, order.supplierId],
@@ -4670,8 +4676,7 @@ export async function registerRoutes(
         status === "delivered" &&
         (previousStatus === "in_delivery" ||
           previousStatus === "scheduled" ||
-          previousStatus === "confirmed" ||
-          previousStatus === "partially_confirmed");
+          previousStatus === "confirmed");
       if (shouldEnsureDeliveryNote) {
         try {
           const { document, created } = await ensureDeliveryNoteForOrder(order);
@@ -4790,7 +4795,9 @@ export async function registerRoutes(
       } else if (allFullyConfirmed) {
         newStatus = "confirmed";
       } else {
-        newStatus = "partially_confirmed";
+        // Partial quantities remain in order-item confirmation details. The
+        // commercial order status is still the canonical "confirmed" value.
+        newStatus = "confirmed";
       }
 
       const actorIdPC = validated.changedBy ?? order.supplierId;
@@ -4839,7 +4846,7 @@ export async function registerRoutes(
         },
         noteFn: (item, qty) => {
           const orig = order.items.find(i => i.id === item.id)?.quantity ?? qty;
-          return finalStatus === "partially_confirmed"
+          return !allFullyConfirmed
             ? `Bestellung #${formatOrderNumber(order)} teilbestätigt (${qty} von ${orig})`
             : `Bestellung #${formatOrderNumber(order)} bestätigt`;
         },
@@ -4871,7 +4878,7 @@ export async function registerRoutes(
 
       // Send notification to restaurant
       const supplier = await storage.getUser(order.supplierId);
-      const isPartial = newStatus === "partially_confirmed";
+      const isPartial = !allFullyConfirmed && !allRejected;
       await createNotificationWithPush({
         userId: order.restaurantId,
         type: "order_status",
@@ -5000,7 +5007,7 @@ export async function registerRoutes(
       const constraint = await validateDeliveryPromise(order.supplierId, order.restaurantId, requestedDeliveryDate);
       if (!constraint.valid) return res.status(400).json({ error: "delivery_constraint_failed", code: constraint.code, message: constraint.message });
       // Rescheduling is allowed for any active order (pending/confirmed/
-      // partially_confirmed/scheduled/in_delivery). A date change always
+      // scheduled/in_delivery). A date change always
       // requires a reason (enforced below); setting the same/first date does not.
       const isDateChange = !!order.requestedDeliveryDate && order.requestedDeliveryDate !== requestedDeliveryDate;
       const reason = (dateChangeReason ?? "").trim();
@@ -6085,8 +6092,8 @@ export async function registerRoutes(
       if (!dateRe.test(from) || !dateRe.test(to)) return res.json([]);
 
       const all = role === "restaurant"
-        ? await storage.getOrdersByRestaurant(userId, { status: ["confirmed", "partially_confirmed", "scheduled", "in_delivery", "delivered"] })
-        : await storage.getOrdersBySupplier(userId, { status: ["confirmed", "partially_confirmed", "scheduled", "in_delivery", "delivered"] });
+        ? await storage.getOrdersByRestaurant(userId, { status: ["confirmed", "scheduled", "in_delivery", "delivered"] })
+        : await storage.getOrdersBySupplier(userId, { status: ["confirmed", "scheduled", "in_delivery", "delivered"] });
 
       const result = all.filter(o => {
         if (!o.requestedDeliveryDate) return false;
@@ -6116,8 +6123,8 @@ export async function registerRoutes(
       const toStr = fmtDate(end);
 
       const all = role === "restaurant"
-        ? await storage.getOrdersByRestaurant(userId, { status: ["confirmed", "partially_confirmed", "scheduled", "in_delivery", "delivered"] })
-        : await storage.getOrdersBySupplier(userId, { status: ["confirmed", "partially_confirmed", "scheduled", "in_delivery", "delivered"] });
+        ? await storage.getOrdersByRestaurant(userId, { status: ["confirmed", "scheduled", "in_delivery", "delivered"] })
+        : await storage.getOrdersBySupplier(userId, { status: ["confirmed", "scheduled", "in_delivery", "delivered"] });
 
       const relevant = all.filter(o => o.requestedDeliveryDate && o.requestedDeliveryDate >= fromStr && o.requestedDeliveryDate <= toStr);
 
@@ -7073,7 +7080,7 @@ export async function registerRoutes(
       const restaurantId = req.auth.organizationId;
       const allOrders = await db.select().from(orders)
         .where(eq(orders.restaurantId, restaurantId));
-      const delivered = allOrders.filter(o => o.status === "delivered" || o.status === "confirmed" || o.status === "scheduled" || o.status === "in_delivery" || o.status === "partially_confirmed");
+      const delivered = allOrders.filter(o => ["delivered", "confirmed", "scheduled", "in_delivery"].includes(o.status));
 
       const now = new Date();
       const monthKeys: { key: string; label: string }[] = [];
@@ -7155,7 +7162,7 @@ export async function registerRoutes(
       const allOrders = await db.select().from(orders)
         .where(and(eq(orders.restaurantId, restaurantId), eq(orders.supplierId, supplierId)));
 
-      const deliveredOrders = allOrders.filter(o => o.status === "delivered" || o.status === "confirmed" || o.status === "scheduled" || o.status === "in_delivery" || o.status === "partially_confirmed");
+      const deliveredOrders = allOrders.filter(o => ["delivered", "confirmed", "scheduled", "in_delivery"].includes(o.status));
       const totalOrders = deliveredOrders.length;
       const totalSpent = deliveredOrders.reduce((sum, o) => sum + Number(o.totalAmount || 0), 0);
       const avgOrderValue = totalOrders > 0 ? totalSpent / totalOrders : 0;
@@ -7207,7 +7214,7 @@ export async function registerRoutes(
         .where(and(eq(orders.restaurantId, restaurantId), eq(orders.supplierId, supplierId)));
       const filteredOrders = monthOrders.filter(o => {
         const d = new Date(o.createdAt);
-        return d >= startDate && d < endDate && (o.status === "delivered" || o.status === "confirmed" || o.status === "scheduled" || o.status === "in_delivery" || o.status === "partially_confirmed");
+        return d >= startDate && d < endDate && ["delivered", "confirmed", "scheduled", "in_delivery"].includes(o.status);
       });
 
       if (filteredOrders.length === 0) {
@@ -9158,6 +9165,11 @@ export async function registerRoutes(
     note: safeString.optional().nullable(),
   }).strict();
 
+  const notDeliverableSchema = z.object({
+    problemType: z.enum(["not_reachable", "unavailable", "refused", "partial_delivery", "missing_items", "damaged", "packaging_return", "wrong_address", "traffic", "other"]),
+    note: safeString.optional().nullable(),
+  }).strict();
+
   const deliveryRejectSchema = z.object({
     reason: z.enum(["not_reachable", "refused", "damaged", "wrong_address", "traffic", "no_time", "other"]),
     note: safeString.optional().nullable(),
@@ -9380,7 +9392,7 @@ export async function registerRoutes(
     const order = updated
       ? await notifyRouteDeparture(updated, actorName)
       : await storage.getOrder(next.orderId);
-    if (order && ["confirmed", "partially_confirmed", "scheduled"].includes(order.status)) {
+    if (order && ["confirmed", "scheduled"].includes(order.status)) {
       try {
         await transitionOrderWithStock({ order, newStatus: "in_delivery", previousStatus: order.status, changedByMemberId: driverMemberId, actorName, movementType: null });
       } catch (err) { if (!(err instanceof OrderTransitionConflictError)) throw err; }
@@ -9441,7 +9453,7 @@ export async function registerRoutes(
       if (!order) return res.status(404).json({ error: "Order not found" });
       const denied = checkActingCapability(req, order.supplierId, "deliveries.manage");
       if (denied) return res.status(denied.status).json(denied.body);
-      if (!["confirmed", "partially_confirmed", "scheduled", "in_delivery", "to_review"].includes(order.status)) {
+      if (!["confirmed", "scheduled", "in_delivery", "not_deliverable"].includes(order.status)) {
         return res.status(400).json({ error: "invalid_status", message: "Nur bestätigte Bestellungen können einem Fahrer zugewiesen werden." });
       }
       const driver = await storage.getMember(parsed.driverMemberId);
@@ -9537,7 +9549,7 @@ export async function registerRoutes(
       // Assigning a driver plans the tour: the order becomes "scheduled"
       // (Geplant). It only moves to in_delivery when the driver actually
       // departs (en_route in the driver app). Conflicts are non-fatal.
-      if (["confirmed", "partially_confirmed", "to_review"].includes(order.status)
+      if (["confirmed", "not_deliverable"].includes(order.status)
         || (existing && ["problem", "rejected"].includes(existing.status) && order.status === "in_delivery")) {
         try {
           await transitionOrderWithStock({
@@ -9597,9 +9609,9 @@ export async function registerRoutes(
       await storage.deleteDeliveryAssignment(existing.id);
       await storage.syncDraftDriverRoute(existing.driverMemberId, existing.supplierId, existing.deliveryDate);
       // Removing the driver un-plans the tour: a "scheduled" (or rejected /
-      // "to_review") order falls back to "confirmed" so it can be re-planned.
+      // A non-deliverable order can be re-planned by the office.
       // Conflicts are non-fatal.
-      if (order.status === "scheduled" || order.status === "to_review") {
+      if (order.status === "scheduled" || order.status === "not_deliverable") {
         try {
           await transitionOrderWithStock({
             order,
@@ -9677,13 +9689,13 @@ export async function registerRoutes(
           exceptionResolvedAt: new Date(),
           exceptionResolvedByMemberId: req.auth!.memberId,
         });
-      } else if (order.status === "to_review") {
+      } else if (order.status === "not_deliverable") {
         try {
           await db.transaction(async (tx) => {
             const locked = await tx.execute<{ status: string | null }>(
               sql`SELECT status FROM ${orders} WHERE id = ${order.id} FOR UPDATE`,
             );
-            if (locked.rows[0]?.status !== "to_review") throw new DeliveryResolutionConflictError();
+            if (locked.rows[0]?.status !== "not_deliverable") throw new DeliveryResolutionConflictError();
             const [row] = await tx.update(deliveryAssignments).set({
               status: "rejected",
               rejectedAt: new Date(),
@@ -9713,7 +9725,7 @@ export async function registerRoutes(
         try {
           await transitionOrderWithStock({
             order,
-            newStatus: "to_review",
+            newStatus: "not_deliverable",
             previousStatus: order.status,
             changedByMemberId: req.auth!.memberId,
             actorName: req.auth!.member.name,
@@ -9909,7 +9921,7 @@ export async function registerRoutes(
       // departure step before publishing the arrival update, so the story is
       // ordered and the commercial order is bridged before the next event.
       if (recoveryToArrival && order) {
-        if (["confirmed", "partially_confirmed", "scheduled"].includes(order.status)) {
+        if (["confirmed", "scheduled"].includes(order.status)) {
           try {
             await transitionOrderWithStock({
               order,
@@ -9928,7 +9940,7 @@ export async function registerRoutes(
       // Departing moves the ORDER to in_delivery (no stock movement — stock is
       // outbounded only on delivered). Conflicts are non-fatal: the sub-state
       // update already succeeded.
-      if (status === "en_route" && order && ["confirmed", "partially_confirmed", "scheduled"].includes(order.status)) {
+      if (status === "en_route" && order && ["confirmed", "scheduled"].includes(order.status)) {
         try {
           await transitionOrderWithStock({
             order,
@@ -10052,12 +10064,12 @@ export async function registerRoutes(
       // the driver recovered an arrival state. Emit the missing departure
       // update before the terminal delivered update, but only when the
       // commercial lifecycle still proves it was not already emitted.
-      if (order && ["confirmed", "partially_confirmed", "scheduled"].includes(order.status)) {
+      if (order && ["confirmed", "scheduled"].includes(order.status)) {
         await notifyRouteDeparture(assignment, req.auth!.member.name);
       }
       // Driver recovery can fast-forward a stop to arriving. Preserve the same
       // commercial bridge as a normal en_route update before completing it.
-      if (order && ["confirmed", "partially_confirmed", "scheduled"].includes(order.status)) {
+      if (order && ["confirmed", "scheduled"].includes(order.status)) {
         try {
           await transitionOrderWithStock({
             order,
@@ -10170,6 +10182,95 @@ export async function registerRoutes(
     }
   });
 
+  // A started driver delivery can terminate the commercial order as
+  // not_deliverable. This is intentionally separate from the generic problem
+  // endpoint: the driver, assignment owner and in_delivery transition are all
+  // checked server-side.
+  app.post("/api/driver/deliveries/:id/not-deliverable", async (req, res) => {
+    try {
+      const denied = requireDriver(req);
+      if (denied) return res.status(denied.status).json(denied.body);
+      const parsed = notDeliverableSchema.parse(req.body);
+      const assignment = await storage.getDeliveryAssignment(req.params.id);
+      if (!assignment || assignment.driverMemberId !== req.auth!.memberId) {
+        return res.status(404).json({ error: "Delivery not found" });
+      }
+      if (!["picked_up", "en_route", "arriving", "problem"].includes(assignment.status)) {
+        return res.status(400).json({
+          error: "invalid_transition",
+          message: "Nicht zustellbar kann nur für eine bereits gestartete Lieferung gemeldet werden.",
+        });
+      }
+      const order = await storage.getOrder(assignment.orderId);
+      if (!order) return res.status(404).json({ error: "Order not found" });
+      if (order.status === "not_deliverable") {
+        return res.json(await storage.getDeliveryAssignment(assignment.id));
+      }
+      if (order.status !== "in_delivery") {
+        return res.status(409).json({
+          error: "order_not_in_delivery",
+          message: "Die Bestellung muss bereits unterwegs sein.",
+        });
+      }
+
+      const updated = await storage.updateDeliveryAssignmentIfStatus(assignment.id, assignment.status, {
+        status: "problem",
+        problemType: parsed.problemType,
+        problemNote: parsed.note ?? assignment.problemNote ?? null,
+        problemReportedAt: assignment.problemReportedAt ?? new Date(),
+        exceptionResolution: "not_deliverable",
+        exceptionResolutionNote: parsed.note ?? null,
+        exceptionResumeStatus: null,
+        exceptionResolvedAt: new Date(),
+      });
+      if (!updated) return res.json(await storage.getDeliveryAssignment(assignment.id));
+
+      try {
+        await transitionOrderWithStock({
+          order,
+          newStatus: "not_deliverable",
+          previousStatus: "in_delivery",
+          changedByMemberId: req.auth!.memberId,
+          actorName: req.auth!.member.name,
+          movementType: "order_returned",
+          noteFn: (_item, qty) => `Bestellung #${formatOrderNumber(order)} nicht zustellbar – ${qty}x zurück ins Hauptlager`,
+        });
+      } catch (error) {
+        if (!(error instanceof OrderTransitionConflictError)) throw error;
+        const fresh = await storage.getOrder(order.id);
+        if (!fresh || fresh.status !== "not_deliverable") throw error;
+      }
+
+      const reason = parsed.note ? `: ${parsed.note}` : "";
+      await createNotificationWithPush({
+        userId: order.supplierId,
+        type: "delivery_problem",
+        title: `Bestellung nicht zustellbar #${formatOrderNumber(order)}`,
+        message: `${req.auth!.member.name} konnte die Bestellung nicht zustellen${reason}.`,
+        referenceId: order.id,
+      }, "supplier", {
+        title_it: `Ordine non consegnabile #${formatOrderNumber(order)}`,
+        message_it: `${req.auth!.member.name} non ha potuto consegnare l'ordine${reason}.`,
+      });
+      await createNotificationWithPush({
+        userId: order.restaurantId,
+        type: "order_status",
+        title: `Bestellung nicht zustellbar #${formatOrderNumber(order)}`,
+        message: `Die Bestellung konnte nicht zugestellt werden${reason}.`,
+        referenceId: order.id,
+      }, "restaurant", {
+        title_it: `Ordine non consegnabile #${formatOrderNumber(order)}`,
+        message_it: `L'ordine non ha potuto essere consegnato${reason}.`,
+      });
+      await advanceRouteAfterStop(req.auth!.memberId, assignment.deliveryDate, assignment.id, req.auth!.member.name);
+      res.json(await storage.getDeliveryAssignment(assignment.id));
+    } catch (error: any) {
+      if (error?.name === "ZodError") return res.status(400).json({ error: "invalid_payload", details: error.errors });
+      console.error("Driver not-deliverable error:", error);
+      res.status(500).json({ error: "Failed to mark delivery not deliverable" });
+    }
+  });
+
   // ── Driver: report a problem at a stop ────────────────────────────────────
   app.post("/api/driver/deliveries/:id/problem", async (req, res) => {
     try {
@@ -10262,7 +10363,7 @@ export async function registerRoutes(
     }
   });
 
-  // ── Driver: reject a stop — the order goes back to the office ("to_review").
+  // ── Driver: reject a stop — the assignment goes back to the office.
   // Allowed on any not-yet-delivered stop, including untouched end-of-day
   // stops the driver can no longer make.
   app.post("/api/driver/deliveries/:id/reject", async (req, res) => {
@@ -10281,15 +10382,15 @@ export async function registerRoutes(
         return res.status(400).json({ error: "already_rejected", message: "Diese Lieferung wurde bereits abgelehnt." });
       }
       // Order transition happens FIRST (atomic, guarded by previousStatus) so
-      // the assignment never says rejected while the order kept moving on
-      // (e.g. the office changed it concurrently). On a conflict we re-read
-      // the order and only continue if it already ended up in "to_review".
+      // the assignment never says rejected while the order kept moving on.
+      // A commercial terminal status is only possible after departure; an
+      // early office rejection remains an operational assignment event.
       const order = await storage.getOrder(assignment.orderId);
-      if (order && !["delivered", "cancelled"].includes(order.status)) {
+      if (order?.status === "in_delivery") {
         try {
           await transitionOrderWithStock({
             order,
-            newStatus: "to_review",
+            newStatus: "not_deliverable",
             previousStatus: order.status,
             changedByMemberId: req.auth!.memberId,
             actorName: req.auth!.member.name,
@@ -10297,7 +10398,7 @@ export async function registerRoutes(
         } catch (e) {
           if (!(e instanceof OrderTransitionConflictError)) throw e;
           const fresh = await storage.getOrder(assignment.orderId);
-          if (!fresh || fresh.status !== "to_review") {
+          if (!fresh || !["in_delivery", "not_deliverable"].includes(fresh.status)) {
             return res.status(409).json({
               error: "order_changed",
               message: "Die Bestellung wurde gerade im Büro geändert. Bitte Route aktualisieren.",
@@ -10585,7 +10686,7 @@ export async function registerRoutes(
       if (!assignment) return res.status(404).json({ error: "stop_not_found" });
       if (started.route.status === "active" && ["en_route", "arriving"].includes(assignment.status)) {
         const order = await storage.getOrder(assignment.orderId);
-        if (order && ["confirmed", "partially_confirmed", "scheduled"].includes(order.status)) {
+        if (order && ["confirmed", "scheduled"].includes(order.status)) {
           try {
             await transitionOrderWithStock({
               order,
@@ -10606,7 +10707,7 @@ export async function registerRoutes(
       if (!updated) return res.json({ route: started.route, activeStop: await storage.getDeliveryAssignment(assignment.id), idempotent: true });
       await refreshRouteEtas(req.auth!.memberId, date);
       const order = await notifyRouteDeparture(updated ?? assignment, req.auth!.member.name);
-      if (order && ["confirmed", "partially_confirmed", "scheduled"].includes(order.status)) {
+      if (order && ["confirmed", "scheduled"].includes(order.status)) {
         try {
           await transitionOrderWithStock({ order, newStatus: "in_delivery", previousStatus: order.status, changedByMemberId: req.auth!.memberId, actorName: req.auth!.member.name, movementType: null });
         } catch (err) { if (!(err instanceof OrderTransitionConflictError)) throw err; }

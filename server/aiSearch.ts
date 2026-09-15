@@ -430,7 +430,7 @@ function buildTools(userId: string, role: Role) {
       or(foldedIlike(users.companyName, name), foldedIlike(users.name, name)),
     ];
     const status = String(args?.status || "").trim();
-    const validStatuses = ["pending", "confirmed", "partially_confirmed", "scheduled", "in_delivery", "delivered", "cancelled"];
+    const validStatuses = ["pending", "confirmed", "scheduled", "in_delivery", "delivered", "cancelled", "not_deliverable"];
     if (status && validStatuses.includes(status)) conds.push(eq(orders.status, status as any));
     const rows = await db
       .select({
@@ -524,7 +524,7 @@ function buildTools(userId: string, role: Role) {
       .where(
         and(
           eq(ownOrderCol, userId),
-          inArray(orders.status, ["confirmed", "partially_confirmed", "scheduled", "in_delivery"] as any),
+          inArray(orders.status, ["confirmed", "scheduled", "in_delivery"] as any),
         ),
       )
       .orderBy(orders.requestedDeliveryDate);
@@ -809,7 +809,7 @@ function buildTools(userId: string, role: Role) {
   // "which orders are still open?", "what did I order recently?", "show my
   // pending orders" etc.
   async function list_orders(args: { status?: string; limit?: number }) {
-    const validStatuses = ["pending", "confirmed", "partially_confirmed", "scheduled", "in_delivery", "delivered", "cancelled"];
+    const validStatuses = ["pending", "confirmed", "scheduled", "in_delivery", "delivered", "cancelled", "not_deliverable"];
     const status = String(args?.status || "").trim();
     const limit = Math.min(Math.max(Number(args?.limit) || 10, 1), 15);
     const conds = [eq(ownOrderCol, userId)];
@@ -967,7 +967,7 @@ function buildTools(userId: string, role: Role) {
       .innerJoin(orders, eq(orders.id, orderItems.orderId))
       .where(and(
         eq(ownOrderCol, userId),
-        inArray(orders.status, ["confirmed", "partially_confirmed", "scheduled", "in_delivery", "delivered"] as any),
+        inArray(orders.status, ["confirmed", "scheduled", "in_delivery", "delivered", "not_deliverable"] as any),
         gte(orders.createdAt, since),
       ))
       .groupBy(orderItems.productName)
@@ -1302,7 +1302,7 @@ function buildTools(userId: string, role: Role) {
             status: {
               type: "string",
               description: "Optional status filter.",
-              enum: ["pending", "confirmed", "partially_confirmed", "scheduled", "in_delivery", "delivered", "cancelled"],
+              enum: ["pending", "confirmed", "scheduled", "in_delivery", "delivered", "cancelled", "not_deliverable"],
             },
           },
           required: ["partnerName"],
@@ -1449,7 +1449,7 @@ function buildTools(userId: string, role: Role) {
             status: {
               type: "string",
               description: "Optional status filter. 'pending' = not yet confirmed.",
-              enum: ["pending", "confirmed", "partially_confirmed", "scheduled", "in_delivery", "delivered", "cancelled"],
+              enum: ["pending", "confirmed", "scheduled", "in_delivery", "delivered", "cancelled", "not_deliverable"],
             },
             limit: { type: "number", description: "Max number of orders to return (default 10, max 15)." },
           },

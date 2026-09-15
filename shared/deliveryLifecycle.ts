@@ -6,12 +6,11 @@
 export const ORDER_LIFECYCLE_STATUSES = [
   "pending",
   "confirmed",
-  "partially_confirmed",
   "scheduled",
   "in_delivery",
   "delivered",
   "cancelled",
-  "to_review",
+  "not_deliverable",
 ] as const;
 
 export type OrderLifecycleStatus = typeof ORDER_LIFECYCLE_STATUSES[number];
@@ -30,14 +29,13 @@ export type DeliveryAssignmentLifecycleStatus =
   typeof DELIVERY_ASSIGNMENT_LIFECYCLE_STATUSES[number];
 
 const ORDER_TRANSITIONS: Record<OrderLifecycleStatus, readonly OrderLifecycleStatus[]> = {
-  pending: ["confirmed", "partially_confirmed", "cancelled"],
-  confirmed: ["pending", "scheduled", "in_delivery", "cancelled", "to_review"],
-  partially_confirmed: ["pending", "scheduled", "in_delivery", "cancelled", "to_review"],
-  scheduled: ["pending", "confirmed", "in_delivery", "cancelled", "to_review"],
-  in_delivery: ["scheduled", "delivered", "cancelled", "to_review"],
+  pending: ["confirmed", "cancelled"],
+  confirmed: ["pending", "scheduled", "in_delivery", "cancelled"],
+  scheduled: ["pending", "confirmed", "in_delivery", "cancelled"],
+  in_delivery: ["scheduled", "delivered", "cancelled", "not_deliverable"],
   delivered: [],
   cancelled: ["pending"],
-  to_review: ["pending", "confirmed", "scheduled", "cancelled"],
+  not_deliverable: [],
 };
 
 const DRIVER_PROGRESS_RANK: Partial<Record<DeliveryAssignmentLifecycleStatus, number>> = {
@@ -105,6 +103,6 @@ export const DELIVERY_ORDER_BRIDGES = {
   assignment: "scheduled",
   departure: "in_delivery",
   delivery: "delivered",
-  officeReview: "to_review",
+  notDeliverable: "not_deliverable",
   unassignment: "confirmed",
 } as const;

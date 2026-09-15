@@ -421,7 +421,7 @@ export default function RestaurantOrders() {
  const hasSecondaryFilters = filterDateFrom || filterDateTo;
 
  const statusCounts = useMemo(() => {
- if (!orders) return { all: 0, pending: 0, confirmed: 0, scheduled: 0, in_delivery: 0, delivered: 0, cancelled: 0 };
+ if (!orders) return { all: 0, pending: 0, confirmed: 0, scheduled: 0, in_delivery: 0, delivered: 0, cancelled: 0, not_deliverable: 0 };
  const filtered = orders.filter(o => {
  if (filterSupplier !== "all" && o.supplier?.id !== filterSupplier) return false;
  if (filterDateFrom) {
@@ -436,9 +436,9 @@ export default function RestaurantOrders() {
  }
  return true;
  });
- const counts = { all: filtered.length, pending: 0, confirmed: 0, scheduled: 0, in_delivery: 0, delivered: 0, cancelled: 0 };
+ const counts = { all: filtered.length, pending: 0, confirmed: 0, scheduled: 0, in_delivery: 0, delivered: 0, cancelled: 0, not_deliverable: 0 };
  filtered.forEach(o => {
- const s = o.status === "partially_confirmed" ? "confirmed" : o.status;
+ const s = o.status;
  if (s in counts) (counts as any)[s]++;
  });
  return counts;
@@ -462,12 +462,11 @@ export default function RestaurantOrders() {
  switch (status) {
  case "pending": return <Clock className="h-4 w-4" />;
  case "confirmed": return <Package className="h-4 w-4" />;
- case "partially_confirmed": return <AlertTriangle className="h-4 w-4" />;
  case "scheduled": return <CalendarDays className="h-4 w-4" />;
  case "in_delivery": return <Truck className="h-4 w-4" />;
  case "delivered": return <CheckCircle className="h-4 w-4" />;
  case "cancelled": return <XCircle className="h-4 w-4" />;
- case "to_review": return <AlertTriangle className="h-4 w-4" />;
+ case "not_deliverable": return <AlertTriangle className="h-4 w-4" />;
  default: return <ShoppingBag className="h-4 w-4" />;
  }
  };
@@ -492,13 +491,7 @@ export default function RestaurantOrders() {
  const q = foldSearchText(searchQuery.trim());
  return orders.filter(order => {
  if (status) {
- if (status === "upcoming") {
- if (order.status === "delivered" || order.status === "cancelled") return false;
- } else if (status === "confirmed") {
- if (order.status !== "confirmed" && order.status !== "partially_confirmed") return false;
- } else {
- if (order.status !== status) return false;
- }
+      if (order.status !== status) return false;
  }
  if (filterSupplier !== "all" && order.supplier?.id !== filterSupplier) return false;
  if (filterDateFrom) {
@@ -587,9 +580,9 @@ export default function RestaurantOrders() {
  }, [editItems]);
 
  const canEditOrder = (order: OrderWithDetails) => order.status === "pending";
- const canRequestChange = (order: OrderWithDetails) => order.status === "confirmed" || order.status === "partially_confirmed";
+ const canRequestChange = (order: OrderWithDetails) => order.status === "confirmed";
 
- const statusSteps = ["pending", "confirmed", "partially_confirmed", "scheduled", "in_delivery", "delivered"];
+ const statusSteps = ["pending", "confirmed", "scheduled", "in_delivery", "delivered"];
 
  const getStepIndex = (status: string) => {
  if (status === "cancelled") return -1;
@@ -1434,14 +1427,13 @@ export default function RestaurantOrders() {
  <div className="grid grid-cols-3 gap-1">
  {([
  { key: "all", label: t("common", "all"), dot: "bg-gray-400" },
- { key: "upcoming", label: lang === "de" ? "Anstehend" : "In arrivo", dot: "bg-primary" },
  { key: "pending", label: getOrderStatus("pending", lang), dot: "bg-yellow-500" },
  { key: "confirmed", label: getOrderStatus("confirmed", lang), dot: "bg-blue-500" },
  { key: "scheduled", label: getOrderStatus("scheduled", lang), dot: "bg-indigo-500" },
  { key: "in_delivery", label: getOrderStatus("in_delivery", lang), dot: "bg-purple-500" },
  { key: "delivered", label: getOrderStatus("delivered", lang), dot: "bg-green-500" },
  { key: "cancelled", label: getOrderStatus("cancelled", lang), dot: "bg-red-500" },
- { key: "to_review", label: getOrderStatus("to_review", lang), dot: "bg-red-500" },
+ { key: "not_deliverable", label: getOrderStatus("not_deliverable", lang), dot: "bg-red-500" },
  ] as const).map(({ key, label, dot }) => (
  <button
  key={key}
@@ -1494,7 +1486,7 @@ export default function RestaurantOrders() {
  {/* Aktive Filter Chips */}
  {filterStatus !== "all" && (
  <button onClick={() => setFilterStatus("all")} className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-white/10 border border-white/20 text-white text-[11px] hover:bg-white/15" data-testid="chip-status">
- <span>{filterStatus === "upcoming" ? (lang === "de" ? "Anstehend" : "In arrivo") : getOrderStatus(filterStatus as any, lang)}</span><X className="h-3 w-3" />
+ <span>{getOrderStatus(filterStatus as any, lang)}</span><X className="h-3 w-3" />
  </button>
  )}
  {filterSupplier !== "all" && (
@@ -1517,7 +1509,7 @@ export default function RestaurantOrders() {
  <div className="flex items-center gap-2 flex-wrap ml-auto order-last">
  {filterStatus !== "all" && (
  <button onClick={() => setFilterStatus("all")} className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-muted border border-border text-foreground text-[11px] hover:bg-muted/70" data-testid="chip-status-content">
- <span>{filterStatus === "upcoming" ? (lang === "de" ? "Anstehend" : "In arrivo") : getOrderStatus(filterStatus as any, lang)}</span><X className="h-3 w-3" />
+ <span>{getOrderStatus(filterStatus as any, lang)}</span><X className="h-3 w-3" />
  </button>
  )}
  {filterSupplier !== "all" && (
@@ -1674,14 +1666,13 @@ export default function RestaurantOrders() {
  <div className="grid grid-cols-3 gap-1">
  {([
  { key: "all", label: t("common", "all"), dot: "bg-gray-400" },
- { key: "upcoming", label: lang === "de" ? "Anstehend" : "In arrivo", dot: "bg-primary" },
  { key: "pending", label: getOrderStatus("pending", lang), dot: "bg-yellow-500" },
  { key: "confirmed", label: getOrderStatus("confirmed", lang), dot: "bg-blue-500" },
  { key: "scheduled", label: getOrderStatus("scheduled", lang), dot: "bg-indigo-500" },
  { key: "in_delivery", label: getOrderStatus("in_delivery", lang), dot: "bg-purple-500" },
  { key: "delivered", label: getOrderStatus("delivered", lang), dot: "bg-green-500" },
  { key: "cancelled", label: getOrderStatus("cancelled", lang), dot: "bg-red-500" },
- { key: "to_review", label: getOrderStatus("to_review", lang), dot: "bg-red-500" },
+ { key: "not_deliverable", label: getOrderStatus("not_deliverable", lang), dot: "bg-red-500" },
  ] as const).map(({ key, label, dot }) => (
  <button
  key={key}

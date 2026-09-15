@@ -94,7 +94,7 @@ const getStatusColor = (status: string) => {
   switch (status) {
     case "pending": return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400";
     case "confirmed": return "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400";
-    case "partially_confirmed": return "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400";
+    case "not_deliverable": return "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400";
     case "scheduled": return "bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-400";
     case "in_delivery": return "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400";
     case "delivered": return "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400";
@@ -111,7 +111,7 @@ const getStatusLabel = (status: string) => {
   switch (status) {
     case "pending": return "Neu";
     case "confirmed": return "Bestätigt";
-    case "partially_confirmed": return "Teilbestätigt";
+    case "not_deliverable": return "Nicht zustellbar";
     case "scheduled": return "Geplant";
     case "in_delivery": return "Unterwegs";
     case "delivered": return "Geliefert";
@@ -699,7 +699,7 @@ export default function RestaurantInbox() {
   });
 
   const openActionsOrders = allOrdersForActions?.filter(
-    (o: any) => o.supplierId === supplierId && ["pending", "confirmed", "partially_confirmed", "scheduled", "in_delivery"].includes(o.status)
+    (o: any) => o.supplierId === supplierId && ["pending", "confirmed", "scheduled", "in_delivery"].includes(o.status)
   );
   const openActionsComplaints = allComplaintsForActions?.filter(
     (c: any) => c.supplierId === supplierId && ["open", "in_progress"].includes(c.status)
@@ -1439,7 +1439,7 @@ export default function RestaurantInbox() {
                                 <p className="text-xs font-medium text-muted-foreground px-1 mb-1.5" data-testid="text-open-orders-header">{t("inbox", "openOrders")} ({openActionsOrders.length})</p>
                                 <div className="space-y-2">
                                   {openActionsOrders.map((order: any) => {
-                                    const StatusIcon = order.status === "pending" ? Clock : order.status === "partially_confirmed" ? AlertTriangle : order.status === "confirmed" ? CheckCircle : Package;
+                                    const StatusIcon = order.status === "pending" ? Clock : order.status === "confirmed" ? CheckCircle : Package;
                                     return (
                                       <div
                                         key={order.id}
@@ -1919,7 +1919,7 @@ export default function RestaurantInbox() {
                                                     <span className="truncate">{lang === "it" ? "Modifica" : "Bearbeiten"}</span>
                                                   </Button>
                                                 )}
-                                                {(orderStatus === "confirmed" || orderStatus === "partially_confirmed") && (
+                                                {orderStatus === "confirmed" && (
                                                   <Button size="sm" variant="outline" className="text-xs h-8 min-w-0 truncate" onClick={() => setCardWizard({ orderId: message.orderId!, action: "change_request", reason: "" })} data-testid={`button-card-change-request-${message.id}`}>
                                                     <Pencil className="h-3.5 w-3.5 mr-1 shrink-0" />
                                                     <span className="truncate">{lang === "it" ? "Modifica" : "Ändern"}</span>
@@ -3168,7 +3168,7 @@ export default function RestaurantInbox() {
                 </Button>
               )}
 
-              {(orderDetail.status === "pending" || orderDetail.status === "confirmed" || orderDetail.status === "partially_confirmed") && (
+              {(orderDetail.status === "pending" || orderDetail.status === "confirmed") && (
                 <>
                   {!showCancelOrderConfirm ? (
                     <Button

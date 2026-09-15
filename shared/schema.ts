@@ -5,7 +5,7 @@ import { z } from "zod";
 
 export const userRoleEnum = pgEnum("user_role", ["restaurant", "supplier"]);
 export const memberRoleEnum = pgEnum("member_role", ["admin", "manager", "staff", "vertreter", "warehouse", "driver"]);
-export const orderStatusEnum = pgEnum("order_status", ["pending", "confirmed", "partially_confirmed", "scheduled", "in_delivery", "delivered", "cancelled", "to_review"]);
+export const orderStatusEnum = pgEnum("order_status", ["pending", "confirmed", "scheduled", "in_delivery", "delivered", "cancelled", "not_deliverable"]);
 
 export const DATE_CHANGE_REASONS = [
   { code: "out_of_stock", de: "Ware nicht auf Lager", it: "Merce non disponibile" },
@@ -1675,7 +1675,7 @@ export const deliveryAssignments = pgTable("delivery_assignments", {
   exceptionResumeStatus: text("exception_resume_status"),
   exceptionResolvedAt: timestamp("exception_resolved_at"),
   exceptionResolvedByMemberId: varchar("exception_resolved_by_member_id", { length: 36 }).references(() => members.id),
-  // Driver rejected the stop → order goes back to the office ("to_review").
+  // Driver rejected the stop; the commercial order is handled separately.
   rejectedAt: timestamp("rejected_at"),
   // Info-only delay reported by the driver (minutes, cumulative for this stop).
   delayMinutes: integer("delay_minutes"),

@@ -2,7 +2,7 @@
  * Locked-down 4-tone status palette used across the app.
  *
  *   emerald  → success / saving / completed
- *   amber    → pending / attention / partial
+ *   amber    → pending / attention
  *   red      → critical / overdue / cancelled
  *   indigo   → informational / in-flight / movement
  *   slate    → terminal-neutral (closed) — used sparingly
@@ -59,9 +59,8 @@ export function orderStatusTone(status: string): StatusTone {
     case "scheduled": return "indigo";
     case "in_delivery": return "indigo";
     case "pending": return "amber";
-    case "partially_confirmed": return "amber";
     case "cancelled": return "red";
-    case "to_review": return "red";
+    case "not_deliverable": return "red";
     default: return "slate";
   }
 }

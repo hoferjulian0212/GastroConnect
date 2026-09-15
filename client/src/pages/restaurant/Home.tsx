@@ -461,7 +461,7 @@ export default function RestaurantHome() {
     switch (status) {
       case "pending": return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400";
       case "confirmed": return "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400";
-      case "partially_confirmed": return "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400";
+      case "not_deliverable": return "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400";
       case "scheduled": return "bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-400";
       case "in_delivery": return "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400";
       case "delivered": return "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400";
@@ -474,7 +474,7 @@ export default function RestaurantHome() {
     switch (status) {
       case "pending": return <Clock className="h-3.5 w-3.5" />;
       case "confirmed": return <Package className="h-3.5 w-3.5" />;
-      case "partially_confirmed": return <AlertTriangle className="h-3.5 w-3.5" />;
+      case "not_deliverable": return <AlertTriangle className="h-3.5 w-3.5" />;
       case "scheduled": return <CalendarDays className="h-3.5 w-3.5" />;
       case "in_delivery": return <Truck className="h-3.5 w-3.5" />;
       case "delivered": return <Package className="h-3.5 w-3.5" />;
@@ -486,7 +486,7 @@ export default function RestaurantHome() {
     switch (status) {
       case "pending": return "bg-yellow-100 dark:bg-yellow-900/40";
       case "confirmed": return "bg-blue-100 dark:bg-blue-900/40";
-      case "partially_confirmed": return "bg-orange-100 dark:bg-orange-900/40";
+      case "not_deliverable": return "bg-red-100 dark:bg-red-900/40";
       case "scheduled": return "bg-indigo-100 dark:bg-indigo-900/40";
       case "in_delivery": return "bg-purple-100 dark:bg-purple-900/40";
       case "delivered": return "bg-green-100 dark:bg-green-900/40";
@@ -499,7 +499,7 @@ export default function RestaurantHome() {
     switch (status) {
       case "pending": return "text-yellow-700 dark:text-yellow-400";
       case "confirmed": return "text-blue-700 dark:text-blue-400";
-      case "partially_confirmed": return "text-orange-700 dark:text-orange-400";
+      case "not_deliverable": return "text-red-700 dark:text-red-400";
       case "scheduled": return "text-indigo-700 dark:text-indigo-400";
       case "in_delivery": return "text-purple-700 dark:text-purple-400";
       case "delivered": return "text-green-700 dark:text-green-400";
@@ -637,7 +637,7 @@ export default function RestaurantHome() {
 
   const pendingOrdersCount = useMemo(() => {
     if (!allOrders) return 0;
-    const activeStatuses = ["pending", "confirmed", "partially_confirmed", "scheduled", "in_delivery"];
+    const activeStatuses = ["pending", "confirmed", "scheduled", "in_delivery"];
     return allOrders.filter(o => activeStatuses.includes(o.status)).length;
   }, [allOrders]);
 

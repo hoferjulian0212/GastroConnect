@@ -28,7 +28,7 @@ import { registerAdminAuthRoutes } from "./auth/adminAuth";
 import { storage } from "./storage";
 import { db, pool } from "./db";
 
-const VALID_STATUSES = ["delivered", "confirmed", "in_delivery", "partially_confirmed"];
+const VALID_STATUSES = ["delivered", "confirmed", "in_delivery"];
 
 // Close the pg pool once everything has run so the test process can exit.
 after(async () => {

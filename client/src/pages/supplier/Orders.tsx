@@ -418,12 +418,11 @@ export default function SupplierOrders() {
  switch (status) {
  case "pending": return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400";
  case "confirmed": return "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400";
- case "partially_confirmed": return "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400";
  case "scheduled": return "bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-400";
  case "in_delivery": return "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400";
  case "delivered": return "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400";
  case "cancelled": return "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400";
- case "to_review": return "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400";
+ case "not_deliverable": return "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400";
  default: return "bg-muted text-muted-foreground";
  }
  };
@@ -432,12 +431,11 @@ export default function SupplierOrders() {
  switch (status) {
  case "pending": return "bg-yellow-400 dark:bg-yellow-500";
  case "confirmed": return "bg-blue-400 dark:bg-blue-500";
- case "partially_confirmed": return "bg-orange-400 dark:bg-orange-500";
  case "scheduled": return "bg-indigo-400 dark:bg-indigo-500";
  case "in_delivery": return "bg-purple-400 dark:bg-purple-500";
  case "delivered": return "bg-green-400 dark:bg-green-500";
  case "cancelled": return "bg-red-400 dark:bg-red-500";
- case "to_review": return "bg-red-400 dark:bg-red-500";
+ case "not_deliverable": return "bg-red-400 dark:bg-red-500";
  default: return "bg-muted-foreground";
  }
  };
@@ -450,7 +448,7 @@ export default function SupplierOrders() {
  case "in_delivery": return "bg-purple-50/60 dark:bg-purple-950/20 border-purple-200 dark:border-purple-800/40";
  case "delivered": return "bg-green-50/60 dark:bg-green-950/20 border-green-200 dark:border-green-800/40";
  case "cancelled": return "bg-red-50/40 dark:bg-red-950/15 border-red-200 dark:border-red-800/40";
- case "to_review": return "bg-red-50/40 dark:bg-red-950/15 border-red-200 dark:border-red-800/40";
+ case "not_deliverable": return "bg-red-50/40 dark:bg-red-950/15 border-red-200 dark:border-red-800/40";
  default: return "";
  }
  };
@@ -459,12 +457,11 @@ export default function SupplierOrders() {
  switch (status) {
  case "pending": return <Clock className="h-4 w-4" />;
  case "confirmed": return <Package className="h-4 w-4" />;
- case "partially_confirmed": return <AlertTriangle className="h-4 w-4" />;
  case "scheduled": return <CalendarDays className="h-4 w-4" />;
  case "in_delivery": return <Truck className="h-4 w-4" />;
  case "delivered": return <CheckCircle className="h-4 w-4" />;
  case "cancelled": return <XCircle className="h-4 w-4" />;
- case "to_review": return <AlertTriangle className="h-4 w-4" />;
+ case "not_deliverable": return <AlertTriangle className="h-4 w-4" />;
  default: return <ClipboardList className="h-4 w-4" />;
  }
  };
@@ -539,7 +536,7 @@ export default function SupplierOrders() {
  });
  };
 
- const statusSteps = ["pending", "confirmed", "partially_confirmed", "scheduled", "in_delivery", "delivered"];
+ const statusSteps = ["pending", "confirmed", "scheduled", "in_delivery", "delivered"];
 
  const getStepIndex = (status: string) => {
  if (status === "cancelled") return -1;
@@ -603,7 +600,7 @@ export default function SupplierOrders() {
  {order.status !== "delivered" && order.status !== "cancelled" && (() => {
  const primary = order.status === "pending"
  ? { label: lang === "de" ? "Bestätigen" : "Confermare", icon: CheckCircle, color: "bg-green-600 hover:bg-green-700 text-white shadow-md shadow-green-600/20", action: () => setConfirmOrder(order), testId: `button-status-confirmed-${order.id}` }
- : (order.status === "confirmed" || order.status === "partially_confirmed")
+ : order.status === "confirmed"
  ? { label: lang === "de" ? "Lieferdatum setzen" : "Imposta data consegna", icon: CalendarDays, color: "bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-600/20", action: () => setDeliveryDatePicker({ orderId: order.id, restaurantId: order.restaurantId }), testId: `button-set-delivery-date-${order.id}` }
  : (order.status === "in_delivery" || order.status === "scheduled")
  ? { label: lang === "de" ? "Als geliefert markieren" : "Segna consegnato", icon: Package, color: "bg-green-600 hover:bg-green-700 text-white shadow-md shadow-green-600/20", action: () => updateStatusMutation.mutate({ orderId: order.id, status: "delivered" }), testId: `button-status-delivered-${order.id}` }
@@ -690,7 +687,7 @@ export default function SupplierOrders() {
  </div>
  )}
 
- {canManageDrivers && ["confirmed", "partially_confirmed", "scheduled", "in_delivery", "to_review"].includes(order.status) && (() => {
+ {canManageDrivers && ["confirmed", "scheduled", "in_delivery", "not_deliverable"].includes(order.status) && (() => {
  const assignment = assignmentByOrder.get(order.id);
  return (
   <>
@@ -937,7 +934,7 @@ export default function SupplierOrders() {
  {lang === "de" ? "Verspätet" : "Ritardo"}
  </Badge>
  )}
- {canManageDrivers && ["confirmed", "partially_confirmed", "in_delivery"].includes(order.status) && (() => {
+ {canManageDrivers && ["confirmed", "in_delivery"].includes(order.status) && (() => {
  const assignment = assignmentByOrder.get(order.id);
  return assignment ? (
  <span className="inline-flex items-center gap-1 text-[11px] text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 rounded-full px-1.5 py-0.5 shrink-0 max-w-[110px]" title={assignment.driver?.name} data-testid={`row-driver-${order.id}`}>
@@ -991,13 +988,13 @@ export default function SupplierOrders() {
  {lang === "de" ? "Bestätigen" : "Confermare"}
  </DropdownMenuItem>
  )}
- {(order.status === "confirmed" || order.status === "partially_confirmed" || order.status === "scheduled") && (
+ {(order.status === "confirmed" || order.status === "scheduled") && (
  <DropdownMenuItem onClick={() => setDeliveryDatePicker({ orderId: order.id, restaurantId: order.restaurantId })} data-testid={`action-deliver-${order.id}`}>
  <CalendarDays className="h-4 w-4 mr-2" />
  {lang === "de" ? "Lieferdatum setzen" : "Imposta data consegna"}
  </DropdownMenuItem>
  )}
- {canManageDrivers && (order.status === "confirmed" || order.status === "partially_confirmed" || order.status === "scheduled" || order.status === "in_delivery") && (
+ {canManageDrivers && (order.status === "confirmed" || order.status === "scheduled" || order.status === "in_delivery") && (
  <DropdownMenuItem onClick={() => setAssignDriverOrder(order)} data-testid={`action-assign-driver-${order.id}`}>
  <UserIcon className="h-4 w-4 mr-2" />
  {assignmentByOrder.get(order.id)
@@ -1304,12 +1301,11 @@ export default function SupplierOrders() {
  { key: "all", label: t("common", "all"), dot: "bg-gray-400" },
  { key: "pending", label: getOrderStatus("pending", lang, true), dot: "bg-yellow-500" },
  { key: "confirmed", label: getOrderStatus("confirmed", lang, true), dot: "bg-blue-500" },
- { key: "partially_confirmed", label: getOrderStatus("partially_confirmed", lang, true), dot: "bg-orange-500" },
  { key: "scheduled", label: getOrderStatus("scheduled", lang, true), dot: "bg-indigo-500" },
  { key: "in_delivery", label: lang === "de" ? "Unterwegs" : "In viaggio", dot: "bg-purple-500" },
  { key: "delivered", label: getOrderStatus("delivered", lang, true), dot: "bg-green-500" },
  { key: "cancelled", label: getOrderStatus("cancelled", lang, true), dot: "bg-red-500" },
- { key: "to_review", label: getOrderStatus("to_review", lang, true), dot: "bg-red-500" },
+ { key: "not_deliverable", label: getOrderStatus("not_deliverable", lang, true), dot: "bg-red-500" },
  ] as const).map(({ key, label, dot }) => (
  <button
  key={key}
@@ -1543,7 +1539,7 @@ export default function SupplierOrders() {
  { key: "all", label: t("common", "all"), dot: "bg-gray-400" },
  { key: "pending", label: getOrderStatus("pending", lang, true), dot: "bg-yellow-500" },
  { key: "confirmed", label: getOrderStatus("confirmed", lang, true), dot: "bg-blue-500" },
- { key: "partially_confirmed", label: getOrderStatus("partially_confirmed", lang, true), dot: "bg-orange-500" },
+ { key: "not_deliverable", label: getOrderStatus("not_deliverable", lang, true), dot: "bg-red-500" },
  { key: "scheduled", label: getOrderStatus("scheduled", lang, true), dot: "bg-indigo-500" },
  { key: "in_delivery", label: lang === "de" ? "Unterwegs" : "In viaggio", dot: "bg-purple-500" },
  { key: "delivered", label: getOrderStatus("delivered", lang, true), dot: "bg-green-500" },
@@ -1609,7 +1605,7 @@ export default function SupplierOrders() {
  <Tabs value={activeStatusTab} className="w-full">
  <div className="hidden"></div>
 
- {["pending", "to_review", "confirmed", "partially_confirmed", "scheduled", "in_delivery", "delivered", "cancelled", "all"].map((tab) => (
+ {["pending", "confirmed", "scheduled", "in_delivery", "delivered", "cancelled", "not_deliverable", "all"].map((tab) => (
  <TabsContent key={tab} value={tab} className="mt-4 md:mt-6">
  {isLoading ? (
  <div className="rounded-2xl border border-border bg-card overflow-hidden">
@@ -1716,7 +1712,7 @@ export default function SupplierOrders() {
  testId: `swipe-confirm-${order.id}`,
  },
  ]
- : order.status === "confirmed" || order.status === "partially_confirmed"
+ : order.status === "confirmed"
  ? [
  {
  icon: <CalendarDays className="h-5 w-5" />,
@@ -1925,7 +1921,7 @@ export default function SupplierOrders() {
  {lang === "de" ? "Bestätigen" : "Confermare"}
  </Button>
  )}
- {(detailOrder.status === "confirmed" || detailOrder.status === "partially_confirmed" || detailOrder.status === "scheduled") && (
+ {(detailOrder.status === "confirmed" || detailOrder.status === "scheduled") && (
  <Button size="sm" className="bg-neutral-900 hover:bg-neutral-800 text-white" onClick={() => setDeliveryDatePicker({ orderId: detailOrder.id, restaurantId: detailOrder.restaurantId })} disabled={updateStatusMutation.isPending} data-testid="button-set-delivery-date">
  <CalendarDays className="h-3.5 w-3.5 mr-1.5" />
  {lang === "de" ? "Lieferdatum setzen" : "Imposta data consegna"}
@@ -1990,7 +1986,7 @@ export default function SupplierOrders() {
  <SelectValue placeholder={lang === "de" ? "Status wählen..." : "Seleziona stato..."} />
  </SelectTrigger>
  <SelectContent>
- {["pending", "confirmed", "partially_confirmed", "scheduled", "delivered", "cancelled"]
+ {["pending", "confirmed", "scheduled", "delivered", "cancelled", "not_deliverable"]
  .filter(s => s !== detailOrder.status)
  .map(s => (
  <SelectItem key={s} value={s} data-testid={`select-correction-${s}`}>

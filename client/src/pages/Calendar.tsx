@@ -63,12 +63,12 @@ function statusMeta(o: OrderWithDetails, lang: "de" | "it") {
         chip: "bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300 border-purple-200 dark:border-purple-900/60",
         icon: Truck,
       };
-    case "partially_confirmed":
+    case "not_deliverable":
       return {
-        key: "partially_confirmed",
-        label: lang === "de" ? "Teilweise bestätigt" : "Parzialmente confermato",
-        dot: "bg-orange-500",
-        chip: "bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300 border-orange-200 dark:border-orange-900/60",
+        key: "not_deliverable",
+        label: lang === "de" ? "Nicht zustellbar" : "Non consegnabile",
+        dot: "bg-red-500",
+        chip: "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300 border-red-200 dark:border-red-900/60",
         icon: AlertTriangle,
       };
     default:

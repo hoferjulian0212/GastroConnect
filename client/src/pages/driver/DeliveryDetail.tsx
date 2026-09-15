@@ -55,7 +55,7 @@ export default function DriverDeliveryDetail() {
   const [uploading, setUploading] = useState(false);
   const [problemType, setProblemType] = useState<string>("not_reachable");
   const [problemNote, setProblemNote] = useState("");
-  const [problemMode, setProblemMode] = useState<"problem" | "delay" | "reject">("problem");
+  const [problemMode, setProblemMode] = useState<"problem" | "delay" | "reject" | "not_deliverable">("problem");
   const [delayMinutes, setDelayMinutes] = useState<number>(15);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -110,6 +110,23 @@ export default function DriverDeliveryDetail() {
       setProblemOpen(false);
       invalidate();
       toast({ title: lang === "de" ? "Problem gemeldet" : "Problema segnalato" });
+    },
+    onError: () =>
+      toast({ title: lang === "de" ? "Aktion fehlgeschlagen" : "Azione non riuscita", variant: "destructive" }),
+  });
+
+  const notDeliverableMutation = useMutation({
+    mutationFn: async () => {
+      const r = await apiRequest("POST", `/api/driver/deliveries/${id}/not-deliverable`, {
+        problemType,
+        note: problemNote.trim() || null,
+      });
+      return r.json();
+    },
+    onSuccess: () => {
+      setProblemOpen(false);
+      invalidate();
+      toast({ title: lang === "de" ? "Als nicht zustellbar markiert" : "Segnalato come non consegnabile" });
     },
     onError: () =>
       toast({ title: lang === "de" ? "Aktion fehlgeschlagen" : "Azione non riuscita", variant: "destructive" }),
@@ -617,11 +634,12 @@ export default function DriverDeliveryDetail() {
           </DialogHeader>
           <div className="space-y-3">
             {/* Mode switcher */}
-            <div className="grid grid-cols-3 gap-1.5 rounded-xl bg-muted/50 p-1">
+            <div className="grid grid-cols-4 gap-1.5 rounded-xl bg-muted/50 p-1">
               {([
                 ["problem", lang === "de" ? "Problem" : "Problema"],
                 ["delay", lang === "de" ? "Verspätung" : "Ritardo"],
                 ["reject", lang === "de" ? "Ablehnen" : "Rifiuta"],
+                ["not_deliverable", lang === "de" ? "Nicht zustellbar" : "Non consegnabile"],
               ] as const).map(([m, label]) => (
                 <button
                   key={m}
@@ -630,7 +648,7 @@ export default function DriverDeliveryDetail() {
                     problemMode === m
                       ? m === "delay"
                         ? "bg-amber-500 text-white"
-                        : "bg-red-600 text-white"
+                      : "bg-red-600 text-white"
                       : "text-muted-foreground hover:bg-muted"
                   }`}
                   data-testid={`mode-${m}`}
@@ -699,6 +717,15 @@ export default function DriverDeliveryDetail() {
                 ) : (
                   lang === "de" ? `+${delayMinutes} Min. melden` : `Segnala +${delayMinutes} min`
                 )}
+              </Button>
+            ) : problemMode === "not_deliverable" ? (
+              <Button
+                variant="destructive"
+                disabled={notDeliverableMutation.isPending}
+                onClick={() => notDeliverableMutation.mutate()}
+                data-testid="button-confirm-not-deliverable"
+              >
+                {notDeliverableMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : (lang === "de" ? "Bestätigen" : "Conferma")}
               </Button>
             ) : problemMode === "reject" ? (
               <Button

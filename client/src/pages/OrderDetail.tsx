@@ -82,7 +82,7 @@ export default function OrderDetail() {
   // Supplier-side: current driver assignment for this order.
   const { data: trackingInfo } = useQuery<OrderTrackingInfo>({
     queryKey: ["/api/orders", orderId, "tracking"],
-    enabled: !!orderId && !!order && ["confirmed", "partially_confirmed", "scheduled", "in_delivery", "delivered"].includes(order.status),
+    enabled: !!orderId && !!order && ["confirmed", "scheduled", "in_delivery", "delivered", "not_deliverable"].includes(order.status),
     retry: false,
   });
 
@@ -273,7 +273,7 @@ export default function OrderDetail() {
     switch (status) {
       case "pending": return <Clock className={size} />;
       case "confirmed": return <Package className={size} />;
-      case "partially_confirmed": return <AlertTriangle className={size} />;
+      case "not_deliverable": return <AlertTriangle className={size} />;
       case "scheduled": return <CalendarDays className={size} />;
       case "in_delivery": return <Truck className={size} />;
       case "delivered": return <CheckCircle className={size} />;
@@ -291,7 +291,7 @@ export default function OrderDetail() {
     switch (status) {
       case "pending": return "border-yellow-500 bg-yellow-500";
       case "confirmed": return "border-blue-500 bg-blue-500";
-      case "partially_confirmed": return "border-orange-500 bg-orange-500";
+      case "not_deliverable": return "border-red-500 bg-red-500";
       case "scheduled": return "border-sky-500 bg-sky-500";
       case "in_delivery": return "border-purple-500 bg-purple-500";
       case "delivered": return "border-green-500 bg-green-500";
@@ -305,7 +305,7 @@ export default function OrderDetail() {
       switch (toStatus) {
         case "pending": return "Bestellung wurde aufgegeben";
         case "confirmed": return "Bestellung wurde bestätigt";
-        case "partially_confirmed": return "Bestellung wurde teilweise bestätigt";
+        case "not_deliverable": return "Bestellung ist nicht zustellbar";
         case "scheduled": return "Lieferung wurde geplant (Fahrer zugewiesen)";
         case "in_delivery": return "Bestellung ist unterwegs";
         case "delivered": return "Bestellung wurde geliefert";
@@ -316,7 +316,7 @@ export default function OrderDetail() {
     switch (toStatus) {
       case "pending": return "Ordine effettuato";
       case "confirmed": return "Ordine confermato";
-      case "partially_confirmed": return "Ordine parzialmente confermato";
+        case "not_deliverable": return "Ordine non consegnabile";
       case "scheduled": return "Consegna pianificata (autista assegnato)";
       case "in_delivery": return "Ordine in consegna";
       case "delivered": return "Ordine consegnato";
@@ -368,7 +368,7 @@ export default function OrderDetail() {
     : [{ id: "created", orderId: order.id, fromStatus: null, toStatus: "pending", changedBy: null, createdAt: order.createdAt }];
 
   const statusSteps = ["pending", "confirmed", "scheduled", "in_delivery", "delivered"];
-  const currentStepIndex = statusSteps.indexOf(order.status === "partially_confirmed" ? "confirmed" : order.status);
+  const currentStepIndex = statusSteps.indexOf(order.status);
 
   const st = order.status;
   const isTerminal = st === "delivered" || st === "cancelled";
@@ -434,7 +434,7 @@ export default function OrderDetail() {
       actions.push({
         label: lang === "de" ? "Lieferdatum setzen" : "Imposta data consegna",
         icon: CalendarDays,
-        style: (st === "confirmed" || st === "partially_confirmed") ? "primary" : "secondary",
+        style: st === "confirmed" ? "primary" : "secondary",
         category: "primary",
         action: () => setShowDatePicker(true),
         testId: "action-set-delivery-date",
@@ -442,11 +442,11 @@ export default function OrderDetail() {
     }
     // Assign driver — required next step once the order is confirmed;
     // "scheduled" already has a driver, so it becomes a secondary reassign.
-    if (["confirmed", "partially_confirmed", "scheduled", "in_delivery", "to_review"].includes(st)) {
+    if (["confirmed", "scheduled", "in_delivery", "not_deliverable"].includes(st)) {
       actions.push({
         label: lang === "de" ? "Fahrer zuweisen" : "Assegna autista",
         icon: UserRound,
-        style: (st === "confirmed" || st === "partially_confirmed") ? "primary" : "secondary",
+        style: st === "confirmed" ? "primary" : "secondary",
         category: "primary",
         action: () => setShowAssignDriver(true),
         testId: "action-assign-driver",
@@ -509,7 +509,7 @@ export default function OrderDetail() {
         action: () => setLocation(`/restaurant/orders?edit=${order.id}`),
         testId: "action-edit-order",
       });
-    } else if (["confirmed", "partially_confirmed", "scheduled", "in_delivery", "to_review"].includes(st)) {
+    } else if (["confirmed", "scheduled", "in_delivery", "not_deliverable"].includes(st)) {
       actions.push({
         label: lang === "de" ? "Änderung anfragen" : "Richiedi modifica",
         icon: Send,
@@ -927,7 +927,7 @@ export default function OrderDetail() {
                     const stepLabels: Record<string, string> = lang === "de"
                       ? { pending: "Neu", confirmed: "Bestätigt", scheduled: "Geplant", in_delivery: "Unterwegs", delivered: "Geliefert" }
                       : { pending: "Nuovo", confirmed: "Confermato", scheduled: "Pianificato", in_delivery: "In consegna", delivered: "Consegnato" };
-                    const stepEntry = timeline.find((e: any) => e.toStatus === step || (step === "confirmed" && e.toStatus === "partially_confirmed"));
+                    const stepEntry = timeline.find((e: any) => e.toStatus === step);
                     const isLast = i === statusSteps.length - 1;
                     return (
                       <div key={`vstep-${step}`} className="flex gap-3 items-start" data-testid={`stepper-mobile-${step}`}>
@@ -988,7 +988,7 @@ export default function OrderDetail() {
                     const stepLabels: Record<string, string> = lang === "de"
                       ? { pending: "Neu", confirmed: "Bestätigt", scheduled: "Geplant", in_delivery: "Unterwegs", delivered: "Geliefert" }
                       : { pending: "Nuovo", confirmed: "Confermato", scheduled: "Pianificato", in_delivery: "In consegna", delivered: "Consegnato" };
-                    const stepEntry = timeline.find((e: any) => e.toStatus === step || (step === "confirmed" && e.toStatus === "partially_confirmed"));
+                    const stepEntry = timeline.find((e: any) => e.toStatus === step);
                     const nodes = [
                       <div key={`step-${step}`} className="flex flex-col items-center gap-2 shrink-0 w-20" data-testid={`stepper-${step}`}>
                         <motion.div
@@ -1041,13 +1041,13 @@ export default function OrderDetail() {
                  Rendered for both restaurant and supplier once a driver may be
                  active. The component returns null when no assignment exists, so
                  this never adds empty space. Gated on the "updates" mobile tab. */}
-            {order && ["confirmed", "partially_confirmed", "scheduled", "in_delivery", "delivered", "to_review"].includes(order.status) && (
+            {order && ["confirmed", "scheduled", "in_delivery", "delivered", "not_deliverable"].includes(order.status) && (
               <div className={`min-w-0 ${tabClsUpdates}`}>
                 <DeliveryTracking
                   orderId={order.id}
                   destinationLat={order.restaurant?.latitude}
                   destinationLng={order.restaurant?.longitude}
-                  active={["confirmed", "partially_confirmed", "scheduled", "in_delivery", "delivered", "to_review"].includes(order.status)}
+                  active={["confirmed", "scheduled", "in_delivery", "delivered", "not_deliverable"].includes(order.status)}
                 />
               </div>
             )}

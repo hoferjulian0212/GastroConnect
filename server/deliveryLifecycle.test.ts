@@ -16,7 +16,7 @@ describe("cross-role delivery lifecycle policy", () => {
     assert.equal(canTransitionOrderStatus("confirmed", DELIVERY_ORDER_BRIDGES.assignment), true);
     assert.equal(canTransitionOrderStatus("scheduled", DELIVERY_ORDER_BRIDGES.departure), true);
     assert.equal(canTransitionOrderStatus("in_delivery", DELIVERY_ORDER_BRIDGES.delivery), true);
-    assert.equal(canTransitionOrderStatus("in_delivery", DELIVERY_ORDER_BRIDGES.officeReview), true);
+    assert.equal(canTransitionOrderStatus("in_delivery", DELIVERY_ORDER_BRIDGES.notDeliverable), true);
   });
 
   test("rejects backwards and terminal commercial transitions", () => {

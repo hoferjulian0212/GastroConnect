@@ -320,7 +320,7 @@ export default function ProductDetail() {
     const map: Record<string, { de: string; it: string }> = {
       pending: { de: "Neu", it: "Nuovo" },
       confirmed: { de: "Bestätigt", it: "Confermato" },
-      partially_confirmed: { de: "Teilbestätigt", it: "Parz. confermato" },
+      not_deliverable: { de: "Nicht zustellbar", it: "Non consegnabile" },
       scheduled: { de: "Geplant", it: "Pianificato" },
       in_delivery: { de: "Unterwegs", it: "In viaggio" },
       delivered: { de: "Geliefert", it: "Consegnato" },

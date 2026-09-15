@@ -94,7 +94,7 @@ const getStatusColor = (status: string) => {
   switch (status) {
     case "pending": return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400";
     case "confirmed": return "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400";
-    case "partially_confirmed": return "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400";
+    case "not_deliverable": return "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400";
     case "scheduled": return "bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-400";
     case "in_delivery": return "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400";
     case "delivered": return "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400";
@@ -111,7 +111,7 @@ const getStatusLabel = (status: string) => {
   switch (status) {
     case "pending": return "Neu";
     case "confirmed": return "Bestätigt";
-    case "partially_confirmed": return "Teilbestätigt";
+    case "not_deliverable": return "Nicht zustellbar";
     case "scheduled": return "Geplant";
     case "in_delivery": return "Unterwegs";
     case "delivered": return "Geliefert";
@@ -864,7 +864,7 @@ export default function SupplierInbox() {
   });
 
   const openActionsOrders = allOrdersForActions?.filter(
-    (o: any) => o.restaurantId === restaurantIdForActions && ["pending", "confirmed", "partially_confirmed", "scheduled", "in_delivery"].includes(o.status)
+    (o: any) => o.restaurantId === restaurantIdForActions && ["pending", "confirmed", "scheduled", "in_delivery"].includes(o.status)
   );
   const openActionsComplaints = allComplaintsForActions?.filter(
     (c: any) => c.restaurantId === restaurantIdForActions && ["open", "in_progress"].includes(c.status)
@@ -1210,10 +1210,10 @@ export default function SupplierInbox() {
                               <p className="text-xs font-medium text-muted-foreground px-1 mb-1.5" data-testid="text-open-orders-header">Offene Bestellungen ({openActionsOrders.length})</p>
                               <div className="space-y-2">
                                 {openActionsOrders.map((order: any) => {
-                                  const StatusIcon = order.status === "pending" ? Clock : order.status === "partially_confirmed" ? AlertTriangle : order.status === "confirmed" ? CheckCircle : Package;
-                                  const nextStatus = order.status === "pending" ? "confirmed" : (order.status === "confirmed" || order.status === "partially_confirmed") ? "set_date" : "delivered";
-                                  const nextLabel = order.status === "pending" ? "Bestätigen" : (order.status === "confirmed" || order.status === "partially_confirmed") ? "Lieferdatum setzen" : "Geliefert";
-                                  const NextIcon = order.status === "pending" ? CheckCircle : (order.status === "confirmed" || order.status === "partially_confirmed") ? CalendarDays : Check;
+                                  const StatusIcon = order.status === "pending" ? Clock : order.status === "confirmed" ? CheckCircle : Package;
+                                  const nextStatus = order.status === "pending" ? "confirmed" : order.status === "confirmed" ? "set_date" : "delivered";
+                                  const nextLabel = order.status === "pending" ? "Bestätigen" : order.status === "confirmed" ? "Lieferdatum setzen" : "Geliefert";
+                                  const NextIcon = order.status === "pending" ? CheckCircle : order.status === "confirmed" ? CalendarDays : Check;
                                   return (
                                     <div
                                       key={order.id}
@@ -2537,7 +2537,7 @@ export default function SupplierInbox() {
                       {lang === "it" ? "Conferma" : "Bestätigen"}
                     </Button>
                   )}
-                  {(orderDetail.status === "confirmed" || orderDetail.status === "partially_confirmed" || orderDetail.status === "scheduled") && (
+                  {(orderDetail.status === "confirmed" || orderDetail.status === "scheduled") && (
                     <Button size="sm" className="rounded-lg" onClick={() => setDeliveryDatePicker({ orderId: orderDetail.id, restaurantId: orderDetail.restaurantId })} disabled={updateOrderStatusMutation.isPending} data-testid="button-set-delivery-date">
                       <CalendarDays className="h-3.5 w-3.5 mr-1" />
                       {lang === "it" ? "Imposta data consegna" : "Lieferdatum setzen"}
@@ -2597,7 +2597,7 @@ export default function SupplierInbox() {
                       <SelectValue placeholder={lang === "it" ? "Seleziona stato..." : "Status wählen..."} />
                     </SelectTrigger>
                     <SelectContent>
-                      {["pending", "confirmed", "partially_confirmed", "scheduled", "delivered", "cancelled"]
+                      {["pending", "confirmed", "scheduled", "delivered", "cancelled", "not_deliverable"]
                         .filter(s => s !== orderDetail.status)
                         .map(s => (
                           <SelectItem key={s} value={s} data-testid={`select-correction-${s}`}>

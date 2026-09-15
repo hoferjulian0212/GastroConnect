@@ -64,7 +64,7 @@ import { encryptJson, decryptJson } from "./erpCrypto";
 
 // Platform GMV excludes scheduled orders: they can still be changed or
 // cancelled before goods are in transit. Keep every admin rollup consistent.
-const PLATFORM_GMV_STATUSES = sql`('delivered','confirmed','in_delivery','partially_confirmed')`;
+const PLATFORM_GMV_STATUSES = sql`('delivered','confirmed','in_delivery')`;
 
 export interface ReorderSuggestion {
   productId: string;
@@ -949,7 +949,7 @@ export class DatabaseStorage implements IStorage {
       .innerJoin(orders, eq(orderItems.orderId, orders.id))
       .where(and(
         eq(orders.restaurantId, restaurantId),
-        inArray(orders.status, ["pending", "confirmed", "partially_confirmed", "scheduled", "in_delivery"] as any),
+        inArray(orders.status, ["pending", "confirmed", "scheduled", "in_delivery"] as any),
       ))
       .groupBy(orderItems.productId);
 
@@ -1813,7 +1813,7 @@ export class DatabaseStorage implements IStorage {
         COUNT(*) as orders
       FROM orders
       WHERE supplier_id = ${supplierId}
-        AND status IN ('delivered', 'confirmed', 'in_delivery', 'partially_confirmed', 'scheduled')
+        AND status IN ('delivered', 'confirmed', 'in_delivery', 'scheduled')
         AND created_at >= ${currentFrom}
       GROUP BY 1
       ORDER BY 1 ASC
@@ -1863,7 +1863,7 @@ export class DatabaseStorage implements IStorage {
         COUNT(DISTINCT restaurant_id) as active_customers
       FROM orders
       WHERE supplier_id = ${supplierId}
-        AND status IN ('delivered', 'confirmed', 'in_delivery', 'partially_confirmed', 'scheduled')
+        AND status IN ('delivered', 'confirmed', 'in_delivery', 'scheduled')
         AND created_at >= ${currentFrom}
     `);
     const totalRevenue = Number(totalsCur.rows?.[0]?.total_revenue) || 0;
@@ -1878,7 +1878,7 @@ export class DatabaseStorage implements IStorage {
         COUNT(DISTINCT restaurant_id) as active_customers
       FROM orders
       WHERE supplier_id = ${supplierId}
-        AND status IN ('delivered', 'confirmed', 'in_delivery', 'partially_confirmed', 'scheduled')
+        AND status IN ('delivered', 'confirmed', 'in_delivery', 'scheduled')
         AND created_at >= ${prevFrom}
         AND created_at <= ${prevTo}
     `);
@@ -1891,7 +1891,7 @@ export class DatabaseStorage implements IStorage {
       SELECT COALESCE(SUM(CAST(total_amount AS DECIMAL)), 0) as revenue
       FROM orders
       WHERE supplier_id = ${supplierId}
-        AND status IN ('delivered', 'confirmed', 'in_delivery', 'partially_confirmed', 'scheduled')
+        AND status IN ('delivered', 'confirmed', 'in_delivery', 'scheduled')
         AND created_at >= ${startOfThisMonth}
     `);
     const currentMonthRevenue = Number(currentMonthRes.rows?.[0]?.revenue) || 0;
@@ -1906,7 +1906,7 @@ export class DatabaseStorage implements IStorage {
       FROM order_items oi
       JOIN orders o ON o.id = oi.order_id
       WHERE o.supplier_id = ${supplierId}
-        AND o.status IN ('delivered', 'confirmed', 'in_delivery', 'partially_confirmed', 'scheduled')
+        AND o.status IN ('delivered', 'confirmed', 'in_delivery', 'scheduled')
         AND o.created_at >= ${currentFrom}
       GROUP BY oi.product_id
       ORDER BY quantity DESC
@@ -1924,7 +1924,7 @@ export class DatabaseStorage implements IStorage {
         FROM order_items oi
         JOIN orders o ON o.id = oi.order_id
         WHERE o.supplier_id = ${supplierId}
-          AND o.status IN ('delivered', 'confirmed', 'in_delivery', 'partially_confirmed', 'scheduled')
+          AND o.status IN ('delivered', 'confirmed', 'in_delivery', 'scheduled')
           AND o.created_at >= ${prevFrom}
           AND o.created_at <= ${prevTo}
           AND oi.product_id IN (${sql.join(productIds.map((id: string) => sql`${id}`), sql`, `)})
@@ -1945,7 +1945,7 @@ export class DatabaseStorage implements IStorage {
       FROM orders o
       LEFT JOIN users u ON u.id = o.restaurant_id
       WHERE o.supplier_id = ${supplierId}
-        AND o.status IN ('delivered', 'confirmed', 'in_delivery', 'partially_confirmed', 'scheduled')
+        AND o.status IN ('delivered', 'confirmed', 'in_delivery', 'scheduled')
         AND o.created_at >= ${currentFrom}
       GROUP BY o.restaurant_id
       ORDER BY revenue DESC
@@ -2006,7 +2006,7 @@ export class DatabaseStorage implements IStorage {
           COUNT(*) FILTER (WHERE o.created_at < (NOW() - INTERVAL '30 days') AND o.created_at >= (NOW() - INTERVAL '120 days')) AS prior_count
         FROM orders o
         WHERE o.supplier_id = ${supplierId}
-          AND o.status IN ('delivered', 'confirmed', 'in_delivery', 'partially_confirmed', 'scheduled')
+        AND o.status IN ('delivered', 'confirmed', 'in_delivery', 'scheduled')
         GROUP BY o.restaurant_id
         HAVING MAX(o.created_at) < (NOW() - INTERVAL '30 days')
           AND COUNT(*) FILTER (WHERE o.created_at < (NOW() - INTERVAL '30 days') AND o.created_at >= (NOW() - INTERVAL '120 days')) >= 2
@@ -2029,7 +2029,7 @@ export class DatabaseStorage implements IStorage {
         FROM order_items oi
         JOIN orders o ON o.id = oi.order_id
         WHERE o.supplier_id = ${supplierId}
-          AND o.status IN ('delivered', 'confirmed', 'in_delivery', 'partially_confirmed', 'scheduled')
+        AND o.status IN ('delivered', 'confirmed', 'in_delivery', 'scheduled')
           AND o.created_at >= (NOW() - INTERVAL '90 days')
         GROUP BY oi.product_id
         ORDER BY SUM(oi.quantity) DESC
@@ -2059,7 +2059,7 @@ export class DatabaseStorage implements IStorage {
         FROM order_items oi
         JOIN orders o ON o.id = oi.order_id
         WHERE o.supplier_id = ${supplierId}
-          AND o.status IN ('delivered', 'confirmed', 'in_delivery', 'partially_confirmed', 'scheduled')
+        AND o.status IN ('delivered', 'confirmed', 'in_delivery', 'scheduled')
           AND o.created_at >= (NOW() - INTERVAL '30 days')
         GROUP BY oi.product_id
       ),
@@ -2068,7 +2068,7 @@ export class DatabaseStorage implements IStorage {
         FROM order_items oi
         JOIN orders o ON o.id = oi.order_id
         WHERE o.supplier_id = ${supplierId}
-          AND o.status IN ('delivered', 'confirmed', 'in_delivery', 'partially_confirmed', 'scheduled')
+        AND o.status IN ('delivered', 'confirmed', 'in_delivery', 'scheduled')
           AND o.created_at < (NOW() - INTERVAL '30 days')
           AND o.created_at >= (NOW() - INTERVAL '60 days')
         GROUP BY oi.product_id
@@ -2101,7 +2101,7 @@ export class DatabaseStorage implements IStorage {
   }> {
     const now = new Date();
     const currentFrom = new Date(now.getFullYear(), now.getMonth() - 5, 1, 0, 0, 0, 0);
-    const VALID = sql`('delivered', 'confirmed', 'in_delivery', 'partially_confirmed', 'scheduled')`;
+    const VALID = sql`('delivered', 'confirmed', 'in_delivery', 'scheduled')`;
 
     // Monthly spending (6 months, zero-filled)
     const seriesResult = await db.execute(sql`
@@ -2217,7 +2217,7 @@ export class DatabaseStorage implements IStorage {
           COUNT(*) FILTER (WHERE o.created_at < (NOW() - INTERVAL '30 days') AND o.created_at >= (NOW() - INTERVAL '120 days')) AS prior_count
         FROM orders o
         WHERE o.supplier_id = ${supplierId}
-          AND o.status IN ('delivered', 'confirmed', 'in_delivery', 'partially_confirmed', 'scheduled')
+        AND o.status IN ('delivered', 'confirmed', 'in_delivery', 'scheduled')
         GROUP BY o.restaurant_id
         HAVING MAX(o.created_at) < (NOW() - INTERVAL '30 days')
           AND COUNT(*) FILTER (WHERE o.created_at < (NOW() - INTERVAL '30 days') AND o.created_at >= (NOW() - INTERVAL '120 days')) >= 2
@@ -3306,7 +3306,7 @@ export class DatabaseStorage implements IStorage {
     await createOrderWithDate({ restaurantId: restaurant1.id, supplierId: supplier2.id, status: "delivered", totalAmount: sumOf(o6items) }, o6items, 6);
 
     const o7items = [itemFor(p_filet, 3, 2), itemFor(p_bratwurst, 5)];
-    const o7 = await createOrderWithDate({ restaurantId: restaurant1.id, supplierId: supplier2.id, status: "partially_confirmed", totalAmount: sumOf(o7items), requestedDeliveryDate: futureDate(1) }, o7items, 0);
+    const o7 = await createOrderWithDate({ restaurantId: restaurant1.id, supplierId: supplier2.id, status: "confirmed", totalAmount: sumOf(o7items), requestedDeliveryDate: futureDate(1) }, o7items, 0);
 
     // Restaurant 1 + Supplier 3 (Getränke)
     const o8items = [itemFor(p_augustiner, 5), itemFor(p_wasser, 8), itemFor(p_apfelsaft, 4)];
@@ -3625,7 +3625,7 @@ export class DatabaseStorage implements IStorage {
       { status: "delivered", weight: 6, daysAgoMin: 1, daysAgoMax: 4 },
       { status: "in_delivery", weight: 2, daysAgoMin: 0, daysAgoMax: 1, futureDays: 0 },
       { status: "confirmed", weight: 3, daysAgoMin: 0, daysAgoMax: 1, futureDays: 2 },
-      { status: "partially_confirmed", weight: 2, daysAgoMin: 0, daysAgoMax: 2, futureDays: 1 },
+      { status: "confirmed", weight: 2, daysAgoMin: 0, daysAgoMax: 2, futureDays: 1 },
       { status: "pending", weight: 2, daysAgoMin: 0, daysAgoMax: 0, futureDays: 3 },
       { status: "cancelled", weight: 2, daysAgoMin: 7, daysAgoMax: 35 },
     ];
@@ -3649,7 +3649,7 @@ export class DatabaseStorage implements IStorage {
             used.add(idx);
             const p = supProducts[idx];
             const qty = randInt(2, 18);
-            const confirmedQty = chosen.status === "partially_confirmed" ? Math.max(1, qty - randInt(1, 3)) : null;
+            const confirmedQty = chosen.status === "confirmed" ? Math.max(1, qty - randInt(1, 3)) : null;
             items.push({
               productId: p.id, productName: p.name, quantity: qty,
               unitPrice: p.price, totalPrice: (parseFloat(p.price) * qty).toFixed(2),
@@ -4032,7 +4032,7 @@ export class DatabaseStorage implements IStorage {
     piriOrderSpecs.push({ supplier: supplier1, daysAgo: 1, status: "in_delivery", items: 5, futureDays: 0, notes: "Tour heute Vormittag" });
     piriOrderSpecs.push({ supplier: supplier2, daysAgo: 0, status: "confirmed", items: 4, futureDays: 2, notes: "Wildbegleiter für Wochenende" });
     piriOrderSpecs.push({ supplier: supplier3, daysAgo: 0, status: "pending", items: 3, futureDays: 3 });
-    piriOrderSpecs.push({ supplier: supplier4, daysAgo: 1, status: "partially_confirmed", items: 4, futureDays: 1, notes: "Trüffelöl evtl. nicht verfügbar" });
+    piriOrderSpecs.push({ supplier: supplier4, daysAgo: 1, status: "confirmed", items: 4, futureDays: 1, notes: "Trüffelöl evtl. nicht verfügbar" });
     piriOrderSpecs.push({ supplier: supplier5, daysAgo: 0, status: "confirmed", items: 3, futureDays: 1, notes: "Jakobsmuscheln Tasting-Menü" });
     // Eine Stornierung
     piriOrderSpecs.push({ supplier: supplier3, daysAgo: 19, status: "cancelled", items: 2, notes: "Falsche Bestellung — wurde manuell storniert" });
@@ -4049,7 +4049,7 @@ export class DatabaseStorage implements IStorage {
         used.add(idx);
         const p = supProds[idx];
         const qty = prandInt(2, 14);
-        const confirmedQty = spec.status === "partially_confirmed" ? Math.max(1, qty - prandInt(1, 3)) : null;
+        const confirmedQty = spec.status === "confirmed" ? Math.max(1, qty - prandInt(1, 3)) : null;
         items.push({
           productId: p.id, productName: p.name, quantity: qty,
           unitPrice: p.price, totalPrice: (parseFloat(p.price) * qty).toFixed(2),
@@ -6055,6 +6055,73 @@ export class DatabaseStorage implements IStorage {
   }
 
   async runAdminMigration(): Promise<void> {
+    // Normalize the historical order enum before the application schema is
+    // reduced to the seven canonical commercial statuses. This is deliberately
+    // idempotent and runs before any schema push can remove legacy values.
+    await db.execute(sql`
+      DO $$
+      DECLARE old_count integer;
+      BEGIN
+        IF EXISTS (
+          SELECT 1 FROM pg_enum e JOIN pg_type t ON t.oid = e.enumtypid
+          WHERE t.typname = 'order_status' AND e.enumlabel = 'partially_confirmed'
+        ) THEN
+          CREATE TYPE order_status_migrating AS ENUM (
+            'pending', 'confirmed', 'partially_confirmed', 'scheduled',
+            'in_delivery', 'delivered', 'cancelled', 'to_review',
+            'not_deliverable'
+          );
+          ALTER TABLE orders ALTER COLUMN status DROP DEFAULT;
+          ALTER TABLE orders ALTER COLUMN status TYPE order_status_migrating
+            USING status::text::order_status_migrating;
+          DROP TYPE order_status;
+          ALTER TYPE order_status_migrating RENAME TO order_status;
+          UPDATE orders SET status = 'confirmed' WHERE status::text = 'partially_confirmed';
+          UPDATE orders SET status = 'not_deliverable' WHERE status::text = 'to_review';
+        END IF;
+
+        UPDATE order_status_history SET
+          from_status = CASE from_status
+            WHEN 'partially_confirmed' THEN 'confirmed'
+            WHEN 'to_review' THEN 'not_deliverable'
+            ELSE from_status
+          END,
+          to_status = CASE to_status
+            WHEN 'partially_confirmed' THEN 'confirmed'
+            WHEN 'to_review' THEN 'not_deliverable'
+            ELSE to_status
+          END
+        WHERE from_status IN ('partially_confirmed', 'to_review')
+           OR to_status IN ('partially_confirmed', 'to_review');
+
+        SELECT count(*) INTO old_count FROM orders
+        WHERE status::text IN ('partially_confirmed', 'to_review');
+        IF old_count > 0 THEN
+          RAISE EXCEPTION 'Order status migration left % legacy orders', old_count;
+        END IF;
+        SELECT count(*) INTO old_count FROM order_status_history
+        WHERE from_status IN ('partially_confirmed', 'to_review')
+           OR to_status IN ('partially_confirmed', 'to_review');
+        IF old_count > 0 THEN
+          RAISE EXCEPTION 'Order status migration left % legacy history rows', old_count;
+        END IF;
+
+        IF EXISTS (
+          SELECT 1 FROM pg_enum e JOIN pg_type t ON t.oid = e.enumtypid
+          WHERE t.typname = 'order_status' AND e.enumlabel = 'partially_confirmed'
+        ) THEN
+          CREATE TYPE order_status_final AS ENUM (
+            'pending', 'confirmed', 'scheduled', 'in_delivery',
+            'delivered', 'cancelled', 'not_deliverable'
+          );
+          ALTER TABLE orders ALTER COLUMN status TYPE order_status_final
+            USING status::text::order_status_final;
+          DROP TYPE order_status;
+          ALTER TYPE order_status_final RENAME TO order_status;
+        END IF;
+        ALTER TABLE orders ALTER COLUMN status SET DEFAULT 'pending';
+      END $$;
+    `);
     // Immutable Local-impact snapshots are additive and remain independent of
     // the canonical product sustainability migration.
     await db.execute(sql`ALTER TABLE order_items ADD COLUMN IF NOT EXISTS local_impact_snapshot jsonb`);
@@ -6101,9 +6168,8 @@ export class DatabaseStorage implements IStorage {
     // New order status "scheduled" (Geplant): driver assigned but not yet en route.
     await db.execute(sql`ALTER TYPE order_status ADD VALUE IF NOT EXISTS 'scheduled' BEFORE 'in_delivery'`);
 
-    // Driver reject flow: order status "to_review" (Zu prüfen — back at the office),
-    // delivery status "rejected", plus rejection timestamp and info-only delay minutes.
-    await db.execute(sql`ALTER TYPE order_status ADD VALUE IF NOT EXISTS 'to_review'`);
+    // Driver reject flow: delivery status "rejected", plus rejection timestamp
+    // and info-only delay minutes.
     await db.execute(sql`ALTER TYPE delivery_status ADD VALUE IF NOT EXISTS 'rejected'`);
     await db.execute(sql`ALTER TABLE delivery_assignments ADD COLUMN IF NOT EXISTS rejected_at timestamp`);
     await db.execute(sql`ALTER TABLE delivery_assignments ADD COLUMN IF NOT EXISTS delay_minutes integer`);
@@ -6746,7 +6812,7 @@ export class DatabaseStorage implements IStorage {
     const totalOrders = Number(agg.total_orders) || 0;
     const gmv = Number(agg.gmv) || 0;
     const validOrderCount = (statusRes.rows || []).reduce((sum, r: any) => {
-      const valid = ["delivered", "confirmed", "in_delivery", "partially_confirmed"];
+      const valid = ["delivered", "confirmed", "in_delivery"];
       return valid.includes(String(r.status)) ? sum + (Number(r.count) || 0) : sum;
     }, 0);
 

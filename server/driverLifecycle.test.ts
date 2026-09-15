@@ -978,6 +978,6 @@ describe("driver lifecycle: exception resolution", () => {
     assert.equal(assignment!.exceptionResolution, "return_to_review");
 
     const [order] = await db.select({ status: orders.status }).from(orders).where(eq(orders.id, orderId));
-    assert.equal(order.status, "to_review", "Order and assignment must move to office review together");
+    assert.equal(order.status, "not_deliverable", "Order and assignment must move to the canonical terminal status together");
   });
 });

@@ -33,7 +33,7 @@ export function getRescueAllocationTarget(input: {
   currentReserved: number;
   currentSold: number;
 }): { reserved: number; sold: number } | null {
-  if (input.status === "confirmed" || input.status === "partially_confirmed") {
+  if (input.status === "confirmed") {
     const sold = input.confirmedQuantity ?? input.itemQuantity;
     return {
       reserved: 0,

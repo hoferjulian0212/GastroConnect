@@ -9,12 +9,11 @@ import type { OrderStatusHistoryWithUser, ComplaintStatusHistoryWithUser } from 
 const orderStatusConfig: Record<string, { label: string; icon: typeof Clock; color: string }> = {
   pending: { label: "Neu", icon: Clock, color: "text-amber-500" },
   confirmed: { label: "Bestätigt", icon: CheckCircle, color: "text-blue-500" },
-  partially_confirmed: { label: "Teilbestätigt", icon: AlertTriangle, color: "text-orange-500" },
   scheduled: { label: "Geplant", icon: CalendarClock, color: "text-sky-500" },
   in_delivery: { label: "Unterwegs", icon: Truck, color: "text-indigo-500" },
   delivered: { label: "Geliefert", icon: Package, color: "text-green-500" },
   cancelled: { label: "Storniert", icon: XCircle, color: "text-red-500" },
-  to_review: { label: "Zu prüfen", icon: AlertTriangle, color: "text-red-500" },
+  not_deliverable: { label: "Nicht zustellbar", icon: AlertTriangle, color: "text-red-500" },
 };
 
 const complaintStatusConfig: Record<string, { label: string; icon: typeof Clock; color: string }> = {
