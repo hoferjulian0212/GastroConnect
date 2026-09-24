@@ -40,6 +40,12 @@ import { Cell } from "@/components/orders/Cell";
 import { GroupHeader } from "@/components/orders/GroupHeader";
 import { ProductImage } from "@/components/ProductImage";
 import { useIsMobile } from "@/hooks/use-mobile";
+import {
+ ORDER_STATUS_FILTERS,
+ getOrderStatusFilterLabel,
+ orderStatusQuery,
+ type OrderStatusFilter,
+} from "@/lib/order-status-filters";
 import RestaurantOrdersMobile from "./OrdersMobile";
 
 interface EditableItem {
@@ -59,7 +65,7 @@ export default function RestaurantOrders() {
  const t = useT(lang);
  const dateLocale = lang === "it" ? it : de;
  const isMobile = useIsMobile();
- const [, navigate] = useLocation();
+ const [location, navigate] = useLocation();
  const searchString = useSearch();
  const searchParams = new URLSearchParams(searchString);
  const highlightOrderId = searchParams.get("orderId");
@@ -78,6 +84,10 @@ export default function RestaurantOrders() {
  const [filterDateTo, setFilterDateTo] = useState<string>("");
  const [showExportMenu, setShowExportMenu] = useState(false);
  const [searchQuery, setSearchQuery] = useState("");
+ const setStatusFilter = (status: OrderStatusFilter) => {
+ setFilterStatus(status);
+ navigate(`${location.split("?")[0]}${orderStatusQuery(searchString, status)}`);
+ };
  const [sortBy, setSortBy] = useState<"createdAt" | "deliveryDate" | "totalAmount" | "supplier" | "status">("createdAt");
  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
  const [groupByDate, setGroupByDate] = useState(true);
@@ -445,7 +455,7 @@ export default function RestaurantOrders() {
  }, [orders, filterSupplier, filterDateFrom, filterDateTo]);
 
  const clearFilters = () => {
- setFilterStatus("all");
+ setStatusFilter("all");
  setFilterSupplier("all");
  setFilterDateFrom("");
  setFilterDateTo("");
@@ -1425,24 +1435,15 @@ export default function RestaurantOrders() {
  <div>
  <Label className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-1.5 block">Status</Label>
  <div className="grid grid-cols-3 gap-1">
- {([
- { key: "all", label: t("common", "all"), dot: "bg-gray-400" },
- { key: "pending", label: getOrderStatus("pending", lang), dot: "bg-yellow-500" },
- { key: "confirmed", label: getOrderStatus("confirmed", lang), dot: "bg-blue-500" },
- { key: "scheduled", label: getOrderStatus("scheduled", lang), dot: "bg-indigo-500" },
- { key: "in_delivery", label: getOrderStatus("in_delivery", lang), dot: "bg-purple-500" },
- { key: "delivered", label: getOrderStatus("delivered", lang), dot: "bg-green-500" },
- { key: "cancelled", label: getOrderStatus("cancelled", lang), dot: "bg-red-500" },
- { key: "not_deliverable", label: getOrderStatus("not_deliverable", lang), dot: "bg-red-500" },
- ] as const).map(({ key, label, dot }) => (
+ {ORDER_STATUS_FILTERS.map(({ key, dot }) => (
  <button
  key={key}
- onClick={() => setFilterStatus(key)}
+ onClick={() => setStatusFilter(key)}
  className={`flex items-center gap-1.5 px-2 py-1.5 rounded-md text-[11px] font-medium border transition-all ${filterStatus === key ? "border-primary/40 bg-primary/10 text-foreground" : "border-border bg-card hover:bg-muted text-muted-foreground"}`}
  data-testid={`filter-status-${key}`}
  >
  <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${dot}`} />
- <span className="truncate">{label}</span>
+ <span className="truncate">{getOrderStatusFilterLabel(key, lang)}</span>
  </button>
  ))}
  </div>
@@ -1485,7 +1486,7 @@ export default function RestaurantOrders() {
 
  {/* Aktive Filter Chips */}
  {filterStatus !== "all" && (
- <button onClick={() => setFilterStatus("all")} className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-white/10 border border-white/20 text-white text-[11px] hover:bg-white/15" data-testid="chip-status">
+ <button onClick={() => setStatusFilter("all")} className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-white/10 border border-white/20 text-white text-[11px] hover:bg-white/15" data-testid="chip-status">
  <span>{getOrderStatus(filterStatus as any, lang)}</span><X className="h-3 w-3" />
  </button>
  )}
@@ -1508,7 +1509,7 @@ export default function RestaurantOrders() {
  {/* Active filter chips (right of toolbar) */}
  <div className="flex items-center gap-2 flex-wrap ml-auto order-last">
  {filterStatus !== "all" && (
- <button onClick={() => setFilterStatus("all")} className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-muted border border-border text-foreground text-[11px] hover:bg-muted/70" data-testid="chip-status-content">
+ <button onClick={() => setStatusFilter("all")} className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-muted border border-border text-foreground text-[11px] hover:bg-muted/70" data-testid="chip-status-content">
  <span>{getOrderStatus(filterStatus as any, lang)}</span><X className="h-3 w-3" />
  </button>
  )}
@@ -1664,24 +1665,15 @@ export default function RestaurantOrders() {
  <div>
  <Label className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-1.5 block">Status</Label>
  <div className="grid grid-cols-3 gap-1">
- {([
- { key: "all", label: t("common", "all"), dot: "bg-gray-400" },
- { key: "pending", label: getOrderStatus("pending", lang), dot: "bg-yellow-500" },
- { key: "confirmed", label: getOrderStatus("confirmed", lang), dot: "bg-blue-500" },
- { key: "scheduled", label: getOrderStatus("scheduled", lang), dot: "bg-indigo-500" },
- { key: "in_delivery", label: getOrderStatus("in_delivery", lang), dot: "bg-purple-500" },
- { key: "delivered", label: getOrderStatus("delivered", lang), dot: "bg-green-500" },
- { key: "cancelled", label: getOrderStatus("cancelled", lang), dot: "bg-red-500" },
- { key: "not_deliverable", label: getOrderStatus("not_deliverable", lang), dot: "bg-red-500" },
- ] as const).map(({ key, label, dot }) => (
+ {ORDER_STATUS_FILTERS.map(({ key, dot }) => (
  <button
  key={key}
- onClick={() => setFilterStatus(key)}
+ onClick={() => setStatusFilter(key)}
  className={`flex items-center gap-1.5 px-2 py-1.5 rounded-md text-[11px] font-medium border transition-all ${filterStatus === key ? "border-primary/40 bg-primary/10 text-foreground" : "border-border bg-card hover:bg-muted text-muted-foreground"}`}
  data-testid={`filter-status-content-${key}`}
  >
  <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${dot}`} />
- <span className="truncate">{label}</span>
+ <span className="truncate">{getOrderStatusFilterLabel(key, lang)}</span>
  </button>
  ))}
  </div>

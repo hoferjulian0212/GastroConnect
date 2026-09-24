@@ -1,6 +1,6 @@
 import { foldSearchText } from "@shared/searchText";
 import { useMemo, useState } from "react";
-import { useLocation } from "wouter";
+import { useLocation, useSearch } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { Search, Package, Calendar, ChevronRight, Truck } from "lucide-react";
 import { format } from "date-fns";
@@ -18,6 +18,12 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { formatOrderNumber, type DeliveryAssignmentWithDetails, type OrderWithDetails } from "@shared/schema";
 import { queryClient } from "@/lib/queryClient";
 import { getOrderStatus } from "@/lib/translations";
+import {
+  ORDER_STATUS_FILTERS,
+  getOrderStatusFilterLabel,
+  orderStatusQuery,
+  type OrderStatusFilter,
+} from "@/lib/order-status-filters";
 
 interface SupplierOrdersMobileProps {
   orders: OrderWithDetails[] | undefined;
@@ -28,17 +34,6 @@ interface SupplierOrdersMobileProps {
   initialStatus?: string;
 }
 
-const STATUS_FILTERS: { key: string; labelDe: string; labelIt: string }[] = [
-  { key: "all", labelDe: "Alle", labelIt: "Tutti" },
-  { key: "pending", labelDe: "Neu", labelIt: "Nuovi" },
-  { key: "confirmed", labelDe: "Bestätigt", labelIt: "Confermati" },
-  { key: "scheduled", labelDe: "Geplant", labelIt: "Pianificato" },
-  { key: "in_delivery", labelDe: "Unterwegs", labelIt: "In viaggio" },
-  { key: "delivered", labelDe: "Geliefert", labelIt: "Consegnati" },
-  { key: "cancelled", labelDe: "Storniert", labelIt: "Annullati" },
-  { key: "not_deliverable", labelDe: "Nicht zustellbar", labelIt: "Non consegnabili" },
-];
-
 export default function SupplierOrdersMobile({
   orders,
   isLoading,
@@ -47,9 +42,15 @@ export default function SupplierOrdersMobile({
   dateLocale,
   initialStatus,
 }: SupplierOrdersMobileProps) {
-  const [, setLocation] = useLocation();
+  const [location, setLocation] = useLocation();
+  const searchString = useSearch();
   const [filterStatus, setFilterStatus] = useState<string>(initialStatus || "all");
   const [search, setSearch] = useState("");
+
+  const selectStatus = (status: OrderStatusFilter) => {
+    setFilterStatus(status);
+    setLocation(`${location.split("?")[0]}${orderStatusQuery(searchString, status)}`);
+  };
 
   // Driver assignments per order (silently absent for members without the
   // deliveries capability).
@@ -130,16 +131,16 @@ export default function SupplierOrdersMobile({
         }
         filters={
           <>
-            {STATUS_FILTERS.map((f) => {
+            {ORDER_STATUS_FILTERS.map((f) => {
               const cnt = f.key === "all" ? orders?.length || 0 : counts[f.key] || 0;
               return (
                 <MobileFilterChip
                   key={f.key}
                   active={filterStatus === f.key}
-                  onClick={() => setFilterStatus(f.key)}
+                  onClick={() => selectStatus(f.key)}
                   testId={`chip-status-${f.key}`}
                 >
-                  {lang === "it" ? f.labelIt : f.labelDe}
+                  {getOrderStatusFilterLabel(f.key, lang, true)}
                   {cnt > 0 && (
                     <span
                       className={`ml-1 text-[10px] m-num ${

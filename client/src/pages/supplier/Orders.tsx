@@ -43,6 +43,12 @@ import {
 import { GroupHeader } from "@/components/orders/GroupHeader";
 import { ProductImage } from "@/components/ProductImage";
 import { useIsMobile } from "@/hooks/use-mobile";
+import {
+ ORDER_STATUS_FILTERS,
+ getOrderStatusFilterLabel,
+ orderStatusQuery,
+ type OrderStatusFilter,
+} from "@/lib/order-status-filters";
 import SupplierOrdersMobile from "./OrdersMobile";
 
 export default function SupplierOrders() {
@@ -50,7 +56,7 @@ export default function SupplierOrders() {
  const { toast } = useToast();
  const haptic = useHaptic();
  const fireConfetti = useConfetti();
- const [, navTo] = useLocation();
+ const [location, navTo] = useLocation();
  const { lang } = useLanguage();
  const t = useT(lang);
  const dateFnsLocale = lang === "de" ? de : it;
@@ -75,6 +81,10 @@ export default function SupplierOrders() {
  const [filterDateFrom, setFilterDateFrom] = useState<string>("");
  const [filterDateTo, setFilterDateTo] = useState<string>("");
  const [searchQuery, setSearchQuery] = useState("");
+ const setStatusFilter = (status: OrderStatusFilter) => {
+ setActiveStatusTab(status);
+ navTo(`${location.split("?")[0]}${orderStatusQuery(searchString, status)}`);
+ };
  const [sortBy, setSortBy] = useState<"createdAt" | "deliveryDate" | "totalAmount" | "restaurant" | "status">("createdAt");
  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
  const [groupByDate, setGroupByDate] = useState(true);
@@ -192,7 +202,7 @@ export default function SupplierOrders() {
  }, [orders, t]);
 
  const clearFilters = () => {
- setActiveStatusTab("pending");
+ setStatusFilter("all");
  setFilterRestaurant("all");
  setFilterDateFrom("");
  setFilterDateTo("");
@@ -1280,14 +1290,14 @@ export default function SupplierOrders() {
  <Popover>
  <PopoverTrigger asChild>
  <button
- className={`relative inline-flex items-center justify-center h-9 w-9 rounded-full transition-colors hover-elevate ${(activeStatusTab !== "pending" || filterRestaurant !== "all" || filterDateFrom || filterDateTo) ? "bg-white/15 text-white" : "text-white/70 hover:text-white"}`}
+ className={`relative inline-flex items-center justify-center h-9 w-9 rounded-full transition-colors hover-elevate ${(activeStatusTab !== "all" || filterRestaurant !== "all" || filterDateFrom || filterDateTo) ? "bg-white/15 text-white" : "text-white/70 hover:text-white"}`}
  title="Filter"
  data-testid="button-toolbar-filter"
  >
  <FilterIcon className="h-4 w-4" />
- {(activeStatusTab !== "pending" || filterRestaurant !== "all" || filterDateFrom || filterDateTo) && (
+ {(activeStatusTab !== "all" || filterRestaurant !== "all" || filterDateFrom || filterDateTo) && (
  <span className="absolute -top-0.5 -right-0.5 h-4 min-w-4 px-1 inline-flex items-center justify-center rounded-full bg-primary text-[9px] text-primary-foreground font-bold">
- {(activeStatusTab !== "pending" ? 1 : 0) + (filterRestaurant !== "all" ? 1 : 0) + (filterDateFrom ? 1 : 0) + (filterDateTo ? 1 : 0)}
+ {(activeStatusTab !== "all" ? 1 : 0) + (filterRestaurant !== "all" ? 1 : 0) + (filterDateFrom ? 1 : 0) + (filterDateTo ? 1 : 0)}
  </span>
  )}
  </button>
@@ -1297,24 +1307,15 @@ export default function SupplierOrders() {
  <div>
  <Label className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-1.5 block">Status</Label>
  <div className="grid grid-cols-3 gap-1">
- {([
- { key: "all", label: t("common", "all"), dot: "bg-gray-400" },
- { key: "pending", label: getOrderStatus("pending", lang, true), dot: "bg-yellow-500" },
- { key: "confirmed", label: getOrderStatus("confirmed", lang, true), dot: "bg-blue-500" },
- { key: "scheduled", label: getOrderStatus("scheduled", lang, true), dot: "bg-indigo-500" },
- { key: "in_delivery", label: lang === "de" ? "Unterwegs" : "In viaggio", dot: "bg-purple-500" },
- { key: "delivered", label: getOrderStatus("delivered", lang, true), dot: "bg-green-500" },
- { key: "cancelled", label: getOrderStatus("cancelled", lang, true), dot: "bg-red-500" },
- { key: "not_deliverable", label: getOrderStatus("not_deliverable", lang, true), dot: "bg-red-500" },
- ] as const).map(({ key, label, dot }) => (
+ {ORDER_STATUS_FILTERS.map(({ key, dot }) => (
  <button
  key={key}
- onClick={() => setActiveStatusTab(key)}
+ onClick={() => setStatusFilter(key)}
  className={`flex items-center gap-1.5 px-2 py-1.5 rounded-md text-[11px] font-medium border transition-all ${activeStatusTab === key ? "border-primary/40 bg-primary/10 text-foreground" : "border-border bg-card hover:bg-muted text-muted-foreground"}`}
  data-testid={`filter-status-${key}`}
  >
  <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${dot}`} />
- <span className="truncate">{label}</span>
+ <span className="truncate">{getOrderStatusFilterLabel(key, lang, true)}</span>
  </button>
  ))}
  </div>
@@ -1345,7 +1346,7 @@ export default function SupplierOrders() {
  <Input type="date" value={filterDateTo} onChange={(e) => setFilterDateTo(e.target.value)} className="h-9 text-xs" data-testid="filter-date-to" />
  </div>
  </div>
- {(activeStatusTab !== "pending" || filterRestaurant !== "all" || filterDateFrom || filterDateTo || searchQuery) && (
+ {(activeStatusTab !== "all" || filterRestaurant !== "all" || filterDateFrom || filterDateTo || searchQuery) && (
  <Button variant="ghost" size="sm" className="h-7 text-xs w-full" onClick={clearFilters} data-testid="button-clear-filters">
  <X className="h-3 w-3 mr-1" />{t("common", "reset")}
  </Button>
@@ -1356,9 +1357,9 @@ export default function SupplierOrders() {
  </div>
 
  {/* Aktive Filter Chips */}
- {activeStatusTab !== "pending" && (
- <button onClick={() => setActiveStatusTab("pending")} className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-white/10 border border-white/20 text-white text-[11px] hover:bg-white/15" data-testid="chip-status">
- <span>{activeStatusTab === "all" ? t("common", "all") : activeStatusTab === "in_delivery" ? (lang === "de" ? "Lieferung" : "Consegna") : getOrderStatus(activeStatusTab as any, lang, true)}</span><X className="h-3 w-3" />
+ {activeStatusTab !== "all" && (
+ <button onClick={() => setStatusFilter("all")} className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-white/10 border border-white/20 text-white text-[11px] hover:bg-white/15" data-testid="chip-status">
+ <span>{getOrderStatusFilterLabel(activeStatusTab as OrderStatusFilter, lang, true)}</span><X className="h-3 w-3" />
  </button>
  )}
  {filterRestaurant !== "all" && (
@@ -1378,9 +1379,9 @@ export default function SupplierOrders() {
  {/* Toolbar (Suchen · Spalten · Sortieren · Filter) — page-content area, right-aligned */}
  <div className="flex items-center gap-2 flex-wrap justify-start">
  <div className="flex items-center gap-2 flex-wrap ml-auto order-last">
- {activeStatusTab !== "pending" && (
- <button onClick={() => setActiveStatusTab("pending")} className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-muted border border-border text-foreground text-[11px] hover:bg-muted/70" data-testid="chip-status-content">
- <span>{activeStatusTab === "all" ? t("common", "all") : activeStatusTab === "in_delivery" ? (lang === "de" ? "Lieferung" : "Consegna") : getOrderStatus(activeStatusTab as any, lang, true)}</span><X className="h-3 w-3" />
+ {activeStatusTab !== "all" && (
+ <button onClick={() => setStatusFilter("all")} className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-muted border border-border text-foreground text-[11px] hover:bg-muted/70" data-testid="chip-status-content">
+ <span>{getOrderStatusFilterLabel(activeStatusTab as OrderStatusFilter, lang, true)}</span><X className="h-3 w-3" />
  </button>
  )}
  {filterRestaurant !== "all" && (
@@ -1518,14 +1519,14 @@ export default function SupplierOrders() {
  <Popover>
  <PopoverTrigger asChild>
  <button
- className={`relative inline-flex items-center justify-center h-9 w-9 rounded-full transition-colors hover-elevate ${(activeStatusTab !== "pending" || filterRestaurant !== "all" || filterDateFrom || filterDateTo) ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground"}`}
+ className={`relative inline-flex items-center justify-center h-9 w-9 rounded-full transition-colors hover-elevate ${(activeStatusTab !== "all" || filterRestaurant !== "all" || filterDateFrom || filterDateTo) ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground"}`}
  title="Filter"
  data-testid="button-toolbar-filter-content"
  >
  <FilterIcon className="h-4 w-4" />
- {(activeStatusTab !== "pending" || filterRestaurant !== "all" || filterDateFrom || filterDateTo) && (
+ {(activeStatusTab !== "all" || filterRestaurant !== "all" || filterDateFrom || filterDateTo) && (
  <span className="absolute -top-0.5 -right-0.5 h-4 min-w-4 px-1 inline-flex items-center justify-center rounded-full bg-primary text-[9px] text-primary-foreground font-bold">
- {(activeStatusTab !== "pending" ? 1 : 0) + (filterRestaurant !== "all" ? 1 : 0) + (filterDateFrom ? 1 : 0) + (filterDateTo ? 1 : 0)}
+ {(activeStatusTab !== "all" ? 1 : 0) + (filterRestaurant !== "all" ? 1 : 0) + (filterDateFrom ? 1 : 0) + (filterDateTo ? 1 : 0)}
  </span>
  )}
  </button>
@@ -1535,24 +1536,15 @@ export default function SupplierOrders() {
  <div>
  <Label className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-1.5 block">Status</Label>
  <div className="grid grid-cols-3 gap-1">
- {([
- { key: "all", label: t("common", "all"), dot: "bg-gray-400" },
- { key: "pending", label: getOrderStatus("pending", lang, true), dot: "bg-yellow-500" },
- { key: "confirmed", label: getOrderStatus("confirmed", lang, true), dot: "bg-blue-500" },
- { key: "not_deliverable", label: getOrderStatus("not_deliverable", lang, true), dot: "bg-red-500" },
- { key: "scheduled", label: getOrderStatus("scheduled", lang, true), dot: "bg-indigo-500" },
- { key: "in_delivery", label: lang === "de" ? "Unterwegs" : "In viaggio", dot: "bg-purple-500" },
- { key: "delivered", label: getOrderStatus("delivered", lang, true), dot: "bg-green-500" },
- { key: "cancelled", label: getOrderStatus("cancelled", lang, true), dot: "bg-red-500" },
- ] as const).map(({ key, label, dot }) => (
+ {ORDER_STATUS_FILTERS.map(({ key, dot }) => (
  <button
  key={key}
- onClick={() => setActiveStatusTab(key)}
+ onClick={() => setStatusFilter(key)}
  className={`flex items-center gap-1.5 px-2 py-1.5 rounded-md text-[11px] font-medium border transition-all ${activeStatusTab === key ? "border-primary/40 bg-primary/10 text-foreground" : "border-border bg-card hover:bg-muted text-muted-foreground"}`}
  data-testid={`filter-status-content-${key}`}
  >
  <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${dot}`} />
- <span className="truncate">{label}</span>
+ <span className="truncate">{getOrderStatusFilterLabel(key, lang, true)}</span>
  </button>
  ))}
  </div>
@@ -1583,7 +1575,7 @@ export default function SupplierOrders() {
  <Input type="date" value={filterDateTo} onChange={(e) => setFilterDateTo(e.target.value)} className="h-9 text-xs" data-testid="filter-date-to-content" />
  </div>
  </div>
- {(activeStatusTab !== "pending" || filterRestaurant !== "all" || filterDateFrom || filterDateTo || searchQuery) && (
+ {(activeStatusTab !== "all" || filterRestaurant !== "all" || filterDateFrom || filterDateTo || searchQuery) && (
  <Button variant="ghost" size="sm" className="h-7 text-xs w-full" onClick={clearFilters} data-testid="button-clear-filters-content">
  <X className="h-3 w-3 mr-1" />{t("common", "reset")}
  </Button>

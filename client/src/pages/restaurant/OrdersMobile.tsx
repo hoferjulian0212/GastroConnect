@@ -1,6 +1,6 @@
 import { foldSearchText } from "@shared/searchText";
 import { useMemo, useState } from "react";
-import { useLocation } from "wouter";
+import { useLocation, useSearch } from "wouter";
 import { Search, Package, Calendar, ChevronRight } from "lucide-react";
 import { format } from "date-fns";
 import {
@@ -17,6 +17,12 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { formatOrderNumber, type OrderWithDetails } from "@shared/schema";
 import { queryClient } from "@/lib/queryClient";
 import { getOrderStatus } from "@/lib/translations";
+import {
+  ORDER_STATUS_FILTERS,
+  getOrderStatusFilterLabel,
+  orderStatusQuery,
+  type OrderStatusFilter,
+} from "@/lib/order-status-filters";
 
 interface RestaurantOrdersMobileProps {
   orders: OrderWithDetails[] | undefined;
@@ -27,17 +33,6 @@ interface RestaurantOrdersMobileProps {
   initialStatus?: string;
 }
 
-const STATUS_FILTERS: { key: string; labelDe: string; labelIt: string }[] = [
-  { key: "all", labelDe: "Alle", labelIt: "Tutti" },
-  { key: "pending", labelDe: "Neu", labelIt: "Nuovo" },
-  { key: "confirmed", labelDe: "Bestätigt", labelIt: "Confermati" },
-  { key: "scheduled", labelDe: "Geplant", labelIt: "Pianificato" },
-  { key: "in_delivery", labelDe: "Unterwegs", labelIt: "In viaggio" },
-  { key: "delivered", labelDe: "Geliefert", labelIt: "Consegnati" },
-  { key: "cancelled", labelDe: "Storniert", labelIt: "Annullati" },
-  { key: "not_deliverable", labelDe: "Nicht zustellbar", labelIt: "Non consegnabili" },
-];
-
 export default function RestaurantOrdersMobile({
   orders,
   isLoading,
@@ -46,9 +41,15 @@ export default function RestaurantOrdersMobile({
   dateLocale,
   initialStatus,
 }: RestaurantOrdersMobileProps) {
-  const [, setLocation] = useLocation();
+  const [location, setLocation] = useLocation();
+  const searchString = useSearch();
   const [filterStatus, setFilterStatus] = useState<string>(initialStatus || "all");
   const [search, setSearch] = useState("");
+
+  const selectStatus = (status: OrderStatusFilter) => {
+    setFilterStatus(status);
+    setLocation(`${location.split("?")[0]}${orderStatusQuery(searchString, status)}`);
+  };
 
   const filtered = useMemo(() => {
     if (!orders) return [];
@@ -109,14 +110,14 @@ export default function RestaurantOrdersMobile({
         }
         filters={
           <>
-            {STATUS_FILTERS.map((f) => (
+            {ORDER_STATUS_FILTERS.map((f) => (
               <MobileFilterChip
                 key={f.key}
                 active={filterStatus === f.key}
-                onClick={() => setFilterStatus(f.key)}
+                onClick={() => selectStatus(f.key)}
                 testId={`chip-status-${f.key}`}
               >
-                {lang === "it" ? f.labelIt : f.labelDe}
+                {getOrderStatusFilterLabel(f.key, lang)}
               </MobileFilterChip>
             ))}
           </>
