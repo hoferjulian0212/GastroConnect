@@ -174,7 +174,7 @@ test("concurrent Rescue checkouts cannot oversell one promotion and retries stay
     const winner = entries[winnerIndexes[0]];
     await assert.rejects(
       storage.createOrdersAtomically([winner.entry], winner.restaurantId, supplierId),
-      (error: any) => error?.code === "23505",
+      (error: any) => (error?.cause ?? error)?.code === "23505",
       "the same checkout key must be rejected by the database uniqueness boundary",
     );
 

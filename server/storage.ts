@@ -5459,7 +5459,8 @@ export class DatabaseStorage implements IStorage {
         EXCEPTION WHEN duplicate_object THEN null; END $$
       `);
     } catch (error: any) {
-      if (error?.code !== "23505") throw error;
+      const dbError = error?.cause ?? error;
+      if (dbError?.code !== "23505") throw error;
     }
     await db.execute(sql`
       CREATE TABLE IF NOT EXISTS driver_routes (

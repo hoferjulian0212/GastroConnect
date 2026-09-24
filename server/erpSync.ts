@@ -248,13 +248,13 @@ export function parseCsv(text: string): Record<string, string>[] {
   });
 }
 
-async function parseSpreadsheetBuffer(buffer: Buffer, filename: string): Promise<NormalizedCatalogRow[]> {
+export async function parseSpreadsheetBuffer(buffer: Buffer, filename: string): Promise<NormalizedCatalogRow[]> {
   const lower = (filename || "").toLowerCase();
   if (lower.endsWith(".csv") || lower.endsWith(".txt")) {
     return normalizeRecords(parseCsv(buffer.toString("utf8")));
   }
   // xlsx / xls
-  const XLSX = await import("xlsx");
+  const XLSX = await import("@e965/xlsx");
   const wb = XLSX.read(buffer, { type: "buffer" });
   const sheetName = wb.SheetNames[0];
   if (!sheetName) return [];

@@ -69,8 +69,14 @@ import { z } from "zod";
 
 import type { InsertNotification, OrderWithDetails, Document } from "@shared/schema";
 
+function getDatabaseError(error: unknown): any {
+  let dbError = error as any;
+  while (dbError?.cause && dbError.cause !== dbError) dbError = dbError.cause;
+  return dbError;
+}
+
 function isOrderIdempotencyConflict(error: unknown): boolean {
-  const dbError = (error as any)?.cause ?? error as any;
+  const dbError = getDatabaseError(error);
   return dbError?.code === "23505"
     && dbError?.constraint === "uniq_orders_restaurant_idempotency_supplier";
 }
@@ -251,7 +257,7 @@ async function ensureDeliveryNoteForOrder(
     // Concurrent caller won the race: a unique constraint
     // (uq_documents_delivery_note_per_order) blocks the duplicate insert.
     // Re-fetch the existing note and report it as not newly created.
-    if (err?.code === "23505") {
+    if (getDatabaseError(err)?.code === "23505") {
       const docs = await storage.getDocumentsByOrder(order.id);
       const note = docs.find((d) => d.type === "delivery_note" && !d.isUpload);
       if (note) return { document: note, created: false };
@@ -2690,7 +2696,8 @@ export async function registerRoutes(
       const product = await storage.createProduct(values);
       res.status(201).json(product);
     } catch (error: any) {
-      if (error?.code === "23505" && typeof error?.constraint === "string" && error.constraint.includes("article")) {
+      const dbError = getDatabaseError(error);
+      if (dbError?.code === "23505" && typeof dbError?.constraint === "string" && dbError.constraint.includes("article")) {
         return res.status(409).json({ error: "Diese Artikelnummer ist bereits vergeben." });
       }
       res.status(400).json({ error: "Invalid product data" });
@@ -2727,7 +2734,8 @@ export async function registerRoutes(
       if (error instanceof z.ZodError) {
         return res.status(400).json({ error: "Invalid input", details: error.errors });
       }
-      if (error?.code === "23505" && typeof error?.constraint === "string" && error.constraint.includes("article")) {
+      const dbError = getDatabaseError(error);
+      if (dbError?.code === "23505" && typeof dbError?.constraint === "string" && dbError.constraint.includes("article")) {
         return res.status(409).json({ error: "Diese Artikelnummer ist bereits vergeben." });
       }
       res.status(500).json({ error: "Failed to update product" });

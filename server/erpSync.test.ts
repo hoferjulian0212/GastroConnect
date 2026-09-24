@@ -9,7 +9,8 @@
 
 import { test, describe, beforeEach, afterEach } from "node:test";
 import assert from "node:assert/strict";
-import { normalizeRecords, fetchErpCatalog, ErpSyncConfigError } from "./erpSync";
+import * as XLSX from "@e965/xlsx";
+import { normalizeRecords, parseSpreadsheetBuffer, fetchErpCatalog, ErpSyncConfigError } from "./erpSync";
 import { storage } from "./storage";
 
 const GTIN = "4006381333931";
@@ -76,6 +77,24 @@ describe("normalizeRecords / FIELD_ALIASES", () => {
     const rows = normalizeRecords([{ name: "X", ean: "123" }]);
     assert.equal(rows[0].gtin, null);
   });
+});
+
+test("parses XLSX catalog attachments with the maintained SheetJS-compatible parser", async () => {
+  const workbook = XLSX.utils.book_new();
+  const worksheet = XLSX.utils.aoa_to_sheet([
+    ["Artikelnummer", "Bezeichnung", "Verkaufspreis", "Lagerbestand"],
+    ["T-42", "Tomaten", "2,50", "18"],
+  ]);
+  XLSX.utils.book_append_sheet(workbook, worksheet, "Katalog");
+  const buffer = XLSX.write(workbook, { type: "buffer", bookType: "xlsx" }) as Buffer;
+
+  const rows = await parseSpreadsheetBuffer(buffer, "catalog.xlsx");
+
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].articleNumber, "T-42");
+  assert.equal(rows[0].name, "Tomaten");
+  assert.equal(rows[0].price, 2.5);
+  assert.equal(rows[0].stockQuantity, 18);
 });
 
 // ===================== fetchErpCatalog dispatch order =====================
