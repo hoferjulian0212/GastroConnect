@@ -5,7 +5,7 @@ import path from "path";
 import { storage } from "./storage";
 import { db } from "./db";
 import { applyBucketMovement, getReservedRemainingByProduct, InsufficientStockError } from "./stockBuckets";
-import { orders, messages, orderStatusHistory, complaints, orderItems, users, overnightStays, costSettings, minimumOrderValues, products, stockMovements, conversations, documents, promotions, priceChangeLog, deliveryAssignments, restaurantAvailability, restaurantAvailabilityExceptions, supplierDeliveryZones, formatOrderNumber, formatComplaintNumber, dateChangeReasonLabel } from "@shared/schema";
+import { orders, messages, orderStatusHistory, complaints, orderItems, users, notifications, overnightStays, costSettings, minimumOrderValues, products, stockMovements, conversations, documents, promotions, priceChangeLog, deliveryAssignments, restaurantAvailability, restaurantAvailabilityExceptions, supplierDeliveryZones, formatOrderNumber, formatComplaintNumber, dateChangeReasonLabel } from "@shared/schema";
 import { eq, and, desc, asc, sql, or, ilike, gte, lte, ne, inArray, isNull } from "drizzle-orm";
 import { foldedIlike } from "./searchSql";
 import { insertProductSchema as _insertProductSchema, insertCartItemSchema as _insertCartItemSchema, insertMessageSchema, insertComplaintSchema as _insertComplaintSchema, updateComplaintSchema as _updateComplaintSchema, insertComplaintCommentSchema as _insertComplaintCommentSchema, insertNotificationSchema as _insertNotificationSchema, insertPromotionSchema as _insertPromotionSchema, confirmOrderSchema, insertCustomMinOrderQuantitySchema as _insertCustomMinOrderQuantitySchema, insertCustomPriceSchema as _insertCustomPriceSchema, dashboardLayoutSchema, dashboardWidgetsSchema, dashboardTemplatesPayloadSchema, insertSupplierRatingSchema, updateSupplierRatingSchema, notificationPrefsSchema, DEFAULT_NOTIFICATION_PREFS, type NotificationPrefs, insertMemberSchema, insertVertreterAssignmentSchema, MEMBER_ROLES, clientErrorReportSchema, insertInventoryRiskRecordSchema, INVENTORY_RISK_STATUSES, INVENTORY_RISK_QUALITY, INVENTORY_RISK_REASONS } from "@shared/schema";
@@ -297,6 +297,7 @@ async function createNotificationWithPush(
   notification: InsertNotification,
   role?: string,
   i18n?: { title_it: string; message_it: string },
+  options: { dispatchIfAlreadyPersisted?: boolean } = {},
 ) {
   // Load recipient FIRST so we can localise the stored text to their language.
   let recipient: Awaited<ReturnType<typeof storage.getUser>> | undefined;
@@ -314,11 +315,15 @@ async function createNotificationWithPush(
     ? { ...notification, title: localTitle, message: localMsg }
     : notification;
 
-  const notificationResult = notification.type === "new_order"
-    ? await storage.createNewOrderNotificationOnce(localizedNotification)
-    : { notification: await storage.createNotification(localizedNotification), created: true };
+  const notificationResult = localizedNotification.deliveryDedupKey
+    ? await storage.createNotificationOnce(localizedNotification as InsertNotification & { referenceId: string; deliveryDedupKey: string })
+    : notification.type === "new_order"
+      ? await storage.createNewOrderNotificationOnce(localizedNotification)
+      : { notification: await storage.createNotification(localizedNotification), created: true };
   const created = notificationResult.notification;
-  if (!notificationResult.created) return { notification: created, pushPending: false, emailPending: false, url: "" };
+  if (!notificationResult.created && !options.dispatchIfAlreadyPersisted) {
+    return { notification: created, pushPending: false, emailPending: false, url: "" };
+  }
   const urlRole = role || "restaurant";
   let url = "/";
   switch (notification.type) {
@@ -10211,7 +10216,91 @@ export async function registerRoutes(
       }
       const order = await storage.getOrder(assignment.orderId);
       if (!order) return res.status(404).json({ error: "Order not found" });
+
+      const problemLabels: Record<string, string> = {
+        not_reachable: "Kunde nicht erreichbar",
+        unavailable: "Ware oder Lieferung nicht verfügbar",
+        refused: "Annahme verweigert",
+        partial_delivery: "Teilweise Lieferung möglich",
+        missing_items: "Artikel fehlen",
+        damaged: "Ware beschädigt",
+        packaging_return: "Mehrwegverpackung nicht zurückgegeben",
+        wrong_address: "Falsche Adresse",
+        traffic: "Verkehrsproblem",
+        other: "Sonstiges Problem",
+      };
+      const problemLabelsIT: Record<string, string> = {
+        not_reachable: "Cliente non raggiungibile",
+        unavailable: "Merce o consegna non disponibile",
+        refused: "Consegna rifiutata",
+        partial_delivery: "Consegna parziale possibile",
+        missing_items: "Articoli mancanti",
+        damaged: "Merce danneggiata",
+        packaging_return: "Imballaggi riutilizzabili non restituiti",
+        wrong_address: "Indirizzo errato",
+        traffic: "Traffico",
+        other: "Altro problema",
+      };
+      const notificationRows = (
+        problemType: string,
+        note: string | null,
+      ) => {
+        const reason = problemLabels[problemType] ?? problemLabels.other;
+        const reasonIt = problemLabelsIT[problemType] ?? problemLabelsIT.other;
+        const noteSuffix = note ? ` – ${note}` : "";
+        const noteSuffixIt = note ? ` – ${note}` : "";
+        const orderNumber = formatOrderNumber(order);
+        return [
+          {
+            notification: {
+              userId: order.supplierId,
+              type: "delivery_problem" as const,
+              title: `Bestellung nicht zustellbar #${orderNumber}`,
+              message: `${req.auth!.member.name}: ${reason}${noteSuffix}`,
+              referenceId: order.id,
+              deliveryDedupKey: "not_deliverable_v1",
+            },
+            i18n: {
+              title_it: `Ordine non consegnabile #${orderNumber}`,
+              message_it: `${req.auth!.member.name}: ${reasonIt}${noteSuffixIt}`,
+            },
+            role: "supplier",
+          },
+          {
+            notification: {
+              userId: order.restaurantId,
+              type: "order_status" as const,
+              title: `Bestellung nicht zustellbar #${orderNumber}`,
+              message: `Die Bestellung konnte nicht zugestellt werden: ${reason}${noteSuffix}.`,
+              referenceId: order.id,
+              deliveryDedupKey: "not_deliverable_v1",
+            },
+            i18n: {
+              title_it: `Ordine non consegnabile #${orderNumber}`,
+              message_it: `L'ordine non ha potuto essere consegnato: ${reasonIt}${noteSuffixIt}.`,
+            },
+            role: "restaurant",
+          },
+        ];
+      };
+      const ensureNotifications = async (
+        currentAssignment: typeof assignment,
+        dispatchIfAlreadyPersisted = false,
+      ) => {
+        const problemType = currentAssignment.problemType ?? parsed.problemType;
+        const note = currentAssignment.problemNote ?? parsed.note ?? null;
+        for (const entry of notificationRows(problemType, note)) {
+          await createNotificationWithPush(
+            entry.notification,
+            entry.role,
+            entry.i18n,
+            { dispatchIfAlreadyPersisted },
+          );
+        }
+      };
+
       if (order.status === "not_deliverable") {
+        await ensureNotifications(assignment);
         return res.json(await storage.getDeliveryAssignment(assignment.id));
       }
       if (order.status !== "in_delivery") {
@@ -10227,12 +10316,29 @@ export async function registerRoutes(
         problemNote: parsed.note ?? assignment.problemNote ?? null,
         problemReportedAt: assignment.problemReportedAt ?? new Date(),
         exceptionResolution: "not_deliverable",
-        exceptionResolutionNote: parsed.note ?? null,
+        exceptionResolutionNote: parsed.note ?? assignment.problemNote ?? null,
         exceptionResumeStatus: null,
         exceptionResolvedAt: new Date(),
       });
-      if (!updated) return res.json(await storage.getDeliveryAssignment(assignment.id));
+      if (!updated) {
+        const latestAssignment = await storage.getDeliveryAssignment(assignment.id);
+        const latestOrder = await storage.getOrder(order.id);
+        if (latestAssignment && latestOrder?.status === "not_deliverable") {
+          await ensureNotifications(latestAssignment);
+        }
+        return res.json(latestAssignment);
+      }
 
+      const problemNote = parsed.note ?? assignment.problemNote ?? null;
+      const notificationEntries = notificationRows(parsed.problemType, problemNote);
+      const localizedNotifications = await Promise.all(notificationEntries.map(async (entry) => {
+        const recipient = await storage.getUser(entry.notification.userId);
+        return recipient?.language === "it"
+          ? { ...entry.notification, title: entry.i18n.title_it, message: entry.i18n.message_it }
+          : entry.notification;
+      }));
+
+      let transitioned = false;
       try {
         await transitionOrderWithStock({
           order,
@@ -10242,34 +10348,18 @@ export async function registerRoutes(
           actorName: req.auth!.member.name,
           movementType: "order_returned",
           noteFn: (_item, qty) => `Bestellung #${formatOrderNumber(order)} nicht zustellbar – ${qty}x zurück ins Hauptlager`,
+          txExtra: async (tx) => {
+            await tx.insert(notifications).values(localizedNotifications).onConflictDoNothing();
+          },
         });
+        transitioned = true;
       } catch (error) {
         if (!(error instanceof OrderTransitionConflictError)) throw error;
         const fresh = await storage.getOrder(order.id);
         if (!fresh || fresh.status !== "not_deliverable") throw error;
       }
 
-      const reason = parsed.note ? `: ${parsed.note}` : "";
-      await createNotificationWithPush({
-        userId: order.supplierId,
-        type: "delivery_problem",
-        title: `Bestellung nicht zustellbar #${formatOrderNumber(order)}`,
-        message: `${req.auth!.member.name} konnte die Bestellung nicht zustellen${reason}.`,
-        referenceId: order.id,
-      }, "supplier", {
-        title_it: `Ordine non consegnabile #${formatOrderNumber(order)}`,
-        message_it: `${req.auth!.member.name} non ha potuto consegnare l'ordine${reason}.`,
-      });
-      await createNotificationWithPush({
-        userId: order.restaurantId,
-        type: "order_status",
-        title: `Bestellung nicht zustellbar #${formatOrderNumber(order)}`,
-        message: `Die Bestellung konnte nicht zugestellt werden${reason}.`,
-        referenceId: order.id,
-      }, "restaurant", {
-        title_it: `Ordine non consegnabile #${formatOrderNumber(order)}`,
-        message_it: `L'ordine non ha potuto essere consegnato${reason}.`,
-      });
+      await ensureNotifications(updated, transitioned);
       await advanceRouteAfterStop(req.auth!.memberId, assignment.deliveryDate, assignment.id, req.auth!.member.name);
       res.json(await storage.getDeliveryAssignment(assignment.id));
     } catch (error: any) {

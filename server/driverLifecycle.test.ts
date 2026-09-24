@@ -540,6 +540,107 @@ describe("driver lifecycle: restaurant delivery updates", () => {
     assert.equal(events.messages.length, 1);
     assert.equal(JSON.parse(events.messages[0].content).type, "in_delivery");
   });
+
+  test("not-deliverable retries keep one status transition and notify both organizations once", async () => {
+    const { orderId, assignmentId } = await seedOrderWithAssignment({
+      orderStatus: "in_delivery",
+      assignmentStatus: "en_route",
+    });
+    const driverCookie = await seedSessionCookie(driverMemberId);
+    const restaurantCookie = await seedSessionCookie(restaurantAdminMemberId);
+    const supplierCookie = await seedSessionCookie(adminMemberId);
+    const problem = {
+      problemType: "not_reachable",
+      note: "Called twice; nobody answered.",
+    };
+
+    const first = await apiFetch(
+      "POST",
+      `/api/driver/deliveries/${assignmentId}/not-deliverable`,
+      problem,
+      driverCookie,
+    );
+    assert.equal(first.status, 200, `Expected first request to succeed: ${JSON.stringify(first.json)}`);
+    const firstResult = first.json as any;
+
+    const firstNotifications = await db.select({
+      userId: notifications.userId,
+      deliveryDedupKey: notifications.deliveryDedupKey,
+    }).from(notifications).where(and(
+      eq(notifications.referenceId, orderId),
+      eq(notifications.deliveryDedupKey, "not_deliverable_v1"),
+    ));
+    assert.deepEqual(
+      firstNotifications.map((entry) => entry.userId).sort(),
+      [restaurantId, supplierId].sort(),
+      "The initial transition must notify both organizations",
+    );
+
+    // Simulate an older partially completed notification write. A retry must
+    // fill the missing recipient without repeating the order transition.
+    await db.delete(notifications).where(and(
+      eq(notifications.userId, restaurantId),
+      eq(notifications.referenceId, orderId),
+      eq(notifications.deliveryDedupKey, "not_deliverable_v1"),
+    ));
+
+    const retry = await apiFetch(
+      "POST",
+      `/api/driver/deliveries/${assignmentId}/not-deliverable`,
+      problem,
+      driverCookie,
+    );
+    assert.equal(retry.status, 200, `Expected retry to return the completed result: ${JSON.stringify(retry.json)}`);
+    assert.equal((retry.json as any).id, firstResult.id);
+    assert.equal((retry.json as any).status, "problem");
+
+    const repeatedRetry = await apiFetch(
+      "POST",
+      `/api/driver/deliveries/${assignmentId}/not-deliverable`,
+      problem,
+      driverCookie,
+    );
+    assert.equal(repeatedRetry.status, 200);
+
+    const [order] = await db.select({ status: orders.status }).from(orders).where(eq(orders.id, orderId));
+    assert.equal(order.status, "not_deliverable");
+    const history = await db.select({
+      fromStatus: orderStatusHistory.fromStatus,
+      toStatus: orderStatusHistory.toStatus,
+    }).from(orderStatusHistory).where(eq(orderStatusHistory.orderId, orderId));
+    const terminalTransitions = history.filter((entry) => entry.toStatus === "not_deliverable");
+    assert.equal(terminalTransitions.length, 1, "Retry must not add another status-history entry");
+    assert.equal(terminalTransitions[0].fromStatus, "in_delivery");
+
+    const orderNotifications = await db.select({
+      userId: notifications.userId,
+      type: notifications.type,
+      title: notifications.title,
+      message: notifications.message,
+      deliveryDedupKey: notifications.deliveryDedupKey,
+    }).from(notifications).where(and(
+      eq(notifications.referenceId, orderId),
+      eq(notifications.deliveryDedupKey, "not_deliverable_v1"),
+    ));
+    assert.equal(orderNotifications.length, 2, "Exactly one idempotent notification should be stored per organization");
+    const supplierNotification = orderNotifications.find((entry) => entry.userId === supplierId);
+    const restaurantNotification = orderNotifications.find((entry) => entry.userId === restaurantId);
+    assert.ok(supplierNotification, "Supplier must receive a notification for this order");
+    assert.ok(restaurantNotification, "Restaurant must receive a notification for this order");
+    assert.equal(supplierNotification.type, "delivery_problem");
+    assert.equal(restaurantNotification.type, "order_status");
+    assert.match(supplierNotification.message, /Kunde nicht erreichbar/);
+    assert.match(supplierNotification.message, /Called twice; nobody answered\./);
+    assert.match(restaurantNotification.message, /Kunde nicht erreichbar/);
+    assert.match(restaurantNotification.message, /Called twice; nobody answered\./);
+
+    for (const cookie of [restaurantCookie, supplierCookie]) {
+      const tracking = await apiFetch("GET", `/api/orders/${orderId}/tracking`, undefined, cookie);
+      assert.equal(tracking.status, 200, `Authorized organization should see tracking: ${JSON.stringify(tracking.json)}`);
+      assert.equal((tracking.json as any).assignment.problemType, "not_reachable");
+      assert.equal((tracking.json as any).assignment.problemNote, problem.note);
+    }
+  });
 });
 
 describe("driver lifecycle: cancel and pending-correction", () => {

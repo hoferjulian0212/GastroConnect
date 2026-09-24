@@ -421,6 +421,9 @@ export const notifications = pgTable("notifications", {
   index("idx_notifications_user_id").on(table.userId),
   index("idx_notifications_user_read").on(table.userId, table.isRead),
   uniqueIndex("uniq_checkout_new_order_notification").on(table.userId, table.referenceId).where(sql`${table.deliveryDedupKey} = 'checkout_v1'`),
+  uniqueIndex("uniq_notifications_delivery_dedup_key")
+    .on(table.userId, table.referenceId, table.deliveryDedupKey)
+    .where(sql`${table.deliveryDedupKey} IS NOT NULL AND ${table.referenceId} IS NOT NULL`),
 ]);
 
 // Durable outbox for post-checkout supplier delivery. The order is committed

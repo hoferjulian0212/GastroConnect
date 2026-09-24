@@ -56,6 +56,10 @@ const checkoutMigrations = [
     name: "0016_delivery_notification_outbox_cascade",
     file: path.join(migrationFolder, "0016_delivery_notification_outbox_cascade.sql"),
   },
+  {
+    name: "0017_notification_delivery_idempotency",
+    file: path.join(migrationFolder, "0017_notification_delivery_idempotency.sql"),
+  },
 ] as const;
 
 function parsePositiveTimeout(value: string | undefined, fallback: number): number {
@@ -140,6 +144,21 @@ export async function runCheckoutPreflight(client: Queryable = pool): Promise<vo
     `),
   });
 
+  if (await columnExists(client, "notifications", "delivery_dedup_key")) {
+    issues.push({
+      label: "notification delivery idempotency keys",
+      groups: await duplicateGroups(client, `
+        SELECT ("user_id" || ':' || "reference_id" || ':' || "delivery_dedup_key") AS key,
+               COUNT(*)::int AS count
+        FROM "notifications"
+        WHERE "delivery_dedup_key" IS NOT NULL AND "reference_id" IS NOT NULL
+        GROUP BY "user_id", "reference_id", "delivery_dedup_key"
+        HAVING COUNT(*) > 1
+        ORDER BY COUNT(*) DESC
+      `),
+    });
+  }
+
   if (await columnExists(client, "orders", "idempotency_key")) {
     issues.push({
       label: "checkout idempotency keys",
@@ -205,6 +224,12 @@ const expectedIndexes: Record<string, ExpectedIndex> = {
     columns: ["user_id", "reference_id"],
     unique: true,
     predicate: "delivery_dedup_key = 'checkout_v1'",
+  },
+  uniq_notifications_delivery_dedup_key: {
+    table: "notifications",
+    columns: ["user_id", "reference_id", "delivery_dedup_key"],
+    unique: true,
+    predicate: "delivery_dedup_key IS NOT NULL AND reference_id IS NOT NULL",
   },
   uniq_order_notification_retries_order_supplier: {
     table: "order_notification_retries",

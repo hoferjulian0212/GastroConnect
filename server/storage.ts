@@ -233,6 +233,7 @@ export interface IStorage {
   getNotifications(userId: string): Promise<Notification[]>;
   getUnreadNotificationCount(userId: string): Promise<number>;
   createNotification(notification: InsertNotification): Promise<Notification>;
+  createNotificationOnce(notification: InsertNotification & { referenceId: string; deliveryDedupKey: string }): Promise<{ notification: Notification; created: boolean }>;
   createNewOrderNotificationOnce(notification: InsertNotification): Promise<{ notification: Notification; created: boolean }>;
   enqueueOrderNotificationRetry(retry: InsertOrderNotificationRetry): Promise<OrderNotificationRetry>;
   getPendingOrderNotificationRetries(limit?: number): Promise<OrderNotificationRetry[]>;
@@ -4277,6 +4278,25 @@ export class DatabaseStorage implements IStorage {
       if (existing) return existing;
     }
     throw new Error("Notification could not be created");
+  }
+
+  async createNotificationOnce(
+    notification: InsertNotification & { referenceId: string; deliveryDedupKey: string },
+  ): Promise<{ notification: Notification; created: boolean }> {
+    const [created] = await db.insert(notifications).values(notification)
+      .onConflictDoNothing()
+      .returning();
+    if (created) return { notification: created, created: true };
+
+    const [existing] = await db.select().from(notifications)
+      .where(and(
+        eq(notifications.userId, notification.userId),
+        eq(notifications.referenceId, notification.referenceId),
+        eq(notifications.deliveryDedupKey, notification.deliveryDedupKey),
+      ))
+      .limit(1);
+    if (existing) return { notification: existing, created: false };
+    throw new Error("Idempotent notification could not be created");
   }
 
   async createNewOrderNotificationOnce(notification: InsertNotification): Promise<{ notification: Notification; created: boolean }> {
