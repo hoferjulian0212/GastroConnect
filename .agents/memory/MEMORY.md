@@ -37,3 +37,4 @@
 - [Inbox send acknowledgement](inbox-send-acknowledgement.md) — once a message is persisted, notification failures must never turn its API response into a send failure.
 - [Voice message storage fallback](voice-message-storage-fallback.md) — when Object Storage signing is unavailable, bounded authenticated raw audio can be stored as a message data URL.
 - [Drizzle database error causes](drizzle-error-causes.md) — Drizzle 0.45 wraps PostgreSQL errors; conflict handling must inspect the nested cause for SQLSTATE and constraint.
+- [External Git LFS routing](external-git-lfs-routing.md) — a remote URL change can leave an internal Replit LFS override; verify the external remote's LFS endpoint before pushing.
