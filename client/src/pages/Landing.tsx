@@ -1072,6 +1072,10 @@ export default function Landing() {
   }, []);
 
   useEffect(() => {
+    document.documentElement.lang = lang;
+  }, [lang]);
+
+  useEffect(() => {
     if (currentUser && currentRole) {
       setLocation(`/${currentRole}`);
     }
